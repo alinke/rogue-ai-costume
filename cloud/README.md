@@ -40,6 +40,9 @@ The first run saves the project, bucket name and two random keys in `.keys`
   of `<set>/` (the costume also sends a plain copy of the photo just for this
   check). The page never sees them unless you SHOW them.
 - `GET /photos` lists both sets, newest first.
+- `POST /clear` with header `X-Key: <admin key>` deletes every photo -- the
+  costume's operator console CLEAR PHOTOS uses it if you give the costume the
+  admin key (`PHOTO_ADMIN_KEY` in `costume/src/secrets.h`).
 
 ## After the party
 

@@ -11,6 +11,7 @@ page deletes them. Temporary -- see ../teardown.sh.
   GET  /admin?k=ADMIN_KEY   phone page: every photo, delete / show buttons
   POST /delete              JSON {"k": ADMIN_KEY, "name": "ai/....jpg"}
   POST /show                JSON {"k": ADMIN_KEY, "name": "ai-hidden/....jpg"}
+  POST /clear               header X-Key: ADMIN_KEY -- deletes every photo (operator console)
 
 Photos without a face (Cloud Vision face detection) go to <set>-hidden/
 instead: not on the page, but on the admin page with a SHOW button.
@@ -158,6 +159,20 @@ def show():
     bucket.copy_blob(src, bucket, dest)
     src.delete()
     return jsonify(shown=dest)
+
+
+@app.post("/clear")
+def clear():
+    """Every photo, both sets, hidden ones too (a fresh party). Header X-Key: ADMIN_KEY."""
+    if not key_ok(request.headers.get("X-Key", ""), ADMIN_KEY):
+        return "forbidden", 403
+    n = 0
+    for prefix in ("ai/", "lab/", "ai-hidden/", "lab-hidden/"):
+        for b in bucket.list_blobs(prefix=prefix):
+            b.delete()
+            n += 1
+    print(f"cleared {n} photos")
+    return jsonify(cleared=n)
 
 
 @app.get("/admin/photos")

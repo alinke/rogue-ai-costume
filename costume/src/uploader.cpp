@@ -144,6 +144,60 @@ static void wifiOff() {
                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 }
 
+static volatile bool s_clearQueue = false, s_clearServer = false;
+
+// POST /clear with the admin key: every photo off the web page.
+static bool postClear() {
+#ifdef PHOTO_ADMIN_KEY
+  WiFiClientSecure tls;
+  tls.setInsecure();
+  String url = PHOTO_SERVICE_URL;
+  int hs = url.indexOf("//") + 2;
+  String host = url.substring(hs);
+  int slash = host.indexOf('/');
+  if (slash >= 0) host = host.substring(0, slash);
+  int code = -1;
+  if (tls.connect(host.c_str(), 443)) {
+    String req = "POST /clear HTTP/1.1\r\nHost: " + host + "\r\nX-Key: " PHOTO_ADMIN_KEY
+                 "\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    if (tls.print(req) == req.length()) {
+      uint32_t w0 = millis();
+      while (!tls.available() && tls.connected() && millis() - w0 < 25000) delay(20);
+      tls.setTimeout(5);
+      String status = tls.readStringUntil('\n');
+      int sp = status.indexOf(' ');
+      if (sp > 0) code = status.substring(sp + 1).toInt();
+    }
+    tls.stop();
+  }
+  Serial.printf("[%s][upload] clear the web page: HTTP %d\n", code == 200 ? "I" : "W", code);
+  return code == 200 || code == 403;  // 403: wrong key -- retrying won't help
+#else
+  return true;
+#endif
+}
+
+static void dropQueue() {
+  String oldest;
+  int n;
+  scanQueue(&oldest, &n);
+  while (n > 0) {
+    s_fs->remove(path(oldest));
+    oldest.replace(".jpg", ".txt");
+    s_fs->remove(path(oldest));
+    scanQueue(&oldest, &n);
+  }
+  Serial.println("[I][upload] upload queue cleared");
+}
+
+void clearAll() {
+  s_clearQueue = true;
+#ifdef PHOTO_ADMIN_KEY
+  s_clearServer = true;
+#endif
+}
+bool clearPending() { return s_clearServer; }
+
 static uint32_t s_dmaMin;
 static void noteDma() {
   s_dmaMin = min<uint32_t>(s_dmaMin, heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
@@ -260,6 +314,20 @@ static void task(void*) {
     if (hand) {
       store(hand, len, face, label);
       heap_caps_free(hand);
+    }
+
+    if (s_clearQueue) {
+      s_clearQueue = false;
+      dropQueue();
+    }
+    if (s_clearServer && researcher::radioUp() && (int32_t)(millis() - retryAt) >= 0) {
+      if (join() && postClear()) {
+        s_clearServer = false;
+        idleSince = millis();
+        wifiOn = true;
+      } else {
+        retryAt = millis() + RETRY_MS;
+      }
     }
 
     String oldest;
@@ -448,6 +516,8 @@ int sent() { return s_sent; }
 namespace uploader {
 void begin() {}
 void queueScreen(const char*, const camera::Photo*) {}
+void clearAll() {}
+bool clearPending() { return false; }
 int pending() { return 0; }
 int sent() { return 0; }
 }  // namespace uploader

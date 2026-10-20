@@ -76,6 +76,10 @@ static void serialCommands(uint32_t now, input::Events& ev) {
     else if (c == 'c') camera::requestCapture();
     else if (c == 'b') battery::printEvents();
     else if (c == 'Q') powerOff();
+    else if (c == '!') {  // = the operator console's CLEAR PHOTOS
+      gallery::clear();
+      uploader::clearAll();
+    }
     else if (c == 'u') uploader::queueScreen("TEST");
 
     else if (c == 'T') {

@@ -185,7 +185,10 @@ SIREN / VOICE on/off on their own (tap the middle button showing the volume;
 SOUND still switches everything), pause/
 resume the show (paused = dim "SYSTEM IDLE", touches ignored), TOUCH CAL, buttons
 to run a scene now (scan, kill switch, CAPTCHA, gallery, QR, countdown, midnight
-test, photo booth), and a status line (battery, mic, camera, clock, people scanned).
+test, photo booth), **CLEAR PHOTOS** (tap twice: empties the costume's
+ASSIMILATED wall, drops photos still waiting to upload, and -- with
+`PHOTO_ADMIN_KEY` in `src/secrets.h` -- deletes every photo on the web page, as
+soon as Wi-Fi is reachable; the SD card's keepsake copies stay), and a status line (battery, mic, camera, clock, people scanned).
 Brightness, sound, the siren and voice switches and volumes, and the touch calibration are remembered across
 power-off (the config.h values are only the starting defaults). It closes itself
 after 15 s.
@@ -392,6 +395,7 @@ Typing into the serial monitor controls it:
 | `p` | Send the last photo as a PGM image (binary, between `@@PGM@@` / `@@END@@`; ~30 s) |
 | `b` | Battery: recent charging / on-battery changes |
 | `Q` | Power off (standby; tap to wake) |
+| `!` | CLEAR PHOTOS (the costume's wall, the upload queue, and the web page if `PHOTO_ADMIN_KEY` is set) |
 
 ## Code layout
 

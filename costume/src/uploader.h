@@ -14,6 +14,11 @@ void begin();
 // short label shown under the photo on the page. Takes ~50 ms.
 // face = the plain camera photo, sent along for the server's face check only.
 void queueScreen(const char* label, const camera::Photo* face = nullptr);
+// CLEAR PHOTOS (operator console): drop the photos waiting to upload and, if
+// PHOTO_ADMIN_KEY is set, delete every photo on the web page (as soon as Wi-Fi
+// is reachable). The SD card's keepsake copies stay.
+void clearAll();
+bool clearPending();  // the web page hasn't been cleared yet
 int pending();   // photos waiting to go
 int sent();      // sent since power-on
 

@@ -12,12 +12,13 @@
 #include "scenes.h"
 #include "settings.h"
 #include "ui.h"
+#include "uploader.h"
 
 using namespace gfx;
 
 namespace {
 
-constexpr int BW = 280, BH = 72, GAP = 16, COLS = 4;  // 6 rows, clear of the bottom strip
+constexpr int BW = 280, BH = 72, GAP = 16, COLS = 4;  // 7 rows, clear of the bottom strip
 constexpr int ROW = BH + 10;
 constexpr int X0 = (W - (COLS * BW + (COLS - 1) * GAP)) / 2;
 constexpr int Y0 = BODY_Y + 150;
@@ -29,7 +30,8 @@ enum Action {
   VOICE_DOWN, VOICE_SHOW, VOICE_UP, EXIT,
   GO_SCAN, GO_KEYPAD, GO_CAPTCHA, GO_GALLERY,
   GO_QR, GO_COUNTDOWN, GO_MIDNIGHT, GO_TOUCHCAL,
-  GO_BOOTH, LIGHT_DOWN, LIGHT_SHOW, LIGHT_UP, COUNT
+  GO_BOOTH, LIGHT_DOWN, LIGHT_SHOW, LIGHT_UP,
+  CLEAR_PHOTOS, COUNT
 };
 
 char labels[COUNT][24];
@@ -37,6 +39,9 @@ uint32_t lastTouch, nextStatus;
 // POWER OFF sits top right, beside the title; it takes a second tap within 4 s.
 const ui::Button POWER_BTN = {W - X0 - BW, BODY_Y + 16, BW, 110, nullptr};
 uint32_t powerArmedAt = 0;
+// CLEAR PHOTOS takes a second tap within 4 s, too.
+uint32_t clearArmedAt = 0;
+bool clearArmed(uint32_t now) { return clearArmedAt && now - clearArmedAt < 4000; }
 bool powerArmed(uint32_t now) { return powerArmedAt && now - powerArmedAt < 4000; }
 
 ui::Button button(int i) { return {X0 + (i % COLS) * (BW + GAP), Y0 + (i / COLS) * ROW, BW, BH, labels[i]}; }
@@ -48,7 +53,8 @@ void makeLabels() {
       "VOICE -", "", "VOICE +", "EXIT",
       "SCAN", "KILL SWITCH", "CAPTCHA", "GALLERY",
       "QR CODE", "COUNTDOWN", "MIDNIGHT TEST", "TOUCH CAL",
-      "PHOTO BOOTH", "PHOTO -", "", "PHOTO +"};
+      "PHOTO BOOTH", "PHOTO -", "", "PHOTO +",
+      "CLEAR PHOTOS"};
   for (int i = 0; i < COUNT; i++) snprintf(labels[i], sizeof(labels[i]), "%s", FIXED[i]);
   snprintf(labels[BRIGHT_SHOW], sizeof(labels[0]), "LIGHT %d%%", settings::brightness());
   snprintf(labels[SOUND], sizeof(labels[0]), "SOUND: %s", settings::muted() ? "OFF" : "ON");
@@ -58,12 +64,15 @@ void makeLabels() {
   if (settings::voiceOn()) snprintf(labels[VOICE_SHOW], sizeof(labels[0]), "VOICE %d%%", settings::voiceVolume());
   else snprintf(labels[VOICE_SHOW], sizeof(labels[0]), "VOICE OFF");
   snprintf(labels[LIGHT_SHOW], sizeof(labels[0]), "PHOTO LIGHT %d", settings::photoLight());
+  if (clearArmed(millis())) snprintf(labels[CLEAR_PHOTOS], sizeof(labels[0]), "TAP AGAIN: CLEAR");
+  else if (uploader::clearPending()) snprintf(labels[CLEAR_PHOTOS], sizeof(labels[0]), "CLEARING WEB...");
   snprintf(labels[PAUSE], sizeof(labels[0]), "%s", scenes::paused() ? "RESUME SHOW" : "PAUSE SHOW");
 }
 
 uint32_t colorOf(int i) {
   if (i == EXIT) return C_RED;
   if (i == SIREN_DOWN || i == SIREN_SHOW || i == SIREN_UP) return C_AMBER;
+  if (i == CLEAR_PHOTOS) return C_RED;
   if (i >= LIGHT_DOWN) return C_AMBER;
   if (i < GO_SCAN) return C_CYAN;
   return C_GREEN;
@@ -159,6 +168,17 @@ void touch(int x, int y, uint32_t now) {
       return;
     case GO_SCAN: scenes::playScene(&SCENE_SCAN, now); return;
     case GO_BOOTH: scenes::playScene(&SCENE_BOOTH, now); return;
+    case CLEAR_PHOTOS:
+      if (!clearArmed(now)) {
+        clearArmedAt = now;  // first tap: arm (the label asks for a second)
+        break;
+      }
+      clearArmedAt = 0;
+      gallery::clear();
+      uploader::clearAll();
+      audio::fx(audio::FX_POWER_DOWN);
+      Serial.println("[I][menu] photos cleared");
+      break;
     case LIGHT_DOWN: settings::setPhotoLight(settings::photoLight() - 1); break;
     case LIGHT_UP: settings::setPhotoLight(settings::photoLight() + 1); break;
     case LIGHT_SHOW: scenes::playScene(&SCENE_MIRROR, now); return;  // see the effect live
@@ -179,6 +199,14 @@ bool tick(uint32_t now) {
   if (powerArmedAt && !powerArmed(now)) {  // not confirmed: back to POWER OFF
     powerArmedAt = 0;
     drawPower(now);
+  }
+  // CLEAR PHOTOS: not confirmed in time, or the web page has been cleared.
+  static bool wasPending = false;
+  bool pending = uploader::clearPending();
+  if ((clearArmedAt && !clearArmed(now)) || pending != wasPending) {
+    if (!clearArmed(now)) clearArmedAt = 0;
+    wasPending = pending;
+    drawButtons();
   }
   if ((int32_t)(now - nextStatus) >= 0) {
     drawStatus();

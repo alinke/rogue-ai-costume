@@ -33,6 +33,9 @@ int add(const camera::Photo& p, const char* verdict) {
   return s_total;
 }
 
+void clear() {
+  s_count = s_total = s_head = 0;
+}
 int count() { return s_count; }
 int total() { return s_total; }
 

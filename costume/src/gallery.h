@@ -19,6 +19,7 @@ struct Entry {
 bool begin();
 int add(const camera::Photo& photo, const char* verdict);  // returns the specimen number
 int count();       // entries held (up to GALLERY_SIZE), newest last
+void clear();      // empty the wall and restart the specimen numbers (operator console)
 int total();       // humans scanned since power-on
 Entry entry(int i);
 
