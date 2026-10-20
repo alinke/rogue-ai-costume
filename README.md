@@ -41,6 +41,23 @@ The costume and scanner talk over Bluetooth beacons — no pairing, no network.
   ESP32-S3-Touch-LCD-3.49 V2 (small and light, no camera).
 - Optional: SD card in each (photo queue + a keepsake copy of every photo).
 
+## 3D print & laser cut
+
+All in [`hardware/`](hardware/) (print notes: [hardware/README.md](hardware/README.md)):
+
+- **Display mount** for the Guition 10.1" — [`guition10_mount.stl`](hardware/3dprint/guition10_mount.stl)
+  (source drawing: [`guition10_mount_drawing.ai`](hardware/3dprint/guition10_mount_drawing.ai))
+- **Sewable LED-strip clips** (TPU 95A) — parametric [`led_clips.scad`](hardware/3dprint/led_clips.scad), plus
+  ready-made [`channel_60mm.stl`](hardware/3dprint/channel_60mm.stl),
+  [`channel_30mm.stl`](hardware/3dprint/channel_30mm.stl),
+  [`channel_60mm_endcap.stl`](hardware/3dprint/channel_60mm_endcap.stl),
+  [`splice_25mm.stl`](hardware/3dprint/splice_25mm.stl),
+  [`saddle_clip.stl`](hardware/3dprint/saddle_clip.stl)
+- **Laser-cut visor goggles**, two sizes for different glasses —
+  [`rogue_ai_visor_glasses_A.svg`](hardware/lasercut/rogue_ai_visor_glasses_A.svg)
+  ([`.ai`](hardware/lasercut/rogue_ai_visor_glasses_A.ai)),
+  [`rogue_ai_visor_glasses_B.ai`](hardware/lasercut/rogue_ai_visor_glasses_B.ai)
+
 ## Build from source
 
 [PlatformIO](https://platformio.org/). Each firmware is its own PlatformIO
