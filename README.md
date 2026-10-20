@@ -7,6 +7,8 @@ Plus the other side of the story: **LAB-7**, a handheld scanner the containment
 researcher uses to hunt the AI down, fire a CONTAIN beam at it (the AI always
 wins), and run a humanity test on guests.
 
+![ROGUE.AI costume concept: hooded black techwear with a smoked visor, red eye pod, the 10" chest terminal on a crossed harness, circuit-trace LED channels down the sleeves and leg, a ripped-out kill switch, shoulder pauldron, severed data tether and asset tag](docs/images/costume-concept.png)
+
 **Flash it from your browser:** https://alinke.github.io/rogue-ai-costume/
 (Chrome or Edge on a desktop computer).
 

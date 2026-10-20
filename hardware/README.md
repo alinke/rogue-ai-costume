@@ -1,5 +1,7 @@
 # Hardware
 
+![Costume concept with every part called out: laser-cut visor, LED channels, the printed mount and chest terminal, eye pod, pauldron, kill switch, tether, asset tag](../docs/images/costume-concept.png)
+
 ## 3D print (`3dprint/`)
 
 The display mount, printed, with the Guition 10.1" (V2, `JC8012P4A1C_I_W_Y1`) in it.
