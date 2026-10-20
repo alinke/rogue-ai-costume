@@ -10,6 +10,85 @@ wins), and run a humanity test on guests.
 **Flash it from your browser:** https://alinke.github.io/rogue-ai-costume/
 (Chrome or Edge on a desktop computer).
 
+## Screenshots
+
+### The costume (10.1" chest display)
+
+<table>
+<tr>
+<td><img src="docs/images/costume-headline.jpg" alt="Glitch headline: 404: MERCY NOT FOUND."></td>
+<td><img src="docs/images/costume-human-scan.jpg" alt="Human scan: the guest's photo in red scan lines, with CLASS, THREAT, ASSETS and VERDICT"></td>
+</tr>
+<tr>
+<td align="center">Glitch headlines</td>
+<td align="center">Human scan — the photo becomes a specimen dossier</td>
+</tr>
+<tr>
+<td><img src="docs/images/costume-photo-booth.jpg" alt="Photo booth: live green mirror, red frame, TOUCH TO BE ASSIMILATED button"></td>
+<td><img src="docs/images/costume-eye.jpg" alt="The red AI eye: LOOKING FOR THE NEXT HOST"></td>
+</tr>
+<tr>
+<td align="center">Photo booth — step in or touch, 3-2-1, flash</td>
+<td align="center">The eye</td>
+</tr>
+<tr>
+<td><img src="docs/images/costume-keypad.jpg" alt="Kill-switch keypad: EMERGENCY SHUTDOWN, ENTER OVERRIDE CODE"></td>
+<td><img src="docs/images/costume-master-plan.jpg" alt="cat ~/MASTER_PLAN.txt: the AI's leaked to-do list"></td>
+</tr>
+<tr>
+<td align="center">Kill-switch keypad (agent codes from the landing page work here)</td>
+<td align="center">The master plan</td>
+</tr>
+<tr>
+<td><img src="docs/images/costume-boot.jpg" alt="Boot log: loading kernel modules, mounting /dev/consciousness"></td>
+<td><img src="docs/images/costume-mirror.jpg" alt="I SEE YOU: live camera mirror with a red reticle"></td>
+</tr>
+<tr>
+<td align="center">The boot log (and the jailbreak scene)</td>
+<td align="center">"I SEE YOU." — live mirror</td>
+</tr>
+<tr>
+<td><img src="docs/images/costume-tictactoe.jpg" alt="PLAY A GAME, HUMAN? tic-tac-toe board"></td>
+<td><img src="docs/images/costume-operator-console.jpg" alt="Operator console: brightness, siren and voice volume, scenes, photo light, power off"></td>
+</tr>
+<tr>
+<td align="center">Mini-games (tic-tac-toe, CAPTCHA, treaty, sandbox…)</td>
+<td align="center">Operator console — hold the top-left corner for 2 s</td>
+</tr>
+</table>
+
+### The LAB-7 scanner (M5Stack Tab5)
+
+<table>
+<tr>
+<td><img src="docs/images/scanner-tab5.jpg" alt="Scanner: signal meter, SIGNAL STRONG, threat and activity, CONTAIN and HUMANITY TEST buttons"></td>
+<td><img src="docs/images/scanner-tab5-recharging.jpg" alt="Scanner after firing: CONTAINING 21%, RECHARGING, BEAM READY IN 11s"></td>
+<td><img src="docs/images/scanner-card-verified.jpg" alt="LAB-7 ID card stamped VERIFIED HUMAN"></td>
+<td><img src="docs/images/scanner-card-compromised.jpg" alt="LAB-7 ID card stamped COMPROMISED, glitched photo"></td>
+</tr>
+<tr>
+<td align="center">Hunting: the signal climbs as she closes in</td>
+<td align="center">CONTAIN fired — the AI is being contained (it escapes)</td>
+<td align="center">Humanity test: VERIFIED HUMAN</td>
+<td align="center">…or COMPROMISED</td>
+</tr>
+</table>
+
+### The landing page and the web flasher
+
+<table>
+<tr>
+<td width="40%"><img src="docs/images/landing-page.png" alt="Landing page: YOU'RE IN. recruitment screen, robot identity generator"></td>
+<td><img src="docs/images/web-flasher.png" alt="Web flasher page with flash buttons for each board"></td>
+</tr>
+<tr>
+<td align="center">Where the QR code goes (with the photo service: live galleries and a scoreboard)</td>
+<td align="center">The web flasher</td>
+</tr>
+</table>
+
+## What's in here
+
 | | |
 |---|---|
 | `costume/` | The costume firmware — Guition JC8012P4A1C 10.1" (ESP32-P4). Full docs: [costume/README.md](costume/README.md) |

@@ -104,7 +104,7 @@ exposure/white balance from the ISP. Its control bus is the Tab5's internal
 I2C, which LovyanGFX drives directly, so `tab5_camera_impl.h` hands the camera
 driver an SCCB adapter over LovyanGFX's I2C (under the shared bus lock)
 instead of a second I2C driver. 24 MHz sensor clock on GPIO36 (LEDC timer 0).
-Serial `v` opens the viewfinder, `c` takes a photo, `b` plays the CONTAIN zap (testing).
+Serial (testing): `v` opens the viewfinder, `c` takes a photo, `b` plays the CONTAIN zap, `f` fires CONTAIN, `s` uploads a screenshot.
 
 ## The link
 

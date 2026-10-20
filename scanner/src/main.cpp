@@ -34,7 +34,7 @@ static constexpr uint32_t C_BG = 0x000000, C_GREEN = 0x28FF5A, C_DIM = 0x00823A,
 static constexpr int W = 720, H = 1280;
 static constexpr int MX = 60, MY = 170, MW = 600, MH = 360;           // signal meter
 static constexpr int TXT_X = 40, TY0 = 630, TY1 = 710, TSTEP = 52;  // status + intel, under the meter
-static constexpr int BX = 40, BY = 880, BW = 640, BH = 210, BTN_RADIUS = 28;  // CONTAIN
+static constexpr int BX = 40, BY = 860, BW = 640, BH = 200, BTN_RADIUS = 28;  // CONTAIN (50 px above HUMANITY TEST)
 static constexpr int PHX = 40, PHY = 1110, PHW = 640, PHH = 130;     // EVIDENCE (camera), under CONTAIN
 static constexpr int HDR_X = 30, HDR_Y = 30;
 static constexpr bool SOUND_ROW2 = true;  // "SOUND: ON" on the header's second line
@@ -741,6 +741,8 @@ void loop() {
   int cmd = Serial.available() ? Serial.read() : -1;
   if (cmd == 'v' && !s_finder) openFinder(now);
   if (cmd == 'b') sound::play(sound::ZAP);  // speaker check
+  if (cmd == 'f') fire(now);                // CONTAIN, as if tapped
+  if (cmd == 's') uploader::queueImage(s_canvasBuf, "SCREEN");  // screenshot of the last frame
   if (s_finder) {
     bool tap = press;
     if (cmd == 'c') { tap = true; tx = W / 2; ty = H / 2; }
