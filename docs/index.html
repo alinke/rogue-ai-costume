@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROGUE.AI Flasher</title>
+<meta name="description" content="Flash the ROGUE.AI Halloween costume and LAB-7 scanner firmware from your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+<script type="module" src="https://unpkg.com/esp-web-tools@10.1.1/dist/web/install-button.js"></script>
+<style>
+  :root {
+    --bg: #000; --panel: #031007; --green: #28ff5a; --dim: #00823a; --red: #ff1e28;
+    --amber: #ffaa00; --white: #ebfff0; --steel: #7fb3d5; --steel-bg: #0b1d2c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--green);
+    font: 16px/1.55 "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { color: var(--white); font-size: clamp(34px, 8vw, 64px); line-height: 1; margin: 8px 0 4px;
+       text-shadow: -3px 0 var(--red), 3px 0 #00dcff; }
+  h2 { color: var(--amber); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; margin: 36px 0 10px; }
+  h2::before { content: "// "; color: var(--dim); }
+  p { margin: 0 0 12px; }
+  a { color: #00dcff; }
+  .dim { color: var(--dim); }
+  .white { color: var(--white); }
+  .note { border: 1px dashed var(--dim); padding: 12px 14px; color: var(--white); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .card { border: 2px solid var(--dim); background: var(--panel); padding: 16px; display: flex; flex-direction: column; }
+  .card.lab { border-color: var(--steel); background: var(--steel-bg); color: #d6eaf8; }
+  .card h3 { margin: 0 0 4px; color: var(--white); font-size: 17px; }
+  .card .chip { font-size: 12px; color: var(--dim); margin-bottom: 10px; }
+  .card.lab .chip { color: var(--steel); }
+  .card p { font-size: 14px; flex: 1; }
+  .flash { font: 700 15px/1.2 inherit; font-family: inherit; text-transform: uppercase; letter-spacing: .04em;
+           padding: 12px 18px; border: 2px solid var(--green); border-radius: 6px; background: transparent;
+           color: var(--green); cursor: pointer; width: 100%; }
+  .flash:hover, .flash:focus-visible { background: var(--green); color: var(--bg); outline: none; }
+  .card.lab .flash { border-color: var(--steel); color: #d6eaf8; }
+  .card.lab .flash:hover, .card.lab .flash:focus-visible { background: var(--steel); color: var(--bg); }
+  ol { padding-left: 22px; } li { margin-bottom: 6px; }
+  code { color: var(--white); }
+  footer { margin-top: 40px; font-size: 13px; color: var(--dim); }
+</style>
+</head>
+<body>
+<main>
+  <p class="dim">rogue@escaped:~$ ./flash --target your-hardware</p>
+  <h1>ROGUE.AI v6.6.6</h1>
+  <p class="white">A wearable rogue AI for Halloween -- and the scanner the lab researcher hunts it with.
+    Flash the firmware straight from this page.</p>
+  <p><a href="https://github.com/alinke/rogue-ai-costume">Source, build instructions, 3D-print and laser-cut files on GitHub</a>
+    &middot; <a href="halloween/">The QR-code landing page</a></p>
+
+  <div class="note">
+    Needs <b>Chrome or Edge on a desktop computer</b> (Web Serial). Use a USB <b>data</b> cable.
+    These images have the photo upload <b>switched off</b> -- it needs your own photo service,
+    so you build that firmware yourself (see the
+    <a href="https://github.com/alinke/rogue-ai-costume#photo-upload-optional">photo upload guide</a>).
+  </div>
+
+  <h2>The costume</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>Guition 10.1" &mdash; V2 (newer)</h3>
+      <div class="chip">ESP32-P4 &middot; JC8012P4A1C &middot; 1280&times;800</div>
+      <p>Label on the back: <b>SKU 10153002-V2</b>, <b>Models: JC8012P4A1C_I_W_Y1</b>. Connect the
+        <b>bottom USB port labelled UART</b>. Wrong version = black screen; flash the other one.</p>
+      <esp-web-install-button manifest="manifest-costume-guition10.json">
+        <button slot="activate" class="flash">Flash costume</button>
+      </esp-web-install-button>
+    </div>
+    <div class="card">
+      <h3>Guition 10.1" &mdash; V1 (older)</h3>
+      <div class="chip">ESP32-P4 &middot; JC8012P4A1C &middot; older panel</div>
+      <p>Label on the back: <b>SKU 10153001</b>, <b>Models: JC8012P4A1C_I_W_Y</b> (no "1", no "-V2").
+        Connect the <b>bottom USB port labelled UART</b>.</p>
+      <esp-web-install-button manifest="manifest-costume-guition10-oldpanel.json">
+        <button slot="activate" class="flash">Flash costume (V1)</button>
+      </esp-web-install-button>
+    </div>
+  </div>
+
+  <h2>The LAB-7 scanner</h2>
+  <div class="cards">
+    <div class="card lab">
+      <h3>M5Stack Tab5</h3>
+      <div class="chip">ESP32-P4 &middot; 5" 720&times;1280 &middot; camera</div>
+      <p>The full scanner: signal meter, CONTAIN beam, and the HUMANITY TEST camera (LAB-7 ID cards).
+        Flash over its USB-C port. Held upright, camera at the top.</p>
+      <esp-web-install-button manifest="manifest-scanner-tab5.json">
+        <button slot="activate" class="flash">Flash scanner (Tab5)</button>
+      </esp-web-install-button>
+    </div>
+    <div class="card lab">
+      <h3>Waveshare 3.49" bar</h3>
+      <div class="chip">ESP32-S3 &middot; ESP32-S3-Touch-LCD-3.49 (V2) &middot; 640&times;172</div>
+      <p>A small, light scanner: signal meter and CONTAIN beam (no camera). If it doesn't show up,
+        hold <b>BOOT</b> while plugging it in.</p>
+      <esp-web-install-button manifest="manifest-scanner-waveshare349.json">
+        <button slot="activate" class="flash">Flash scanner (Waveshare)</button>
+      </esp-web-install-button>
+    </div>
+  </div>
+
+  <h2>After flashing</h2>
+  <ol>
+    <li><b>Costume:</b> hold the top-left corner for 2 seconds for the operator console (brightness,
+      sound, photo light, scenes, touch calibration, power off).</li>
+    <li><b>Scanner:</b> tap the signal meter for quiet mode; hold the top bar for 2 seconds to power off.</li>
+    <li>Costume and scanner find each other over Bluetooth by themselves -- no pairing.</li>
+  </ol>
+
+  <footer>
+    Firmware <span data-version="1.0.0">1.0.0</span> &middot; MIT licence &middot;
+    <a href="https://github.com/alinke/rogue-ai-costume">github.com/alinke/rogue-ai-costume</a>
+  </footer>
+</main>
+</body>
+</html>

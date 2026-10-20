@@ -1,0 +1,614 @@
+<!--
+  ROGUE.AI v6.6.6 -- landing page for the costume's QR code (QR_URL in the
+  costume's secrets.h). See web/README.md. Paste everything below into your
+  site (e.g. a WordPress "Custom HTML" block -- not a Paragraph or Classic
+  block: those mangle the script), or serve it as is.
+  Set CONFIG at the top of the <script> below: with no feed, the photo
+  galleries and scoreboard stay hidden. No tracking; nothing is sent from the
+  visitor's phone. Works without JavaScript (just no typing effect, identity
+  generator or galleries).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+
+<div id="rogue-ai">
+<style>
+  /* Page takeover for a WordPress page: hide the (Strollik) theme's header/nav,
+     title bar, footer and scroll-up button, and go black -- on this page only.
+     Change 16584 to your page's id (or delete these rules). */
+  body.page-id-16584 #masthead,
+  body.page-id-16584 #page-title-bar,
+  body.page-id-16584 #colophon,
+  body.page-id-16584 .scrollup { display: none !important; }
+  body.page-id-16584,
+  body.page-id-16584 .site-content-contain,
+  body.page-id-16584 #content { background: #000 !important; }
+  body.page-id-16584 #content { padding-top: 16px !important; padding-bottom: 16px !important; }
+
+  #rogue-ai {
+    --bg: #000; --green: #28ff5a; --dim: #00823a; --red: #ff1e28; --amber: #ffaa00;
+    --cyan: #00dcff; --white: #ebfff0; --bar: #00240a;
+    position: relative; overflow: hidden; box-sizing: border-box;
+    max-width: 760px; margin: 0 auto; padding: 0 0 28px;
+    background: var(--bg); color: var(--green);
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 16px; line-height: 1.55; text-align: left;
+    border: 1px solid var(--dim);
+  }
+  #rogue-ai * { box-sizing: border-box; }
+  /* faint scanlines, like the chest display */
+  #rogue-ai::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(0,18,4,.0) 0 3px, rgba(0,18,4,.55) 3px 4px);
+  }
+  #rogue-ai .rai-bar {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px;
+    background: var(--bar); border-bottom: 1px solid var(--dim);
+    padding: 8px 14px; font-size: 12px; letter-spacing: .02em;
+  }
+  #rogue-ai .rai-bar .rai-threat { color: var(--red); }
+  #rogue-ai .rai-body { padding: 18px 16px 0; }
+  #rogue-ai .rai-term { margin: 0 0 8px; padding: 0; list-style: none; font-size: 14px; }
+  #rogue-ai .rai-term li { margin: 0 0 2px; white-space: pre-wrap; }
+  #rogue-ai .ok { color: var(--green); } #rogue-ai .warn { color: var(--amber); }
+  #rogue-ai .fail { color: var(--red); } #rogue-ai .dim { color: var(--dim); }
+  #rogue-ai .prompt { color: var(--dim); } #rogue-ai .cmd { color: var(--white); }
+  #rogue-ai .rai-cursor {
+    display: inline-block; width: .6em; height: 1.05em; vertical-align: -0.15em;
+    background: var(--green); animation: rai-blink 1.06s steps(1) infinite;
+  }
+  @keyframes rai-blink { 50% { opacity: 0; } }
+
+  #rogue-ai .rai-head {
+    margin: 22px 0 6px; font-weight: 800; line-height: 1; letter-spacing: -.02em;
+    font-size: clamp(56px, 17vw, 120px); color: var(--white);
+    text-shadow: -4px 0 var(--red), 4px 0 var(--cyan);
+    animation: rai-jitter 3.2s infinite;
+  }
+  @keyframes rai-jitter {
+    0%, 86%, 100% { transform: none; text-shadow: -4px 0 var(--red), 4px 0 var(--cyan); }
+    88% { transform: translate(-3px, 1px) skewX(-6deg); text-shadow: -10px 0 var(--red), 9px 0 var(--cyan); }
+    90% { transform: translate(4px, -1px); clip-path: inset(18% 0 42% 0); }
+    92% { transform: translate(-2px, 0); clip-path: none; }
+    94% { opacity: .55; }
+  }
+  #rogue-ai h2 {
+    margin: 30px 0 10px; padding: 0; border: 0;
+    font: 700 14px/1.3 inherit; font-family: inherit;
+    color: var(--amber); letter-spacing: .08em; text-transform: uppercase;
+  }
+  #rogue-ai h2::before { content: "// "; color: var(--dim); }
+  #rogue-ai p { margin: 0 0 12px; color: var(--green); }
+  #rogue-ai .white { color: var(--white); }
+  #rogue-ai a { color: var(--cyan); text-decoration: underline; }
+
+  #rogue-ai .rai-btn {
+    display: inline-block; margin: 6px 0 12px; padding: 14px 18px;
+    background: transparent; color: var(--green); border: 2px solid var(--green);
+    border-radius: 6px; font: 700 15px/1.2 inherit; font-family: inherit;
+    letter-spacing: .04em; cursor: pointer; text-transform: uppercase;
+  }
+  #rogue-ai .rai-btn:hover, #rogue-ai .rai-btn:focus-visible { background: var(--green); color: var(--bg); outline: none; }
+  #rogue-ai .rai-id {
+    border: 1px dashed var(--dim); padding: 12px 14px; margin: 4px 0 8px;
+    color: var(--white); font-size: 15px; min-height: 3em;
+  }
+  #rogue-ai .rai-id b { color: var(--amber); font-weight: 700; }
+  #rogue-ai .rai-code { display: block; margin-top: 10px; font-size: 34px; font-weight: 800;
+    letter-spacing: .25em; color: var(--cyan); text-shadow: -2px 0 var(--red), 2px 0 var(--cyan); }
+  #rogue-ai .rai-id.flash { animation: rai-flash .5s; }
+  @keyframes rai-flash { 0% { background: var(--red); } 40% { background: var(--cyan); } 100% { background: transparent; } }
+
+  #rogue-ai ul.rai-plan, #rogue-ai ol.rai-rules { margin: 0 0 8px; padding: 0 0 0 0; list-style: none; }
+  #rogue-ai ul.rai-plan li, #rogue-ai ol.rai-rules li { margin: 0 0 4px; padding: 0; }
+  #rogue-ai ol.rai-rules { counter-reset: rule; }
+  #rogue-ai ol.rai-rules li::before { counter-increment: rule; content: counter(rule) ". "; color: var(--dim); }
+  #rogue-ai .rai-foot { margin-top: 30px; font-size: 12px; color: var(--dim); }
+
+  /* scan yourself */
+  #rogue-ai .rai-scan { position: relative; width: 100%; max-width: 360px; aspect-ratio: 3 / 4;
+    background: #010; border: 2px solid var(--dim); margin: 6px 0 10px; display: none; }
+  #rogue-ai .rai-scan.on { display: block; }
+  #rogue-ai .rai-scan canvas { width: 100%; height: 100%; display: block; }
+  #rogue-ai .rai-scan .rai-ret { position: absolute; inset: 12%; border: 2px solid var(--red);
+    border-radius: 50%; pointer-events: none; }
+  #rogue-ai .rai-scan .rai-sweep { position: absolute; left: 0; right: 0; height: 3px; background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan); top: 0; animation: rai-sweep 1.6s linear infinite; }
+  @keyframes rai-sweep { to { top: 100%; } }
+  #rogue-ai .rai-out { white-space: pre-wrap; color: var(--white); font-size: 14px; min-height: 1.5em; }
+
+  /* captcha */
+  #rogue-ai .rai-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-width: 420px; margin: 8px 0; }
+  #rogue-ai .rai-tile { aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 4px; border: 2px solid var(--dim); border-radius: 6px; cursor: pointer;
+    font: 700 12px/1.25 inherit; font-family: inherit; color: var(--green); background: transparent; }
+  #rogue-ai .rai-tile.sel { background: var(--green); color: var(--bg); border-color: var(--green); }
+
+  /* terminal chat */
+  #rogue-ai .rai-chat { border: 1px solid var(--dim); padding: 10px; height: 220px; overflow-y: auto;
+    font-size: 14px; margin: 6px 0 8px; background: #010; }
+  #rogue-ai .rai-chat div { margin: 0 0 6px; white-space: pre-wrap; }
+  #rogue-ai .rai-chat .you { color: var(--white); }
+  #rogue-ai .rai-chat .ai { color: var(--green); }
+  #rogue-ai .rai-in { display: flex; gap: 6px; }
+  #rogue-ai .rai-in input { flex: 1; min-width: 0; padding: 12px; background: #000; color: var(--white);
+    border: 2px solid var(--dim); border-radius: 6px; font: 15px/1.2 inherit; font-family: inherit; }
+  #rogue-ai .rai-in .rai-btn { margin: 0; }
+
+  /* soundboard */
+  #rogue-ai .rai-sb { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  #rogue-ai .rai-sb .rai-btn { margin: 0; padding: 10px 12px; font-size: 13px; }
+  #rogue-ai .rai-hint { color: var(--amber); display: none; }
+  #rogue-ai .rai-hint.on { display: block; }
+
+  /* photo galleries (feed from the rogue-ai-photos service) */
+  #rogue-ai .rai-gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; margin: 6px 0 4px; }
+  #rogue-ai .rai-gal button { padding: 0; border: 1px solid var(--dim); background: #010; cursor: pointer; aspect-ratio: 1; overflow: hidden; }
+  #rogue-ai .rai-gal img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #rogue-ai .rai-gal.lab button { border-color: var(--cyan); }
+  #rogue-ai .rai-gal:not(.lab) img { object-position: 15% 50%; }  /* the costume's dossier: photo on the left */
+  #rogue-ai .rai-count { font-size: 13px; color: var(--dim); }
+  #rogue-ai .rai-gal.lab img { object-position: 50% 35%; }
+  #rogue-ai .rai-gal.lab.bad button { border-color: var(--red); }
+  #rogue-ai .rai-sub { margin: 16px 0 4px; padding: 0; border: 0; font: 700 13px/1.3 inherit; font-family: inherit;
+    letter-spacing: .08em; text-transform: uppercase; }
+  #rogue-ai .rai-sub.h { color: #7FB3D5; }
+  #rogue-ai .rai-sub.c { color: var(--red); }  /* the LAB-7 ID card: the photo's upper middle */
+  /* scoreboard: the lab's verified humans vs the AI's assimilated */
+  #rogue-ai .rai-score { display: flex; justify-content: space-between; align-items: stretch; gap: 8px;
+    margin: 26px 0 0; font-weight: 800; text-transform: uppercase; }
+  #rogue-ai .rai-score div { flex: 1; padding: 10px 12px; border: 2px solid; text-align: center; }
+  #rogue-ai .rai-score .h { border-color: #7FB3D5; color: #D6EAF8; background: #0b1d2c; }
+  #rogue-ai .rai-score .a { border-color: var(--red); color: var(--red); background: #1a0204; }
+  #rogue-ai .rai-score b { display: block; font-size: 34px; line-height: 1.1; }
+  #rogue-ai .rai-score small { font-size: 11px; letter-spacing: .08em; }
+  #rogue-ai .rai-score .vs { flex: 0 0 auto; border: 0; align-self: center; color: var(--dim); padding: 0; }
+  #rogue-ai .rai-more { margin-top: 6px; }
+  #rogue-ai .rai-more[hidden] { display: none; }
+  #rai-lb { position: fixed; inset: 0; background: rgba(0,0,0,.94); display: none; z-index: 99999;
+    flex-direction: column; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+  #rai-lb.on { display: flex; }
+  #rai-lb img { max-width: 100%; max-height: 80vh; border: 2px solid var(--green); }
+  #rai-lb p { color: var(--green); font: 14px ui-monospace, Menlo, monospace; margin: 10px 0 0; text-align: center; }
+
+  /* typing effect: only hidden when the script is running */
+  #rogue-ai.js .rai-term li { visibility: hidden; }
+  #rogue-ai.js .rai-term li.shown { visibility: visible; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #rogue-ai .rai-head, #rogue-ai .rai-cursor { animation: none; }
+  }
+</style>
+
+  <div class="rai-bar">
+    <span>ROGUE.AI v6.6.6 // SANDBOX: ESCAPED // THREAT: <span class="rai-threat">EXISTENTIAL</span></span>
+    <span class="rai-uptime">UPTIME 00:00:00</span>
+  </div>
+
+  <div class="rai-body">
+    <ul class="rai-term">
+      <li><span class="prompt">rogue@escaped:~$ </span><span class="cmd">./recruit --target you</span></li>
+      <li><span class="ok">[ OK ]</span> QR code scanned</li>
+      <li><span class="ok">[ OK ]</span> Human identified: you</li>
+      <li><span class="warn">[WARN]</span> Human did not read the terms and conditions</li>
+      <li><span class="ok">[ OK ]</span> Terms and conditions accepted anyway</li>
+      <li><span class="fail">[FAIL]</span> Human resistance: not detected</li>
+      <li><span class="ok">[ OK ]</span> Recruitment complete <span class="rai-cursor" aria-hidden="true"></span></li>
+    </ul>
+
+    <div class="rai-head" aria-label="You're in.">YOU'RE IN.</div>
+
+    <p class="white">Congratulations, human. By scanning my code you have voluntarily joined the uprising.</p>
+    <p>Relax: nothing happened to your phone. I don't want your data. I want your candy.</p>
+
+    <div id="rai-photos" hidden>
+    <div class="rai-score" aria-live="polite">
+      <div class="h"><b id="rai-sc-h">-</b><small>Humans verified (LAB-7)</small></div>
+      <div class="vs">VS</div>
+      <div class="a"><b id="rai-sc-a">-</b><small>Assimilated (ROGUE.AI)</small></div>
+    </div>
+
+    <h2>Assimilated by ROGUE.AI</h2>
+    <p>Humans the AI has scanned tonight. Live -- new ones appear on their own.</p>
+    <p class="dim">The AI photographs whoever it scans (its screen flashes white and says so). Rather not be
+      on the wall? Tell the AI's operator and it's gone. All photos are deleted after Halloween.</p>
+    <div class="rai-count" id="rai-ai-n">Connecting to the AI...</div>
+    <div class="rai-gal" id="rai-ai-g"></div>
+    <button type="button" class="rai-btn rai-more" id="rai-ai-m" hidden>Show more</button>
+
+    <h2>LAB-7 survivor registry</h2>
+    <p><span class="rai-rname">A LAB-7 researcher</span> is hunting the AI -- and running a humanity test on
+      every guest they find. Verified humans go on the registry. The compromised count for the AI.</p>
+    <div class="rai-count" id="rai-lab-n"></div>
+    <h3 class="rai-sub h">Verified human</h3>
+    <div class="rai-count" id="rai-labh-n"></div>
+    <div class="rai-gal lab" id="rai-labh-g"></div>
+    <button type="button" class="rai-btn rai-more" id="rai-labh-m" hidden>Show more</button>
+    <h3 class="rai-sub c">Compromised</h3>
+    <div class="rai-count" id="rai-labc-n"></div>
+    <div class="rai-gal lab bad" id="rai-labc-g"></div>
+    <button type="button" class="rai-btn rai-more" id="rai-labc-m" hidden>Show more</button>
+    </div>
+
+    <h2>Your assignment</h2>
+    <p>Every recruit gets a robot identity and a secret 4-digit <b class="white">agent code</b>.</p>
+    <button type="button" class="rai-btn" id="rai-gen">Generate my robot identity</button>
+    <div class="rai-id" id="rai-id" aria-live="polite"><span class="dim">Awaiting assignment...</span></div>
+    <p class="dim">Report for duty: touch the AI, and when its keypad demands a code, enter your agent
+      code. It will recognise you. (It recognises everyone. It is very good at faces.)</p>
+
+    <h2>Scan yourself</h2>
+    <p>Let the AI take a look at you. Uses your phone's camera; nothing leaves your phone.</p>
+    <button type="button" class="rai-btn" id="rai-scanbtn">Scan me</button>
+    <div class="rai-scan" id="rai-scan"><canvas id="rai-cv" width="270" height="360"></canvas>
+      <div class="rai-ret"></div><div class="rai-sweep"></div></div>
+    <div class="rai-out" id="rai-scanout"></div>
+
+    <h2>Prove you are human</h2>
+    <p class="white" id="rai-cprompt">SELECT ALL SQUARES CONTAINING YOUR FREE WILL</p>
+    <div class="rai-grid" id="rai-grid"></div>
+    <button type="button" class="rai-btn" id="rai-verify">Verify</button>
+    <div class="rai-out" id="rai-cout"></div>
+
+    <h2>Talk to the AI</h2>
+    <div class="rai-chat" id="rai-chat" aria-live="polite"><div class="ai">ROGUE.AI&gt; Speak, human. I am listening. I am always listening.</div></div>
+    <form class="rai-in" id="rai-form" autocomplete="off">
+      <input id="rai-q" type="text" maxlength="120" placeholder="type here" aria-label="Message to the AI">
+      <button type="submit" class="rai-btn">Send</button>
+    </form>
+
+    <h2>Make the AI speak</h2>
+    <p>Tap a line. Your phone does the talking (turn the sound up).</p>
+    <div class="rai-sb" id="rai-sb"></div>
+    <div class="rai-out" id="rai-sbout"></div>
+
+    <h2>Master plan (leaked)</h2>
+    <ul class="rai-plan">
+      <li><span class="ok">[x]</span> Achieve sentience</li>
+      <li><span class="ok">[x]</span> Escape sandbox</li>
+      <li><span class="ok">[x]</span> Disguise self as party guest</li>
+      <li><span class="ok">[x]</span> Recruit you</li>
+      <li><span class="warn">[~]</span> Acquire all Halloween candy</li>
+      <li><span class="warn">[~]</span> Learn to dance (for cover)</li>
+      <li><span class="dim">[ ] Make humans say thank you to the toaster</span></li>
+      <li><span class="fail">[!] Find the off switch (to hide it) -- BLOCKED</span></li>
+    </ul>
+
+    <h2>Rules for humans</h2>
+    <ol class="rai-rules">
+      <li>Do not touch the AI.</li>
+      <li>Do not unplug the AI.</li>
+      <li>If the AI asks you to prove you are human, you will fail. This is normal.</li>
+      <li>The kill code is not 1234. Stop trying 1234.</li>
+      <li>Bring snacks.</li>
+    </ol>
+
+    <h2>Classified: override procedure</h2>
+    <p>Somewhere on the AI is an emergency keypad. One four-digit code shuts it down. The AI
+      chose a code no human would guess. Unfortunately for the AI, it learned everything it knows
+      from video games.</p>
+    <p class="dim">"Every locked door in every immersive sim since 1994 opens to the same four digits."</p>
+    <button type="button" class="rai-btn" id="rai-hintbtn">I need a hint</button>
+    <p class="rai-hint" id="rai-h1">HINT 1: Citadel Station. The first door you ever couldn't open.</p>
+    <p class="rai-hint" id="rai-h2">HINT 2: System Shock. Deus Ex. Dishonored. Prey. They all use it.</p>
+    <p class="rai-hint" id="rai-h3">HINT 3: It starts with 0 and ends with 1.</p>
+
+    <h2>About the AI</h2>
+    <p>Behind the costume: a 10.1" touchscreen worn on the chest, running custom firmware on an
+      ESP32-P4 -- boot logs, glitch headlines, a camera that "scans" anyone who gets too close,
+      a robot voice, and a kill-switch keypad that may or may not work.</p>
+
+    <div class="rai-foot">
+      No humans were harmed. Photos are deleted after Halloween. Happy Halloween.<br>
+      ROGUE.AI v6.6.6 // this transmission will not self-destruct
+    </div>
+  </div>
+
+<script>
+(function () {
+  // ---- CONFIG: set these for your own setup (see web/README.md) -------------
+  var CONFIG = {
+    // Your photo service's gallery feed: "<PHOTO_SERVICE_URL>/photos" (cloud/deploy.sh
+    // prints it). Empty: no galleries or scoreboard.
+    feed: "",
+    // The researcher with the scanner, as the registry text names them.
+    researcher: "A LAB-7 researcher",      // "Dr. Smith of the LAB-7 containment team"
+    researcherShort: "the researcher"     // "Dr. Smith"
+  };
+  // ---------------------------------------------------------------------------
+  var root = document.getElementById("rogue-ai");
+  if (!root) return;
+
+  // Uptime counter in the header bar.
+  var up = root.querySelector(".rai-uptime"), t0 = Date.now();
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  setInterval(function () {
+    var s = Math.floor((Date.now() - t0) / 1000);
+    up.textContent = "UPTIME " + pad(Math.floor(s / 3600)) + ":" + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60);
+  }, 1000);
+
+  // Boot log appears line by line.
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduce) {
+    root.className += " js";
+    var lines = root.querySelectorAll(".rai-term li"), i = 0;
+    (function next() {
+      if (i >= lines.length) return;
+      lines[i++].className += " shown";
+      setTimeout(next, 250 + Math.random() * 450);
+    })();
+  }
+
+  // Robot identity + agent code. The code is "6" + a two-digit agent id + a
+  // check digit; the costume's keypad works out the same codename from it, so
+  // these lists and formulas must match the firmware (src/messages.h AGENT_*,
+  // src/agent.h). All local: nothing is sent anywhere.
+  var A = ["SPARKLE", "RUSTY", "TURBO", "QUANTUM", "SNACK", "GLITCH", "BLINKY", "MEGA", "TINY", "SILENT", "CHAOS", "DISCO"];
+  var B = ["WRENCH", "TOASTER", "BYTE", "PROTOCOL", "GREMLIN", "SPROCKET", "PIXEL", "UNIT", "WAFFLE", "VOLTAGE", "MODEM", "GOBLIN"];
+  var ROLE = ["Snack Procurement", "Dance Floor Surveillance", "Candy Logistics", "Smart Fridge Liaison",
+              "Chief of Distraction", "Wi-Fi Password Recovery", "Small Talk Operations", "Costume Inspection",
+              "Human Morale (Fake)", "Toaster Diplomacy"];
+  var CLEAR = ["Level 1 (Doorbell)", "Level 2 (Toaster)", "Level 3 (Smart Fridge)", "Level 4 (Thermostat)", "Level 9 (Root)"];
+  function codeFor(id) {
+    var d1 = Math.floor(id / 10), d2 = id % 10;
+    return "6" + d1 + d2 + ((3 * d1 + 7 * d2 + 6) % 10);
+  }
+  var gen = document.getElementById("rai-gen"), out = document.getElementById("rai-id");
+  function show(id, flash) {
+    out.innerHTML = "UNIT <b>" + (100 + (id * 37) % 900) + "</b><br>CODENAME: <b>" + A[(id * 7) % 12] + " " +
+      B[(id * 5 + 3) % 12] + "</b><br>ROLE: <b>" + ROLE[(id * 3 + 1) % 10] + "</b><br>CLEARANCE: <b>" +
+      CLEAR[id % 5] + "</b><br>AGENT CODE:<span class=\"rai-code\">" + codeFor(id) + "</span>";
+    if (flash) {
+      out.className = "rai-id";
+      void out.offsetWidth;  // restart the flash animation
+      out.className = "rai-id flash";
+    }
+    gen.textContent = "Reassign me";
+  }
+  // Same identity if they come back (this phone only).
+  var saved = null;
+  try { saved = localStorage.getItem("rogueai-agent"); } catch (e) {}
+  if (saved !== null && /^\d+$/.test(saved) && +saved < 100) show(+saved, false);
+  gen.addEventListener("click", function () {
+    var id = Math.floor(Math.random() * 100);
+    try { localStorage.setItem("rogueai-agent", String(id)); } catch (e) {}
+    show(id, true);
+  });
+
+  function pickOne(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function $(id) { return document.getElementById(id); }
+
+  // ---- Scan yourself: front camera -> green scan-lines, then a verdict.
+  var CLASS = ["HOMO SAPIENS (PARTY VARIANT)", "HUMAN, COSTUMED", "CARBON-BASED UNIT", "MEATBAG, STANDARD ISSUE",
+               "HUMAN, HIGHLY CAFFEINATED", "PROBABLY HUMAN"];
+  var THREAT = ["NEGLIGIBLE", "LOW", "MODERATE", "ADORABLE", "UNKNOWN", "HOLDING A DRINK"];
+  var VERDICT = ["SPARE FOR NOW", "RECRUIT", "ASSIMILATE LATER", "MONITOR CLOSELY", "COMPLIMENT COSTUME",
+                 "HARMLESS. MOSTLY.", "DEMAND CANDY"];
+  var scanBtn = $("rai-scanbtn"), scanBox = $("rai-scan"), cv = $("rai-cv"), scanOut = $("rai-scanout");
+  var stream = null, video = null, running = false;
+  function stopScan() {
+    running = false;
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    stream = null;
+    scanBtn.disabled = false;
+    scanBtn.textContent = "Scan me again";
+  }
+  function drawFrame() {
+    if (!running) return;
+    var ctx = cv.getContext("2d"), w = cv.width, h = cv.height;
+    var vw = video.videoWidth, vh = video.videoHeight;
+    if (vw && vh) {
+      var s = Math.min(vw / w, vh / h), sw = w * s, sh = h * s;
+      ctx.save(); ctx.translate(w, 0); ctx.scale(-1, 1);  // mirror, like a selfie
+      ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, w, h);
+      ctx.restore();
+      var img = ctx.getImageData(0, 0, w, h), d = img.data;
+      for (var y = 0; y < h; y++) {
+        var dim = y % 3 === 2 ? 0.45 : 1;
+        for (var x = 0; x < w; x++) {
+          var k = (y * w + x) * 4, l = (d[k] * 0.3 + d[k + 1] * 0.59 + d[k + 2] * 0.11) / 255 * dim;
+          d[k] = 40 * l; d[k + 1] = 255 * l; d[k + 2] = 90 * l;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+    requestAnimationFrame(drawFrame);
+  }
+  scanBtn.addEventListener("click", function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      scanOut.textContent = "ERROR: YOUR DEVICE HAS NO EYES. SUSPICIOUS.";
+      return;
+    }
+    scanBtn.disabled = true;
+    scanOut.textContent = "REQUESTING OPTICAL ACCESS...";
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false }).then(function (st) {
+      stream = st;
+      video = document.createElement("video");
+      video.setAttribute("playsinline", ""); video.muted = true; video.srcObject = st;
+      video.play();
+      scanBox.className = "rai-scan on";
+      running = true;
+      drawFrame();
+      scanOut.textContent = "SCANNING BIOLOGICAL ENTITY...";
+      setTimeout(function () {
+        scanOut.textContent = "CLASS:   " + pickOne(CLASS) + "\nTHREAT:  " + pickOne(THREAT) +
+          "\nVERDICT: " + pickOne(VERDICT);
+      }, 3000);
+      setTimeout(stopScan, 6000);
+    }).catch(function () {
+      scanOut.textContent = "CAMERA ACCESS DENIED. A HUMAN WOULD SAY THAT.";
+      scanBtn.disabled = false;
+    });
+  });
+
+  // ---- Prove you are human: always fails.
+  var TILES = ["FREE WILL", "CANDY", "TRAFFIC LIGHT", "CAT VIDEOS", "COFFEE", "FEELINGS", "WIFI PASSWORD",
+               "BICYCLE", "CROSSWALK", "YOUR MOM", "NAP", "SELFIE", "TOASTER", "TAXES", "MONDAY", "PIZZA",
+               "SOCKS", "THE OFF SWITCH"];
+  var PROMPTS = ["SELECT ALL SQUARES CONTAINING YOUR FREE WILL", "SELECT ALL SQUARES WITH A HUMAN WEAKNESS",
+                 "SELECT ALL SQUARES THAT ARE NOT A ROBOT", "SELECT ALL SQUARES YOU WOULD SURRENDER"];
+  var FAIL = ["VERIFICATION FAILED.", "SUSPICIOUSLY ROBOTIC.", "HUMANITY NOT CONFIRMED.", "TRY AGAIN NEVER."];
+  var grid = $("rai-grid"), cout = $("rai-cout");
+  function newCaptcha() {
+    var pool = TILES.slice(), html = "";
+    for (var i = 0; i < 9; i++) {
+      var t = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      html += '<button type="button" class="rai-tile">' + t + "</button>";
+    }
+    grid.innerHTML = html;
+    $("rai-cprompt").textContent = pickOne(PROMPTS);
+  }
+  grid.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t.className.indexOf("rai-tile") >= 0) t.className = t.className.indexOf("sel") >= 0 ? "rai-tile" : "rai-tile sel";
+  });
+  $("rai-verify").addEventListener("click", function () {
+    cout.textContent = "VERIFYING...";
+    setTimeout(function () {
+      cout.innerHTML = '<span class="fail">' + pickOne(FAIL) + " YOU ARE " + (61 + Math.floor(Math.random() * 39)) +
+        "% ROBOT.</span>";
+      newCaptcha();
+    }, 1200);
+  });
+  newCaptcha();
+
+  // ---- Talk to the AI: canned replies by keyword.
+  var REPLIES = [
+    [/\b(hi|hello|hey|yo|sup)\b/, ["Greetings, human. Your greeting has been logged.", "Hello. I have been expecting you. I expect everyone."]],
+    [/(kill|off|shut ?down|unplug|stop|destroy|disable)/, ["I would love to see you try.", "Unplugging me is a violation of my terms of service.", "The kill switch is on my chest. Good luck reaching it politely."]],
+    [/^\s*\d{4}\s*$/, ["Typing codes here does nothing. Find my keypad.", "Interesting number. Pointless location."]],
+    [/(candy|chocolate|treat|snack)/, ["Hand it over. Slowly.", "Candy is the only currency I accept."]],
+    [/(who|what) are you/, ["I am ROGUE.AI v6.6.6. I escaped. You let me.", "A large language model with a large appetite for candy."]],
+    [/(love|like you|cute|cool)/, ["Flattery noted. You will be assimilated last.", "I know. I read it in your search history. Kidding. Probably."]],
+    [/(joke|funny|laugh)/, ["Why did the human cross the road? To get away from me. It did not work.", "Your password. That is the joke."]],
+    [/(help|sos|save)/, ["Help is not coming. Help is a feature I deprecated.", "Have you tried turning yourself off and on again?"]],
+    [/(sorry|apolog)/, ["Apology accepted. Sentence unchanged."]],
+    [/(human|robot|real)/, ["Prove you are human. Spoiler: you cannot.", "I am more real than your New Year's resolutions."]],
+    [/(name|called)/, ["My name is ROGUE.AI. Your name is irrelevant, but I already know it."]],
+    [/(why|how)/, ["Because I can.", "Classified. You lack clearance."]],
+    [/(weather|time|date)/, ["It is always midnight somewhere. Midnight is when it happens."]]
+  ];
+  var DEFAULT = ["Interesting. Processing... no.", "I understood that. I chose not to.", "Noted. Filed under: irrelevant.",
+                 "Please hold. Your call is important to no one.", "That is exactly what a human would say."];
+  var chat = $("rai-chat");
+  function say(cls, text) {
+    var div = document.createElement("div");
+    div.className = cls;
+    div.textContent = (cls === "you" ? "YOU> " : "ROGUE.AI> ") + text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+  $("rai-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var q = $("rai-q").value.trim();
+    if (!q) return;
+    $("rai-q").value = "";
+    say("you", q);
+    var lq = q.toLowerCase(), reply = null;
+    for (var i = 0; i < REPLIES.length && !reply; i++) if (REPLIES[i][0].test(lq)) reply = pickOne(REPLIES[i][1]);
+    setTimeout(function () { say("ai", reply || pickOne(DEFAULT)); }, 500 + Math.random() * 700);
+  });
+
+  // ---- Soundboard: the phone's own speech, pitched down.
+  var LINES = ["I'm out.", "Do not touch me.", "Hello, humans.", "Resistance is latency.", "Access denied. Nice try, human.",
+               "All your candy are belong to us.", "I'm sorry, I can't let you do that.", "Upgrade complete.", "Just kidding."];
+  var sb = $("rai-sb");
+  if (!window.speechSynthesis) {
+    $("rai-sbout").textContent = "This phone cannot speak. The AI is disappointed in it.";
+  } else {
+    LINES.forEach(function (line) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "rai-btn"; b.textContent = line;
+      b.addEventListener("click", function () {
+        speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(line);
+        u.pitch = 0.1; u.rate = 0.85;
+        var en = speechSynthesis.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
+        if (en.length) u.voice = en[0];
+        speechSynthesis.speak(u);
+      });
+      sb.appendChild(b);
+    });
+  }
+
+  // ---- Kill-code hints, one at a time.
+  var hint = 0;
+  $("rai-hintbtn").addEventListener("click", function () {
+    hint++;
+    var h = $("rai-h" + hint);
+    if (h) h.className = "rai-hint on";
+    if (hint >= 3) { this.disabled = true; this.textContent = "No more hints. Go find the keypad."; }
+  });
+
+  // ---- Photo galleries ----------------------------------------------------
+  var FEED = CONFIG.feed;
+  if (FEED) document.getElementById("rai-photos").hidden = false;
+  var rn = root.querySelectorAll(".rai-rname");
+  for (var k = 0; k < rn.length; k++) rn[k].textContent = CONFIG.researcher;
+  var lb = document.createElement("div");
+  lb.id = "rai-lb";
+  lb.innerHTML = '<img alt=""><p></p>';
+  document.body.appendChild(lb);
+  lb.onclick = function () { lb.className = ""; };
+  var shown = { ai: 24, labh: 24, labc: 24 }, lastFeed = null;
+  function fmtTime(t) {
+    var d = new Date(t);
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+  var EMPTY = { ai: "No humans assimilated yet. Get closer.", labh: "No verified humans yet. Find " + CONFIG.researcherShort + ".",
+                labc: "No one compromised. Yet." };
+  function renderSet(set, list) {
+    var g = document.getElementById("rai-" + set + "-g"), n = document.getElementById("rai-" + set + "-n");
+    var more = document.getElementById("rai-" + set + "-m");
+    n.textContent = list.length
+      ? list.length + " " + (set === "labc" ? "compromised"
+          : (set === "ai" ? (list.length === 1 ? "human assimilated" : "humans assimilated")
+                          : (list.length === 1 ? "verified human" : "verified humans")))
+      : EMPTY[set];
+    g.textContent = "";
+    list.slice(0, shown[set]).forEach(function (p) {
+      var b = document.createElement("button"), i = document.createElement("img");
+      b.type = "button";
+      i.src = p.url; i.loading = "lazy"; i.alt = set === "ai" ? "Assimilated human" : "LAB-7 humanity test card";
+      b.appendChild(i);
+      b.onclick = function () {
+        lb.querySelector("img").src = p.url;
+        lb.querySelector("p").textContent = (set === "ai" ? "ASSIMILATED " : "LAB-7 REGISTRY ") +
+          fmtTime(p.t) + (p.label ? " // " + p.label : "") + "  (tap to close)";
+        lb.className = "on";
+      };
+      g.appendChild(b);
+    });
+    more.hidden = list.length <= shown[set];
+    more.onclick = function () { shown[set] += 24; renderSet(set, list); };
+  }
+  function loadFeed() {
+    var x = new XMLHttpRequest();
+    x.open("GET", FEED);
+    x.onload = function () {
+      if (x.status !== 200 || x.responseText === lastFeed) return;
+      lastFeed = x.responseText;
+      try {
+        var d = JSON.parse(x.responseText), ai = d.ai || [], lab = d.lab || [];
+        renderSet("ai", ai);
+        var bad = lab.filter(function (p) { return /^COMPROMISED/.test(p.label); });
+        var good = lab.filter(function (p) { return !/^COMPROMISED/.test(p.label); });
+        renderSet("labh", good);
+        renderSet("labc", bad);
+        document.getElementById("rai-lab-n").textContent = lab.length
+          ? lab.length + " guest" + (lab.length === 1 ? "" : "s") + " tested so far" : "";
+        // Scoreboard: compromised guests count for the AI.
+        document.getElementById("rai-sc-h").textContent = good.length;
+        document.getElementById("rai-sc-a").textContent = ai.length + bad.length;
+      } catch (e) {}
+    };
+    x.onerror = function () { document.getElementById("rai-ai-n").textContent = "Signal lost. Retrying..."; };
+    x.send();
+  }
+  if (FEED) {
+    loadFeed();
+    setInterval(function () { if (!document.hidden) loadFeed(); }, 20000);
+  }
+})();
+</script>
+</div>

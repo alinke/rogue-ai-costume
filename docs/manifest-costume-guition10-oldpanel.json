@@ -1,0 +1,2 @@
+{ "name": "ROGUE.AI costume -- Guition 10.1" (older panel)", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32-P4", "parts": [ { "path": "firmware/costume-guition10-oldpanel.bin", "offset": 0 } ] } ] }

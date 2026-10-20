@@ -1,0 +1,2 @@
+{ "name": "LAB-7 scanner -- Waveshare ESP32-S3-Touch-LCD-3.49", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32-S3", "parts": [ { "path": "firmware/scanner-waveshare349.bin", "offset": 0 } ] } ] }

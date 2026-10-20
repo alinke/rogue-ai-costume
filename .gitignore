@@ -1,0 +1,12 @@
+# Build output
+.pio/
+.vscode/
+__pycache__/
+.DS_Store
+
+# Private, never committed: Wi-Fi, photo upload key/URL, your site, names
+costume/src/secrets.h
+scanner/src/secrets.h
+cloud/.keys
+# Your filled-in copy of the landing page (see web/README.md)
+web/*.local.html

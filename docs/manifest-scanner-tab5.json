@@ -1,0 +1,2 @@
+{ "name": "LAB-7 scanner -- M5Stack Tab5", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32-P4", "parts": [ { "path": "firmware/scanner-tab5.bin", "offset": 0 } ] } ] }

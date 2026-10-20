@@ -1,0 +1,19 @@
+{
+  "name": "ov02c10",
+  "version": "1.0.0",
+  "description": "Guition's OV02C10 esp_cam_sensor driver (unmodified, from the JC8012P4A1 vendor demos). Kconfig values supplied below.",
+  "build": {
+    "includeDir": "include",
+    "srcFilter": ["+<ov02c10.c>"],
+    "flags": [
+      "-Iprivate_include",
+      "-Wno-unused-variable",
+      "-Wno-unused-but-set-variable",
+      "-DCONFIG_CAMERA_OV02C10=1",
+      "-DCONFIG_CAMERA_OV02C10_MAX_SUPPORT=1",
+      "-DCONFIG_CAMERA_OV02C10_CSI_LINESYNC_ENABLE=1",
+      "-DCONFIG_CAMERA_OV02C10_ISP_AF_ENABLE=0",
+      "-DCONFIG_CAMERA_OV02C10_MIPI_IF_FORMAT_INDEX_DAFAULT=0"
+    ]
+  }
+}
