@@ -124,6 +124,17 @@ The costume and scanner talk over Bluetooth beacons — no pairing, no network.
 
 All in [`hardware/`](hardware/) (print notes: [hardware/README.md](hardware/README.md)):
 
+<table>
+<tr>
+<td><img src="docs/images/mount-front.jpg" alt="The 3D-printed display mount from the front, display running"></td>
+<td><img src="docs/images/mount-back.jpg" alt="The mount from the back: strap slots, the Guition board, LED wiring"></td>
+<td><img src="docs/images/mount-back-angle.jpg" alt="The mount from the back at an angle"></td>
+</tr>
+<tr>
+<td align="center" colspan="3">The printed display mount: front, back, and back at an angle (straps go through the corner slots)</td>
+</tr>
+</table>
+
 - **Display mount** for the Guition 10.1" — [`guition10_mount.stl`](hardware/3dprint/guition10_mount.stl)
   (source drawing: [`guition10_mount_drawing.ai`](hardware/3dprint/guition10_mount_drawing.ai))
 - **Sewable LED-strip clips** (TPU 95A) — parametric [`led_clips.scad`](hardware/3dprint/led_clips.scad), plus
