@@ -1,5 +1,10 @@
 # ROGUE.AI v6.6.6 — a wearable rogue AI for Halloween
 
+> [!WARNING]
+> **Work in progress.** This project isn't finished yet: it's being built and tested
+> for Halloween 2026, so expect rough edges, missing pieces (some parts in the concept
+> picture below don't have files yet) and changes. Issues and ideas welcome.
+
 A 10.1" touchscreen worn on the chest, playing a rogue AI that has escaped its
 sandbox: boot logs, glitch headlines, a robot voice, a camera that "scans"
 party guests, a kill-switch keypad, a photo booth, mini-games, and LED strips.
