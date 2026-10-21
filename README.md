@@ -100,6 +100,7 @@ wins), and run a humanity test on guests.
 |---|---|
 | `costume/` | The costume firmware — Guition JC8012P4A1C 10.1" (ESP32-P4). Full docs: [costume/README.md](costume/README.md) |
 | `scanner/` | The LAB-7 scanner — M5Stack Tab5 (ESP32-P4) or Waveshare ESP32-S3-Touch-LCD-3.49. Docs: [scanner/README.md](scanner/README.md) |
+| `ios/` | The LAB-7 scanner as an **iPhone app** (same game, same beacons; works alongside the ESP32 scanners). Docs: [ios/README.md](ios/README.md) |
 | `hardware/` | 3D-print files (display mount, LED-strip clips) and laser-cut visor goggles: [hardware/README.md](hardware/README.md) |
 | `cloud/` | Optional photo service (Google Cloud Run + Storage): [cloud/README.md](cloud/README.md) |
 | `web/` | The landing page the costume's QR code points to: [web/README.md](web/README.md) |
@@ -123,8 +124,9 @@ The costume and scanner talk over Bluetooth beacons — no pairing, no network.
 - **Costume:** Guition JC8012P4A1C 10.1" 1280×800 touch display (ESP32-P4,
   speaker, OV02C10 camera, battery connector, SD slot), optional WS2812 LED
   strips on the UART connector's TX pin, the 3D-printed mount.
-- **Scanner (pick one):** M5Stack Tab5 (camera, the humanity test) or Waveshare
-  ESP32-S3-Touch-LCD-3.49 V2 (small and light, no camera).
+- **Scanner (pick one, or several):** M5Stack Tab5 (camera, the humanity test),
+  Waveshare ESP32-S3-Touch-LCD-3.49 V2 (small and light, no camera), or an
+  **iPhone** with the app in `ios/`.
 - Optional: SD card in each (photo queue + a keepsake copy of every photo).
 
 ## 3D print & laser cut

@@ -41,39 +41,68 @@ static volatile bool s_stateDirty = true;
 
 static Zone s_zone = NONE;
 
+// One beacon heard from a scanner: its key (Bluetooth address, or a stand-in),
+// signal, CONTAIN counter and session id.
+static void record(const uint8_t key[6], float r, int trigger, int session) {
+  uint32_t now = millis();
+  portENTER_CRITICAL(&s_mux);
+  Scanner* sc = nullptr;
+  for (auto& e : s_scanners) {
+    if (e.used && !memcmp(e.addr, key, 6)) { sc = &e; break; }
+  }
+  if (!sc) {  // new scanner: a free slot, or the one heard least recently
+    sc = &s_scanners[0];
+    for (auto& e : s_scanners) {
+      if (!e.used) { sc = &e; break; }
+      if ((int32_t)(e.lastSeenMs - sc->lastSeenMs) < 0) sc = &e;
+    }
+    *sc = Scanner{};
+    memcpy(sc->addr, key, 6);
+    sc->used = true;
+    sc->seenTrigger = sc->seenSession = -1;
+    sc->lastSeenMs = now - 10000;
+  }
+  // Smooth the (noisy) signal strength; restart after a gap.
+  sc->rssi = ((int32_t)(now - sc->lastSeenMs) > 3000) ? r : sc->rssi + (r - sc->rssi) * 0.25f;
+  sc->lastSeenMs = now;
+  sc->trigger = trigger;
+  sc->session = session;
+  portEXIT_CRITICAL(&s_mux);
+}
+
+static int hexByte(const char* p) {
+  auto v = [](char c) { return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1; };
+  int a = v(p[0]), b = v(p[1]);
+  return a < 0 || b < 0 ? -1 : a * 16 + b;
+}
+
 class ScanCB : public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice dev) override {
+    float r = dev.getRSSI();
+    // The iPhone app (ios/): iOS can't advertise manufacturer data, so it sends
+    // a service UUID 52534331-SSTT-4C41-4237-000000000000 ("RSC1", session,
+    // trigger). Keyed by session, not address: iPhones change their address
+    // every ~15 minutes.
+    if (dev.haveServiceUUID()) {
+      for (int i = 0; i < dev.getServiceUUIDCount(); i++) {
+        String u = dev.getServiceUUID(i).toString();
+        u.toLowerCase();
+        if (u.length() == 36 && u.startsWith("52534331-") && u.endsWith("-4c41-4237-000000000000")) {
+          int session = hexByte(u.c_str() + 9), trigger = hexByte(u.c_str() + 11);
+          if (session < 0 || trigger < 0) return;
+          const uint8_t key[6] = {'i', 'O', 'S', 0, 0, (uint8_t)session};
+          record(key, r, trigger, session);
+          return;
+        }
+      }
+    }
+    // The ESP32 scanners: manufacturer data 0xFFFF "RSC1" + trigger + session.
     if (!dev.haveManufacturerData()) return;
     String m = dev.getManufacturerData();
     if (m.length() < 8 || (uint8_t)m[0] != 0xFF || (uint8_t)m[1] != 0xFF) return;
     if (memcmp(m.c_str() + 2, TAG_SCANNER, 4) != 0) return;
     BLEAddress ba = dev.getAddress();
-    const uint8_t* a = (const uint8_t*)ba.getNative();
-    float r = dev.getRSSI();
-    uint32_t now = millis();
-    portENTER_CRITICAL(&s_mux);
-    Scanner* sc = nullptr;
-    for (auto& e : s_scanners) {
-      if (e.used && !memcmp(e.addr, a, 6)) { sc = &e; break; }
-    }
-    if (!sc) {  // new scanner: a free slot, or the one heard least recently
-      sc = &s_scanners[0];
-      for (auto& e : s_scanners) {
-        if (!e.used) { sc = &e; break; }
-        if ((int32_t)(e.lastSeenMs - sc->lastSeenMs) < 0) sc = &e;
-      }
-      *sc = Scanner{};
-      memcpy(sc->addr, a, 6);
-      sc->used = true;
-      sc->seenTrigger = sc->seenSession = -1;
-      sc->lastSeenMs = now - 10000;
-    }
-    // Smooth the (noisy) signal strength; restart after a gap.
-    sc->rssi = ((int32_t)(now - sc->lastSeenMs) > 3000) ? r : sc->rssi + (r - sc->rssi) * 0.25f;
-    sc->lastSeenMs = now;
-    sc->trigger = (uint8_t)m[6];
-    sc->session = (uint8_t)m[7];
-    portEXIT_CRITICAL(&s_mux);
+    record((const uint8_t*)ba.getNative(), r, (uint8_t)m[6], (uint8_t)m[7]);
   }
 };
 

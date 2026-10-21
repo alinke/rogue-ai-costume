@@ -10,3 +10,5 @@ scanner/src/secrets.h
 cloud/.keys
 # Your filled-in copy of the landing page (see web/README.md)
 web/*.local.html
+ios/**/xcuserdata/
+ios/build/
