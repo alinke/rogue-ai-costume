@@ -83,8 +83,11 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
     // a service UUID 52534331-SSTT-4C41-4237-000000000000 ("RSC1", session,
     // trigger). Keyed by session, not address: iPhones change their address
     // every ~15 minutes.
+    // The library APPENDS every advertisement's service UUIDs to the device's
+    // list (until the scan restarts, every 10 s), so the newest is the last
+    // one: reading the first made the iPhone's CONTAIN arrive 3-8 s late.
     if (dev.haveServiceUUID()) {
-      for (int i = 0; i < dev.getServiceUUIDCount(); i++) {
+      for (int i = dev.getServiceUUIDCount() - 1; i >= 0; i--) {
         String u = dev.getServiceUUID(i).toString();
         u.toLowerCase();
         if (u.length() == 36 && u.startsWith("52534331-") && u.endsWith("-4c41-4237-000000000000")) {

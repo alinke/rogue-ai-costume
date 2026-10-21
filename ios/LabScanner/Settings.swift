@@ -10,6 +10,9 @@ final class Settings: ObservableObject {
     @Published var nearDbm: Int { didSet { d.set(nearDbm, forKey: "nearDbm") } }
     @Published var closeDbm: Int { didSet { d.set(closeDbm, forKey: "closeDbm") } }
     @Published var soundOn: Bool { didSet { d.set(soundOn, forKey: "soundOn") } }
+    // The humanity test's camera: rear by default (the researcher points the
+    // phone at the guest); the viewfinder's flip button switches and remembers.
+    @Published var frontCamera: Bool { didSet { d.set(frontCamera, forKey: "frontCamera") } }
     // The humanity test.
     @Published var researcherName: String { didSet { d.set(researcherName, forKey: "researcherName") } }
     @Published var compromisedPercent: Int { didSet { d.set(compromisedPercent, forKey: "compromisedPercent") } }
@@ -30,6 +33,7 @@ final class Settings: ObservableObject {
         nearDbm = d.integer(forKey: "nearDbm")
         closeDbm = d.integer(forKey: "closeDbm")
         soundOn = d.bool(forKey: "soundOn")
+        frontCamera = d.bool(forKey: "frontCamera")
         researcherName = d.string(forKey: "researcherName") ?? ""
         compromisedPercent = d.integer(forKey: "compromisedPercent")
         serviceURL = d.string(forKey: "serviceURL") ?? ""

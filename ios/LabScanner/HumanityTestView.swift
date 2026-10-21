@@ -1,5 +1,6 @@
-// The humanity test: the front camera as a live viewfinder (mirrored, like a
-// selfie), tap to scan the guest, a white flash, then their LAB-7 ID card.
+// The humanity test: the camera as a live viewfinder -- the rear one by
+// default, or the front one (mirrored, like a selfie) with the flip button --
+// tap to scan the guest, a white flash, then their LAB-7 ID card.
 import AVFoundation
 import SwiftUI
 
@@ -9,33 +10,41 @@ final class Camera: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     private var done: ((UIImage?) -> Void)?
     @Published var denied = false
 
-    func start() {
+    private let work = DispatchQueue(label: "camera")
+
+    func start(front: Bool) {
         AVCaptureDevice.requestAccess(for: .video) { ok in
             DispatchQueue.main.async { self.denied = !ok }
             guard ok else { return }
-            DispatchQueue.global(qos: .userInitiated).async { self.configure() }
+            self.work.async { self.configure(front: front) }
         }
     }
 
-    private func configure() {
-        if session.inputs.isEmpty {
-            session.beginConfiguration()
-            session.sessionPreset = .photo
-            if let dev = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
-               let input = try? AVCaptureDeviceInput(device: dev), session.canAddInput(input) {
-                session.addInput(input)
-            }
-            if session.canAddOutput(output) { session.addOutput(output) }
-            session.commitConfiguration()
+    func use(front: Bool) { work.async { self.configure(front: front) } }
+
+    private func configure(front: Bool) {
+        session.beginConfiguration()
+        session.sessionPreset = .photo
+        for i in session.inputs { session.removeInput(i) }
+        if let dev = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: front ? .front : .back),
+           let input = try? AVCaptureDeviceInput(device: dev), session.canAddInput(input) {
+            session.addInput(input)
         }
+        if session.outputs.isEmpty, session.canAddOutput(output) { session.addOutput(output) }
+        session.commitConfiguration()
         if let conn = output.connection(with: .video) {
-            conn.isVideoMirrored = true  // the card shows what the viewfinder showed
+            // Front: mirrored like the preview, so the card shows what the
+            // viewfinder showed. Rear: as the world is.
+            if conn.isVideoMirroringSupported {
+                conn.automaticallyAdjustsVideoMirroring = false
+                conn.isVideoMirrored = front
+            }
             if conn.isVideoRotationAngleSupported(90) { conn.videoRotationAngle = 90 }  // portrait
         }
         if !session.isRunning { session.startRunning() }
     }
 
-    func stop() { DispatchQueue.global().async { self.session.stopRunning() } }
+    func stop() { work.async { self.session.stopRunning() } }
 
     func capture(_ then: @escaping (UIImage?) -> Void) {
         done = then
@@ -66,6 +75,7 @@ struct CameraPreview: UIViewRepresentable {
 struct HumanityTestView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var camera = Camera()
+    @ObservedObject private var settings = Settings.shared
     @State private var flash = false
     @State private var card: IDCard.Result?
     @State private var banner = false
@@ -101,7 +111,7 @@ struct HumanityTestView: View {
         .statusBarHidden()
         .contentShape(Rectangle())
         .onTapGesture { if card == nil { shoot() } }
-        .onAppear { camera.start() }
+        .onAppear { camera.start(front: settings.frontCamera) }
         .onDisappear { camera.stop() }
         .onReceive(tick) { t in
             blink.toggle()
@@ -116,6 +126,15 @@ struct HumanityTestView: View {
                 HStack {
                     Text("LAB-7 // HUMANITY TEST").font(mono(16)).foregroundColor(.labGreen)
                     Spacer()
+                    Button {  // rear / front camera (remembered)
+                        lastTouch = Date()
+                        settings.frontCamera.toggle()
+                        camera.use(front: settings.frontCamera)
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath.camera").font(.system(size: 26, weight: .bold))
+                            .foregroundColor(.labCyan).frame(width: 64, height: 64)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: 0x002a33)))
+                    }
                     Button { dismiss() } label: {
                         Image(systemName: "xmark").font(.system(size: 28, weight: .bold)).foregroundColor(.labRed)
                             .frame(width: 64, height: 64)

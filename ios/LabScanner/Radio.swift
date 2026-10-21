@@ -47,6 +47,7 @@ final class Radio: NSObject, ObservableObject {
 
     func fireContain() {
         trigger &+= 1
+        print(String(format: "[lab7] %.3f CONTAIN pressed: trigger %d", Date().timeIntervalSince1970, trigger))
         advertise()
     }
 
@@ -97,5 +98,10 @@ extension Radio: CBCentralManagerDelegate {
 extension Radio: CBPeripheralManagerDelegate {
     func peripheralManagerDidUpdateState(_ p: CBPeripheralManager) {
         advertise()
+    }
+
+    func peripheralManagerDidStartAdvertising(_ p: CBPeripheralManager, error: Error?) {
+        print(String(format: "[lab7] %.3f advertising %@ %@", Date().timeIntervalSince1970,
+                     beaconUUID.uuidString, error.map { "\($0)" } ?? "ok"))
     }
 }

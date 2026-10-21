@@ -23,6 +23,9 @@ No App Store needed for your own phone.
 - **Keep the app open, screen on.** It keeps the screen awake itself. iOS only
   sends the CONTAIN beacon while the app is in front.
 - **Tap the signal meter**: sound on / quiet (CONTAIN still sounds).
+- **Humanity test camera**: the rear camera by default (point the phone at the
+  guest); the flip button in the viewfinder switches to the front one (a
+  mirrored selfie) and the app remembers the choice.
 - **Gear** (top right): the name on the ID card, how often guests come out
   COMPROMISED, the distance thresholds (tune them at the party: read the dBm at
   "about 2 m" and "arm's length"), and the optional photo upload.
@@ -43,7 +46,10 @@ uses), so the app advertises a service UUID carrying the same numbers:
 
     52534331-SSTT-4C41-4237-000000000000      SS = session (per launch), TT = CONTAIN counter
 
-The costume (`costume/src/researcher.cpp`) reads both forms and tracks iPhones by
+Measured: ~0.2-0.4 s from the press to the costume reacting. The costume
+(`costume/src/researcher.cpp`) reads the newest UUID of each advertisement
+(the BLE library appends them until the scan restarts -- reading the first one
+made CONTAIN arrive 3-8 s late). It reads both forms and tracks iPhones by
 session rather than Bluetooth address (iPhones change their address every
 ~15 minutes).
 
