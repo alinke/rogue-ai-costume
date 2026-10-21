@@ -27,6 +27,11 @@ int rssi();                           // smoothed, dBm (when seen)
 void setState(uint8_t threat, Activity activity, uint8_t scanned, uint8_t contained);
 const char* zoneName(Zone z);
 bool radioUp();
+// Power off: stop Bluetooth and the ESP-Hosted link to the C6 (Wi-Fi must be
+// off first -- uploader::shutdown). Waits up to timeoutMs; true = link down,
+// safe to hold the C6 in reset (otherwise ESP-Hosted restarts the board when
+// the C6 stops answering).
+bool shutdown(uint32_t timeoutMs);
 void pauseScan(bool paused);           // stop listening for a moment (photo uploads)                       // the C6 link is running (Wi-Fi can use it too)
 
 }  // namespace researcher

@@ -145,6 +145,7 @@ static void wifiOff() {
 }
 
 static volatile bool s_clearQueue = false, s_clearServer = false;
+static volatile bool s_stopReq = false, s_stopped = false;  // see shutdown()
 
 // POST /clear with the admin key: every photo off the web page.
 static bool postClear() {
@@ -300,6 +301,13 @@ static void task(void*) {
   uint32_t retryAt = 0, idleSince = 0;
   bool wifiOn = false;
   for (;;) {
+    if (s_stopReq) {
+      WiFi.disconnect(true, false);
+      WiFi.mode(WIFI_OFF);  // releases ESP-Hosted's Wi-Fi side
+      Serial.println("[I][upload] Wi-Fi off for power-off");
+      s_stopped = true;
+      vTaskSuspend(nullptr);
+    }
     // A new photo from loop(): into the flash queue.
     uint8_t* hand = nullptr;
     size_t len = 0, face = 0;
@@ -441,8 +449,16 @@ static size_t encodeFace(const camera::Photo* ph, uint8_t* out, size_t cap) {
   return e == ESP_OK ? len : 0;
 }
 
+bool shutdown(uint32_t timeoutMs) {
+  if (!s_ok) return true;
+  s_stopReq = true;
+  uint32_t t0 = millis();
+  while (!s_stopped && millis() - t0 < timeoutMs) delay(50);
+  return s_stopped;
+}
+
 void queueScreen(const char* label, const camera::Photo* face) {
-  if (!s_ok) return;
+  if (!s_ok || s_stopReq) return;
   uint32_t t0 = millis();
   // Canvas pixels are LovyanGFX's byte-swapped RGB565.
   ppa_srm_oper_config_t op = {};
@@ -518,6 +534,7 @@ void begin() {}
 void queueScreen(const char*, const camera::Photo*) {}
 void clearAll() {}
 bool clearPending() { return false; }
+bool shutdown(uint32_t) { return true; }
 int pending() { return 0; }
 int sent() { return 0; }
 }  // namespace uploader

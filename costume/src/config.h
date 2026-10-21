@@ -191,7 +191,9 @@
 // (and a 74AHCT125 level shifter for 5 V strips); power the strip from its own
 // supply (the power bank's second port) -- the connector's VIN pin is the
 // board's own supply and is only good for a few pixels.
+#ifndef LED_STRIP_ENABLED
 #define LED_STRIP_ENABLED 0
+#endif
 #define LED_DATA_PIN 37
 // The parts of the run, in the order the data flows through them:
 //   {type, LED count, reversed}
@@ -203,3 +205,8 @@
                     {LEDS_TRIM, 60, false}, {LEDS_EYE, 1, false} }
 #define LED_STRIP_COLOR_ORDER_GRB 1  // WS2812/SK6812: GRB. Some strips are RGB.
 #define LED_BRIGHTNESS_PERCENT 40
+// Wiring test: every LED in the chain one solid colour (e.g. 0x800080 purple)
+// instead of the show's effects. 0 = off (normal effects).
+#ifndef LED_TEST_COLOR
+#define LED_TEST_COLOR 0
+#endif

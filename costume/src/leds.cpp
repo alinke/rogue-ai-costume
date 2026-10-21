@@ -117,6 +117,9 @@ void tick(uint32_t now) {
   s_nextFrame = now + 33;
   float t = (now - s_modeSince) / 1000.0f, tAbs = now / 1000.0f;
   int i = 0;
+#if LED_TEST_COLOR
+  for (; i < s_total; i++) setPixel(i, LED_TEST_COLOR);
+#else
   for (const auto& seg : CHAIN) {
     for (int k = 0; k < seg.count; k++, i++) {
       float u = seg.count > 1 ? (float)k / (seg.count - 1) : 0;
@@ -124,6 +127,7 @@ void tick(uint32_t now) {
       setPixel(i, seg.type == LEDS_EYE ? eyeColor(t, tAbs) : partColor(seg.type, u, t));
     }
   }
+#endif
   rmtWriteAsync(LED_DATA_PIN, s_bits, s_total * 24);
 }
 

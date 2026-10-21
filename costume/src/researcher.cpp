@@ -123,6 +123,7 @@ static void setAdvert() {
 }
 
 static volatile bool s_scanPaused = false;  // see pauseScan()
+static volatile bool s_stopReq = false, s_stopped = false;  // see shutdown()
 static uint32_t s_scanStartedAt = 0;
 
 static void task(void*) {
@@ -151,6 +152,15 @@ static void task(void*) {
                 (unsigned)(millis() - t0));
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(500));
+    if (s_stopReq) {
+      s_up = false;
+      scan->stop();
+      adv->stop();
+      BLEDevice::deinit(true);  // last user of ESP-Hosted: this also closes the SDIO link
+      Serial.printf("[I][researcher] Bluetooth off, C6 link %s\n", hostedIsInitialized() ? "STILL UP" : "closed");
+      s_stopped = true;
+      vTaskDelete(nullptr);
+    }
     if (s_stateDirty) {
       s_stateDirty = false;
       setAdvert();
@@ -171,6 +181,13 @@ static void task(void*) {
 }
 
 bool radioUp() { return s_up; }
+
+bool shutdown(uint32_t timeoutMs) {
+  s_stopReq = true;
+  uint32_t t0 = millis();
+  while (!s_stopped && millis() - t0 < timeoutMs) delay(50);
+  return s_stopped && !hostedIsInitialized();
+}
 
 // While a photo uploads, Wi-Fi and Bluetooth share the C6 and its SDIO buffers
 // in the P4's scarce internal DMA RAM; the scan's stream of adverts is the
@@ -259,6 +276,7 @@ const char* zoneName(Zone z) {
 
 namespace researcher {
 void begin() {}
+bool shutdown(uint32_t) { return true; }
 Events poll(uint32_t) { return Events(); }
 Zone zone() { return NONE; }
 int rssi() { return -100; }

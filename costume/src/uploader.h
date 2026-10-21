@@ -19,6 +19,9 @@ void queueScreen(const char* label, const camera::Photo* face = nullptr);
 // is reachable). The SD card's keepsake copies stay.
 void clearAll();
 bool clearPending();  // the web page hasn't been cleared yet
+// Power off: finish (or give up on) the current upload, Wi-Fi fully off, task
+// parked. Waits up to timeoutMs; true = done.
+bool shutdown(uint32_t timeoutMs);
 int pending();   // photos waiting to go
 int sent();      // sent since power-on
 

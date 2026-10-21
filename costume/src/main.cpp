@@ -106,17 +106,27 @@ static void serialCommands(uint32_t now, input::Events& ev) {
 void powerOff() {
   Serial.println("[I][power] powering off");
   camera::stopLive();
+  camera::setMotionEnabled(false);  // its task would keep the camera running in standby
   leds::setMode(leds::OFF);
   for (int i = 0; i < 4; i++) {  // let the strip go dark
     leds::tick(millis());
     delay(40);
   }
-  // Bluetooth co-processor off and held in reset. The pin belongs to the
-  // ESP-Hosted driver, so it's driven through ESP-IDF, not pinMode().
-  gpio_set_direction((gpio_num_t)C6_ENABLE_PIN, GPIO_MODE_OUTPUT);
-  gpio_set_level((gpio_num_t)C6_ENABLE_PIN, 0);
   delay(1500);  // the power-down sound plays out
   gfx::powerDown();
+  // Wi-Fi, then Bluetooth, then the ESP-Hosted link, and only then the C6
+  // held in reset: cutting the C6 while ESP-Hosted is still running makes it
+  // restart the whole board ~10 s later ("Unrecoverable host sdio state").
+  // An upload in flight can take up to ~25 s to finish.
+  bool upOff = uploader::shutdown(30000);
+  bool btOff = researcher::shutdown(8000);
+  Serial.printf("[I][power] radios: Wi-Fi %s, Bluetooth/C6 link %s\n", upOff ? "off" : "TIMED OUT",
+                btOff ? "off" : "STILL UP");
+  if (btOff) {
+    // The pin belongs to the ESP-Hosted driver, so it's driven through ESP-IDF.
+    gpio_set_direction((gpio_num_t)C6_ENABLE_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)C6_ENABLE_PIN, 0);
+  }
   // Dark and idle until a tap on the screen (or the BOOT button), then a
   // fresh start. (Not deep sleep: neither the touch interrupt nor BOOT can
   // wake the P4 from it, and there's no reachable RESET.) On battery the
