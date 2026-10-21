@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject private var s = Settings.shared
+    @ObservedObject private var up = Uploader.shared
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -26,6 +27,9 @@ struct SettingsView: View {
                     SecureField("Upload key", text: $s.uploadKey)
                     TextField("Shown on the card (e.g. YOURSITE.COM/HALLOWEEN)", text: $s.siteText)
                         .textInputAutocapitalization(.characters)
+                    LabeledContent("Waiting", value: "\(up.pending)")
+                    LabeledContent("Last", value: s.uploadConfigured ? up.lastStatus : "not set up")
+                    Button("Send now") { up.kick() }.disabled(!s.uploadConfigured)
                 } header: { Text("Photo upload (optional)") } footer: {
                     Text("Your own photo service: cloud/README.md in the rogue-ai-costume repo. Empty = cards stay on this phone (Files app › LAB-7 › photos).")
                 }

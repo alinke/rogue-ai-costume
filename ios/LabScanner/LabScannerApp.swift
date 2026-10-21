@@ -6,6 +6,8 @@ import SwiftUI
 @main
 struct LabScannerApp: App {
     var body: some Scene {
-        WindowGroup { ContentView() }
+        WindowGroup {
+            ContentView().onOpenURL { Settings.shared.apply(configURL: $0) }
+        }
     }
 }

@@ -194,6 +194,7 @@
 				DEVELOPMENT_TEAM = QM6UP36WYG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "LAB-7";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "LAB-7 tracks the rogue AI costume by its Bluetooth beacon and fires the CONTAIN beam at it.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The humanity test photographs the guest for their LAB-7 ID card.";
@@ -234,6 +235,7 @@
 				DEVELOPMENT_TEAM = QM6UP36WYG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "LAB-7";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "LAB-7 tracks the rogue AI costume by its Bluetooth beacon and fires the CONTAIN beam at it.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The humanity test photographs the guest for their LAB-7 ID card.";

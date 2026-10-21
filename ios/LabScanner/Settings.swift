@@ -41,6 +41,25 @@ final class Settings: ObservableObject {
         siteText = d.string(forKey: "siteText") ?? ""
     }
 
+    /// lab7://configure?service=...&key=...&site=...&name=... -- fills in the
+    /// settings in one go (open it on the phone, or from a Mac:
+    /// xcrun devicectl device process launch --payload-url "lab7://..." ...).
+    func apply(configURL url: URL) {
+        guard url.scheme == "lab7", url.host == "configure",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems else { return }
+        for i in items {
+            guard let v = i.value else { continue }
+            switch i.name {
+            case "service": serviceURL = v
+            case "key": uploadKey = v
+            case "site": siteText = v
+            case "name": researcherName = v
+            default: break
+            }
+        }
+        Uploader.shared.kick()
+    }
+
     /// The next humanity-test subject number (kept across launches).
     func nextSubject() -> Int {
         let n = d.integer(forKey: "subject") + 1

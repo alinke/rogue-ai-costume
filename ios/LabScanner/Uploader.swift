@@ -9,6 +9,7 @@ import UIKit
 final class Uploader: ObservableObject {
     static let shared = Uploader()
     @Published private(set) var pending = 0
+    @Published private(set) var lastStatus = "nothing sent yet"
 
     private let fm = FileManager.default
     private let queue: URL
@@ -29,10 +30,9 @@ final class Uploader: ObservableObject {
         guard let jpg = image.jpegData(compressionQuality: 0.82) else { return }
         let id = String(format: "ios%08x-%08x", UInt32(Date().timeIntervalSince1970), UInt32.random(in: 0...UInt32.max))
         try? jpg.write(to: keep.appendingPathComponent("\(id).jpg"))
-        if Settings.shared.uploadConfigured {
-            try? jpg.write(to: queue.appendingPathComponent("\(id).jpg"))
-            try? label.write(to: queue.appendingPathComponent("\(id).txt"), atomically: true, encoding: .utf8)
-        }
+        // Always queued: cards taken before the upload is set up go once it is.
+        try? jpg.write(to: queue.appendingPathComponent("\(id).jpg"))
+        try? label.write(to: queue.appendingPathComponent("\(id).txt"), atomically: true, encoding: .utf8)
         refreshCount()
         kick()
     }
@@ -42,7 +42,7 @@ final class Uploader: ObservableObject {
         DispatchQueue.main.async { self.pending = n }
     }
 
-    private func kick() {
+    func kick() {
         guard !running, Settings.shared.uploadConfigured else { return }
         running = true
         Task {
@@ -54,6 +54,9 @@ final class Uploader: ObservableObject {
                 guard let data = try? Data(contentsOf: jpgURL) else { continue }
                 let label = (try? String(contentsOf: txtURL, encoding: .utf8)) ?? ""
                 let code = await send(data, id: id, label: label)
+                let msg = code == 200 ? "sent \(label)" : code == 403 ? "wrong upload key (HTTP 403)"
+                    : code < 0 ? "no connection to the photo service" : "HTTP \(code)"
+                await MainActor.run { self.lastStatus = msg }
                 if code == 200 || (400..<500).contains(code) {  // done, or never going to be accepted
                     try? fm.removeItem(at: jpgURL)
                     try? fm.removeItem(at: txtURL)
