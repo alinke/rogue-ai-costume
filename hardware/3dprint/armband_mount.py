@@ -149,7 +149,8 @@ def bezel_parts():
     # Flanges for the pod's screws, sloping down from the body to the ends.
     fy = EAR_Y + EAR_W / 2
     flange = Manifold.batch_hull([cslab(crect(2 * EAR_X1, 2 * fy, 5.0), Z_SPLIT, Z_SPLIT + 3.5),
-                                  cslab(crect(2 * OUT_X + 2.0, 2 * fy, 5.0), Z_SPLIT, Z_SPLIT + 8.5)])
+                                  # full width where it meets the body: no crevice at its angled corners
+                                  cslab(crect(2 * OUT_X + 2.0, 2 * OUT_Y, 7.0), Z_SPLIT, Z_SPLIT + 8.5)])
     body = body + flange
     for sx in (-1, 1):
         for sy in (-1, 1):
