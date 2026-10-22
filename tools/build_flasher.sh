@@ -5,6 +5,7 @@
 # anything from your secrets.h files before writing them to docs/firmware/.
 #
 #   tools/build_flasher.sh        then commit docs/ and push
+#   ONLY=armband tools/build_flasher.sh   just the boards whose id contains "armband"
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
@@ -19,6 +20,7 @@ BOARDS=(
   "costume-guition10-oldpanel|costume|guition-p4-10-1-old-panel|ESP32-P4|ROGUE.AI costume -- Guition 10.1\" (older panel)"
   "scanner-tab5|scanner|tab5|ESP32-P4|LAB-7 scanner -- M5Stack Tab5"
   "scanner-waveshare349|scanner|scanner|ESP32-S3|LAB-7 scanner -- Waveshare ESP32-S3-Touch-LCD-3.49"
+  "armband-cyd24|armband|armband|ESP32|ARM-7 armband -- Sunton ESP32-2432S024C (2.4\" CYD)"
 )
 
 # Strings that must never be in a public image: every quoted value in the
@@ -32,6 +34,7 @@ done
 
 for b in "${BOARDS[@]}"; do
   IFS='|' read -r id proj env chip name <<<"$b"
+  [[ -n "${ONLY:-}" && "$id" != *"$ONLY"* ]] && continue
   echo "=== $id ($proj/$env)"
   (cd "$proj" && pio run -e "$env")
   img="$proj/.pio/build/$env/firmware.factory.bin"
@@ -42,8 +45,9 @@ for b in "${BOARDS[@]}"; do
     fi
   done
   cp "$img" "$OUT/$id.bin"
+  jname=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$name")
   cat > "docs/manifest-$id.json" <<JSON
-{ "name": "$name", "version": "$VERSION", "new_install_prompt_erase": true,
+{ "name": $jname, "version": "$VERSION", "new_install_prompt_erase": true,
   "builds": [ { "chipFamily": "$chip", "parts": [ { "path": "firmware/$id.bin", "offset": 0 } ] } ] }
 JSON
 done

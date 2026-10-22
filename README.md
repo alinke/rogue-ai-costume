@@ -81,6 +81,21 @@ wins), and run a humanity test on guests.
 </tr>
 </table>
 
+### The ARM-7 armband (2.4" CYD on the forearm)
+
+<table>
+<tr>
+<td><img src="docs/images/armband-radar.png" alt="Armband: radar with the researcher's blip closing in, HUNTER CLOSING, threat bar, humans scanned, beams evaded"></td>
+<td><img src="docs/images/armband-beam.png" alt="Armband: CONTAINMENT BEAM DETECTED, red and white strobe"></td>
+<td><img src="docs/images/armband-evaded.png" alt="Armband: BEAM DEFLECTED, CONTAINMENT FAILED. AGAIN."></td>
+</tr>
+<tr>
+<td align="center">Hunter radar + the AI's live status</td>
+<td align="center">She fires CONTAIN…</td>
+<td align="center">…and it's deflected</td>
+</tr>
+</table>
+
 ### The landing page and the web flasher
 
 <table>
@@ -100,6 +115,7 @@ wins), and run a humanity test on guests.
 |---|---|
 | `costume/` | The costume firmware — Guition JC8012P4A1C 10.1" (ESP32-P4). Full docs: [costume/README.md](costume/README.md) |
 | `scanner/` | The LAB-7 scanner — M5Stack Tab5 (ESP32-P4) or Waveshare ESP32-S3-Touch-LCD-3.49. Docs: [scanner/README.md](scanner/README.md) |
+| `armband/` | ARM-7, the AI's forearm terminal — Sunton ESP32-2432S024C 2.4" CYD. Docs: [armband/README.md](armband/README.md) |
 | `ios/` | The LAB-7 scanner as an **iPhone app** (same game, same beacons; works alongside the ESP32 scanners). Docs: [ios/README.md](ios/README.md) |
 | `hardware/` | 3D-print files (display mount, LED-strip clips) and laser-cut visor goggles: [hardware/README.md](hardware/README.md) |
 | `cloud/` | Optional photo service (Google Cloud Run + Storage): [cloud/README.md](cloud/README.md) |
@@ -127,6 +143,8 @@ The costume and scanner talk over Bluetooth beacons — no pairing, no network.
 - **Scanner (pick one, or several):** M5Stack Tab5 (camera, the humanity test),
   Waveshare ESP32-S3-Touch-LCD-3.49 V2 (small and light, no camera), or an
   **iPhone** with the app in `ios/`.
+- **Armband (optional):** Sunton ESP32-2432S024C 2.4" capacitive "CYD" on a
+  battery, worn on the forearm (mount: work in progress).
 - Optional: SD card in each (photo queue + a keepsake copy of every photo).
 
 ## 3D print & laser cut
@@ -165,6 +183,7 @@ project:
 ```bash
 cd costume && pio run -e guition-p4-10-1 -t upload     # older panel: -e guition-p4-10-1-old-panel
 cd scanner && pio run -e tab5 -t upload                # or -e scanner for the Waveshare
+cd armband && pio run -t upload
 ```
 
 Everything works without any configuration. Private settings — Wi-Fi, the

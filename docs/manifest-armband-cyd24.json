@@ -1,0 +1,2 @@
+{ "name": "ARM-7 armband -- Sunton ESP32-2432S024C (2.4\" CYD)", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32", "parts": [ { "path": "firmware/armband-cyd24.bin", "offset": 0 } ] } ] }
