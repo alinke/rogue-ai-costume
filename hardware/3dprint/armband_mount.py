@@ -24,7 +24,7 @@ import os
 import struct
 
 import numpy as np
-from manifold3d import CrossSection, JoinType, Manifold
+from manifold3d import CrossSection, JoinType, Manifold, OpType
 
 # ---- Your settings ----------------------------------------------------------------
 ARM_CIRCUMFERENCE = 330.0   # mm, where it sits, over the jacket (13")
@@ -67,8 +67,19 @@ def rrect(w, h, r, segs=48):
     return CrossSection.square((w - 2 * r, h - 2 * r), center=True).offset(r, JoinType.Round, circular_segments=segs)
 
 
+def crect(w, h, c, r=0.8):
+    """Rectangle with 45-degree corners (the visor's angular look), edges softened by r."""
+    x, y = w / 2, h / 2
+    pts = [(-x + c, -y), (x - c, -y), (x, -y + c), (x, y - c), (x - c, y), (-x + c, y), (-x, y - c), (-x, -y + c)]
+    return CrossSection([pts]).offset(-r, JoinType.Round).offset(r, JoinType.Round, circular_segments=24)
+
+
 def slab(w, h, r, z0, z1, x=0.0, y=0.0):
     return Manifold.extrude(rrect(w, h, r), z1 - z0).translate((x, y, z0))
+
+
+def cslab(cs, z0, z1):
+    return Manifold.extrude(cs, z1 - z0).translate((0, 0, z0))
 
 
 def box(x0, x1, y0, y1, z0, z1):
@@ -79,17 +90,70 @@ def cyl(x, y, z0, z1, d, segs=48):
     return Manifold.cylinder(z1 - z0, d / 2, d / 2, segs).translate((x, y, z0))
 
 
-def bezel():
-    # Body with a chamfered front edge.
-    body = slab(2 * OUT_X, 2 * OUT_Y, 4, Z_SPLIT, Z_TOP - 1.2)
-    body = Manifold.batch_hull([body, slab(2 * OUT_X - 2.4, 2 * OUT_Y - 2.4, 2.8, Z_TOP - 0.01, Z_TOP)])
-    # Ears for the pod's screws.
+def strokes(lines, width, pads=()):
+    """2D: polylines drawn with a round pen of this width, plus round pads (x, y, d)."""
+    parts = []
+    for line in lines:
+        for (x0, y0), (x1, y1) in zip(line, line[1:]):
+            parts.append(CrossSection.batch_hull([CrossSection.circle(width / 2, 16).translate((x0, y0)),
+                                                  CrossSection.circle(width / 2, 16).translate((x1, y1))]))
+    for x, y, d in pads:
+        parts.append(CrossSection.circle(d / 2, 24).translate((x, y)))
+    return CrossSection.batch_boolean(parts, OpType.Add)
+
+
+# Block letters for the label, on a 4 x 6 grid.
+GLYPHS = {
+    "A": [[(0, 0), (0, 4.5), (1.5, 6), (2.5, 6), (4, 4.5), (4, 0)], [(0, 3), (4, 3)]],
+    "R": [[(0, 0), (0, 6), (3, 6), (4, 5), (4, 4), (3, 3), (0, 3)], [(2, 3), (4, 0)]],
+    "M": [[(0, 0), (0, 6), (2, 3.5), (4, 6), (4, 0)]],
+    "-": [[(0.8, 3), (3.2, 3)]],
+    "7": [[(0, 6), (4, 6), (1.5, 0)]],
+}
+
+
+def text(s, height, width):
+    k = height / 6
+    lines = []
+    for i, ch in enumerate(s):
+        for line in GLYPHS[ch]:
+            lines.append([((x + i * 5.6) * k, y * k) for x, y in line])
+    return strokes(lines, width), (len(s) * 5.6 - 1.6) * k
+
+
+def on_side(cs, sign, depth):
+    """A 2D shape drawn as (x, z) -> a groove/inlay `depth` deep into the pod's
+    long side at y = sign * OUT_Y."""
+    m = Manifold.extrude(cs, depth + 0.02).rotate((90, 0, 0))  # (x, y) -> (x, 0, y), depth toward -y
+    return m.translate((0, OUT_Y + 0.01, 0)) if sign > 0 else m.rotate((0, 0, 180)).translate((0, -OUT_Y - 0.01, 0)).mirror((1, 0, 0))
+
+
+# ---- Accents: green circuit traces like the costume's light channels -----------------
+TRACE_W = 1.6
+FRONT_TRACES = (  # on the bezel's front, at the ends of the screen window (x, y)
+    [[(33.6, -17.0), (33.6, 6.0), (36.0, 8.4), (36.0, 15.5)],
+     [(30.4, -19.5), (32.0, -17.9)], [(30.4, -16.3), (32.0, -14.7)], [(30.4, -13.1), (32.0, -11.5)],
+     [(-33.45, -7.6), (-33.45, 3.0), (-36.0, 5.5), (-36.0, 8.0)]],
+    [(33.6, -17.0, 3.0), (36.0, 15.5, 3.0), (-36.0, 8.0, 2.6)],
+)
+INLAY_DEPTH = 0.6  # 3 layers at 0.2 mm
+SIDE_TRACE = ([[(-21, -9.5), (-12, -9.5), (-8, -13.5), (14, -13.5), (18, -9.5), (34, -9.5)]],
+              [(-21, -9.5, 3.0), (34, -9.5, 3.0)])
+ENGRAVE = 0.8
+
+
+def bezel_parts():
+    """-> (bezel, green inlay)"""
+    body = Manifold.batch_hull([cslab(crect(2 * OUT_X, 2 * OUT_Y, 6.0), Z_SPLIT, Z_TOP - 1.2),
+                                cslab(crect(2 * OUT_X - 2.4, 2 * OUT_Y - 2.4, 5.4), Z_TOP - 0.01, Z_TOP)])
+    # Flanges for the pod's screws, sloping down from the body to the ends.
+    fy = EAR_Y + EAR_W / 2
+    flange = Manifold.batch_hull([cslab(crect(2 * EAR_X1, 2 * fy, 5.0), Z_SPLIT, Z_SPLIT + 3.5),
+                                  cslab(crect(2 * OUT_X + 2.0, 2 * fy, 5.0), Z_SPLIT, Z_SPLIT + 8.5)])
+    body = body + flange
     for sx in (-1, 1):
         for sy in (-1, 1):
-            x0, x1 = sorted((sx * (EAR_X0 - 1), sx * EAR_X1))
-            ear = box(x0, x1, sy * EAR_Y - EAR_W / 2, sy * EAR_Y + EAR_W / 2, Z_SPLIT, 1.0)
-            body = body + ear
-            body = body - cyl(sx * (EAR_X0 + 4.0), sy * EAR_Y, Z_SPLIT - 1, Z_SPLIT + 8, SCREW_PILOT)
+            body = body - cyl(sx * (EAR_X0 + 4.0), sy * EAR_Y, Z_SPLIT - 1, Z_SPLIT + 5.0, SCREW_PILOT)
     # Inside: room for the board and the screen.
     body = body - box(-IN_X, IN_X, -IN_Y, IN_Y, Z_SPLIT - 1, Z_FRONT)
     # Screen window, chamfered outward.
@@ -105,29 +169,44 @@ def bezel():
         body = body - cyl(x, y, 1.6 - 0.1, 1.6 + 4.2, SCREW_PILOT)
     # USB-C (+x edge) and SD card (-y edge): open at the bottom, the pod closes them.
     uy, uw, uz = USB
-    body = body - box(IN_X - 1, OUT_X + 1, uy - uw / 2, uy + uw / 2, Z_SPLIT - 1, uz)
+    body = body - box(IN_X - 1, OUT_X + 3, uy - uw / 2, uy + uw / 2, Z_SPLIT - 1, uz)
     sx_, sw, sz = SD
     body = body - box(sx_ - sw / 2, sx_ + sw / 2, -OUT_Y - 1, -IN_Y + 1, Z_SPLIT - 1, sz)
-    return body
+    # Green inlay, flush with the front.
+    inlay = cslab(strokes(FRONT_TRACES[0], TRACE_W, FRONT_TRACES[1]), Z_TOP - INLAY_DEPTH, Z_TOP + 0.01) ^ body
+    return body - inlay, inlay
+
+
+def jewel():
+    """Clear 'status jewel' over the RGB LED: a light pipe down to the LED, a faceted hex cap."""
+    x, y, d = LED
+    pipe = cyl(x, y, 3.7, Z_TOP + 0.1, d - 0.25)  # LED top is at z 3.37
+    cap = Manifold.batch_hull([Manifold.cylinder(0.8, 4.85, 4.85, 6).translate((x, y, Z_TOP)),
+                               Manifold.cylinder(0.01, 2.9, 2.9, 6).translate((x, y, Z_TOP + 1.8))])
+    return pipe + cap
 
 
 def pod():
     zlow = ARM_CZ + np.sqrt(ARM_R ** 2 - OUT_Y ** 2) - 0.5
-    body = slab(2 * END_X, 2 * OUT_Y, 6, zlow, Z_SPLIT)
+    # Outline: full width under the bezel, tapering to the strap ends.
+    ew = STRAP_WIDTH / 2 + 4.5
+    pts = [(-END_X, -ew), (-EAR_X1, -OUT_Y), (EAR_X1, -OUT_Y), (END_X, -ew),
+           (END_X, ew), (EAR_X1, OUT_Y), (-EAR_X1, OUT_Y), (-END_X, ew)]
+    outline = CrossSection([pts]).offset(-2, JoinType.Round).offset(2, JoinType.Round, circular_segments=24)
+    body = cslab(outline, zlow, Z_SPLIT)
     # The saddle: the forearm's curve taken out of the underside.
     arm = Manifold.cylinder(4 * END_X, ARM_R, ARM_R, 256).rotate((0, 90, 0)).translate((-2 * END_X, 0, ARM_CZ))
     body = body - arm
     # Battery cavity, open to the board.
     body = body - box(-IN_X, IN_X, -IN_Y, IN_Y, Z_FLOOR, Z_SPLIT + 1)
-    # The ends are thinner (strap bars), tapering down from the body.
     for sx in (-1, 1):
+        # The ends are thinner (strap bars).
         x0, x1 = sorted((sx * EAR_X1, sx * (END_X + 1)))
-        cut = box(x0, x1, -OUT_Y - 1, OUT_Y + 1, Z_SPLIT - 3.0, Z_SPLIT + 1)
-        body = body - cut
+        body = body - box(x0, x1, -OUT_Y - 1, OUT_Y + 1, Z_SPLIT - 3.0, Z_SPLIT + 1)
         # Strap slot.
         x0, x1 = sorted((sx * SLOT_X0, sx * (SLOT_X0 + SLOT_T)))
         body = body - slab(x1 - x0, STRAP_WIDTH + 1.5, 1.2, zlow - 1, Z_SPLIT + 1, (x0 + x1) / 2, 0)
-        # Screws up into the bezel's ears: through hole + counterbore from below.
+        # Screws up into the bezel's flanges: through hole + counterbore from below.
         for sy in (-1, 1):
             x, y = sx * (EAR_X0 + 4.0), sy * EAR_Y
             body = body - cyl(x, y, zlow - 1, Z_SPLIT + 1, 3.4)
@@ -138,6 +217,12 @@ def pod():
     zc = (Z_FLOOR + Z_SPLIT) / 2
     x = -IN_X + 6.0
     body = body - box(x - sw / 2, x + sw / 2, -OUT_Y - 1, -IN_Y + 1, zc - sh / 2, zc + sh / 2)
+    # Engraved circuit trace down both long sides, and the ARM-7 label on +y.
+    trace = strokes(SIDE_TRACE[0], TRACE_W, SIDE_TRACE[1])
+    body = body - on_side(trace, 1, ENGRAVE) - on_side(trace, -1, ENGRAVE)
+    label, length = text("ARM-7", 5.5, 1.1)
+    # Seen from +y, x runs right-to-left: mirror the text so it reads from outside.
+    body = body - on_side(label.mirror((1, 0)).translate((length / 2 - 4, -21.5)), 1, ENGRAVE)
     return body
 
 
@@ -156,11 +241,11 @@ def write_stl(man, path):
 
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
-    b, p = bezel(), pod()
-    write_stl(b, os.path.join(here, "armband_bezel.stl"))
-    write_stl(p, os.path.join(here, "armband_pod.stl"))
-    for name, m in (("bezel", b), ("pod", p)):
+    b, inlay = bezel_parts()
+    parts = {"armband_bezel": b, "armband_bezel_inlay": inlay, "armband_jewel": jewel(), "armband_pod": pod()}
+    for name, m in parts.items():
+        write_stl(m, os.path.join(here, name + ".stl"))
         lo, hi = m.bounding_box()[:3], m.bounding_box()[3:]
-        print(f"{name}: {hi[0]-lo[0]:.1f} x {hi[1]-lo[1]:.1f} x {hi[2]-lo[2]:.1f} mm, {m.volume()/1000:.1f} cm3")
+        print(f"{name}: {hi[0]-lo[0]:.1f} x {hi[1]-lo[1]:.1f} x {hi[2]-lo[2]:.1f} mm, {m.volume()/1000:.2f} cm3")
     print(f"arm radius {ARM_R:.1f} mm, total height {Z_TOP - (ARM_CZ + np.sqrt(ARM_R**2 - OUT_Y**2)):.1f} mm at the edges, "
           f"{Z_TOP - Z_SADDLE:.1f} mm at the centre line")

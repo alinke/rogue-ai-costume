@@ -32,25 +32,28 @@ back stays reachable (USB ports, SD card, the UART/LED connector).
 
 ### ARM-7 armband mount (2.4" CYD + 2000 mAh battery, forearm)
 
-<table>
-<tr>
-<td><img src="../docs/images/armband-mount.png" alt="Armband mount assembled: green bezel on a dark battery pod with strap slots at both ends"></td>
-<td><img src="../docs/images/armband-mount-exploded.png" alt="Exploded: bezel, the ESP32-2432S024C board, battery pod"></td>
-</tr>
-<tr>
-<td align="center">Assembled (renders, not yet printed)</td>
-<td align="center">Bezel, board, pod</td>
-</tr>
-</table>
+![Armband mount renders: matte black bezel and battery pod, green circuit-trace inlay, clear hex status jewel over the LED, ARM-7 engraved on the side](../docs/images/armband-mount.png)
 
-| File | What |
-|---|---|
-| `armband_mount.py` | The source (Python + `manifold3d`): your arm size, strap width, battery size and fit at the top; `python3 armband_mount.py` rewrites the two STLs. |
-| `armband_bezel.stl` | Front: frames the screen, holds the board on its four M3 holes, windows for the RGB LED and the light sensor, cut-outs for USB-C and the SD card. |
-| `armband_pod.stl` | Back: battery compartment, a slot for a power switch, a saddle curved to the forearm (330 mm round, over a jacket), strap slots for a 25 mm strap at both ends. |
+*Renders, not yet printed.* Angular like the visor, black like the techwear,
+with green circuit traces like the costume's light channels.
 
-Fitted to the board's own 3D model, checked for collisions with it; about
+| File | Print in | What |
+|---|---|---|
+| `armband_bezel.stl` | matte black PETG | Front: frames the screen, holds the board on its four M3 holes, LED and light-sensor windows, cut-outs for USB-C and the SD card, sloped flanges for the pod's screws. |
+| `armband_bezel_inlay.stl` | translucent neon-green PETG | The circuit traces, flush in the bezel's front (3 layers). |
+| `armband_jewel.stl` | clear / natural PETG | The "status jewel": a faceted hex cap with a light pipe down to the RGB LED. |
+| `armband_pod.stl` | matte black PETG | Back: battery compartment, power-switch slot, a saddle curved to the forearm (330 mm round, over a jacket), strap slots for a 25 mm strap at both ends, engraved traces and ARM-7 on the sides. |
+| `armband_mount.py` | | The source (Python + `manifold3d`): arm size, strap width, battery size, fit and the trace layout at the top; `python3 armband_mount.py` rewrites the STLs. |
+
+Fitted to the board's own 3D model and checked for collisions with it; about
 116 x 49 mm, 26 mm tall at the centre. The arm runs along the long side.
+
+**Colours.** With a multi-colour printer (AMS): load `armband_bezel.stl` and
+`armband_bezel_inlay.stl` together as one object (Bambu Studio / Orca: add the
+inlay as a part), black + green; the colour change is only in the first 3
+layers, so very little purge. Single colour: print the bezel black and fill the
+trace grooves with a green paint pen, or print the bezel in the green and keep
+the pod black. The jewel is its own small print in clear.
 
 **You also need:** 4x M3x6 screws (board into bezel), 4x M3x10 (pod onto
 bezel, from underneath), a 3.7 V LiPo (2000 mAh, 58 x 38 x 9 mm) with a
@@ -59,7 +62,8 @@ before plugging in -- these plugs come both ways round), a mini slide switch
 (SS12D00 or similar), a 25 mm strap (hook-and-loop or elastic), foam tape.
 
 **Print:** PETG (or PLA), 0.2 mm, 3 walls. Bezel front-face down, no supports.
-Pod upside down (open side on the bed) with supports for the floor.
+Pod upside down (open side on the bed) with supports for the floor. Jewel cap
+down, no supports; press it into the LED window (a drop of clear glue).
 
 **Assemble:** board screen-down into the bezel, four M3x6 screws through the
 board into the posts. Cut the battery's red wire and solder the slide switch in
