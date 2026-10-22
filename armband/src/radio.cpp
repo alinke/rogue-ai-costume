@@ -79,6 +79,8 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
   }
 };
 
+static volatile bool s_stopReq = false, s_stopped = false;
+
 static void task(void*) {
   BLEDevice::init("ARM-7");
   BLEScan* scan = BLEDevice::getScan();
@@ -91,6 +93,12 @@ static void task(void*) {
   uint32_t startedAt = millis();
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(500));
+    if (s_stopReq) {
+      scan->stop();
+      BLEDevice::deinit(true);
+      s_stopped = true;
+      vTaskDelete(nullptr);
+    }
     if (!scan->isScanning() || millis() - startedAt > 10000) {
       // The library keeps every advertiser it hears until the scan restarts
       // (phones change address every few minutes: RAM runs out at a party).
@@ -99,6 +107,11 @@ static void task(void*) {
       startedAt = millis();
     }
   }
+}
+
+void shutdown() {
+  s_stopReq = true;
+  for (int i = 0; i < 40 && !s_stopped; i++) delay(50);
 }
 
 void begin() { xTaskCreatePinnedToCore(task, "radio", 6144, nullptr, 2, nullptr, 0); }

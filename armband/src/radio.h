@@ -24,5 +24,6 @@ Hunter hunter();
 // counter went up within the same session) -- straight from the scanner, so
 // it doesn't wait for the costume.
 bool beamFired();
+void shutdown();  // Bluetooth off (power-off); waits up to ~2 s
 
 }  // namespace radio

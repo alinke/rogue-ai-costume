@@ -4,6 +4,9 @@
 // touches it. Listens only: nothing on the costume or the scanners changes.
 // See README.md.
 #include <Arduino.h>
+#include <Preferences.h>
+#include <driver/gpio.h>
+#include <esp_sleep.h>
 #include <math.h>
 
 #include "LGFX_Config.hpp"  // board bring-up, unmodified from the Sidekick firmware
@@ -271,7 +274,7 @@ static void ledTick(uint32_t now, const radio::Core& c) {
 
 // ---- Serial: demo mode and screenshots --------------------------------------------
 // 'd' toggles a demo (made-up costume + a researcher walking up and away),
-// 1-4 jump to an overlay (beam, evaded, takeover, touch), 's' sends the screen
+// 1-4 jump to an overlay (beam, evaded, takeover, touch), 'p' powers off, 's' sends the screen
 // as a PPM image between @@PPM@@ and @@END@@.
 static bool s_demo = false;
 static uint32_t s_demoSince = 0;
@@ -289,6 +292,8 @@ static void demo(uint32_t now, radio::Core& c, radio::Hunter& h) {
   h.rssi = (int)(-92 + 40 * sinf(u / 0.9f * PI));
 }
 
+static void powerOff();
+
 static void serialCommands() {
   while (Serial.available()) {
     int ch = Serial.read();
@@ -296,6 +301,8 @@ static void serialCommands() {
       s_demo = !s_demo;
       s_demoSince = millis();
       Serial.printf("[demo] %s\n", s_demo ? "on" : "off");
+    } else if (ch == 'p') {
+      powerOff();
     } else if (ch == 'b') {
       showOverlay(O_CONTAIN, 4000);
       s_evadePending = true;
@@ -316,6 +323,56 @@ static void serialCommands() {
   }
 }
 
+// ---- Power off ----------------------------------------------------------------------
+// Everything off and a light sleep (a few mA): below the IP5306's ~45 mA
+// light-load limit, so it cuts the power itself after ~30 s. If it doesn't, a
+// tap wakes the board (the touch INT line; GPIO21 can't wake deep sleep).
+static void powerOff() {
+  Serial.println("[power] off");
+  for (int i = 3; i >= 1; i--) {
+    g.fillScreen(C_BG);
+    glitchText("CORE LINK", 60, C_RED, &fonts::FreeMonoBold18pt7b);
+    glitchText("SEVERED", 104, C_RED, &fonts::FreeMonoBold18pt7b);
+    char b[8];
+    snprintf(b, sizeof(b), "%d", i);
+    glitchText(b, 160, C_WHITE, &fonts::FreeMonoBold18pt7b);
+    g.pushSprite(0, 0);
+    ledColor(C_RED, i / 3.0f);
+    delay(600);
+  }
+  radio::shutdown();
+  ledWrite(0, 0, 0);
+  for (int pin : {LED_R_PIN, LED_G_PIN, LED_B_PIN}) {  // off, and held off through the sleep
+    ledcDetach(pin);
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, LED_ACTIVE_LOW ? HIGH : LOW);
+    gpio_hold_en((gpio_num_t)pin);
+  }
+  lcd.setBrightness(0);
+  lcd.sleep();
+  pinMode(BACKLIGHT_PIN, OUTPUT);
+  digitalWrite(BACKLIGHT_PIN, LOW);
+  gpio_hold_en((gpio_num_t)BACKLIGHT_PIN);
+  int32_t tx, ty;
+  while (lcd.getTouch(&tx, &ty) > 0) delay(20);  // the finger that held it
+  delay(500);
+  Serial.println("[power] sleeping; tap to wake (or the battery chip cuts power)");
+  Serial.flush();
+  // Wake when the touch controller's INT line leaves its idle level (read
+  // here: it isn't the same on every CST8xx).
+  pinMode(TOUCH_INT_PIN, INPUT);
+  delay(50);
+  int idle = digitalRead(TOUCH_INT_PIN);
+  Serial.printf("[power] touch INT idle %s\n", idle ? "high" : "low");
+  Serial.flush();
+  gpio_wakeup_enable((gpio_num_t)TOUCH_INT_PIN, idle ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
+  esp_sleep_enable_gpio_wakeup();
+  esp_light_sleep_start();
+  Serial.println("[power] woken by touch");
+  for (int pin : {LED_R_PIN, LED_G_PIN, LED_B_PIN, BACKLIGHT_PIN}) gpio_hold_dis((gpio_num_t)pin);
+  esp_restart();
+}
+
 // ---- Setup / loop ---------------------------------------------------------------
 static uint32_t s_coreLostSince = 0;
 static int s_lastActivity = -1;
@@ -333,8 +390,20 @@ void setup() {
   g.fillScreen(C_BG);
   glitchText("ARM-7", 70, C_GREEN, &fonts::FreeMonoBold24pt7b);
   glitchText("LINKING TO CORE...", 140, C_DIM, &fonts::FreeMonoBold9pt7b);
+  // Boot counter: on battery there's no log, so this shows whether the board
+  // really powered off and on again.
+  Preferences prefs;
+  prefs.begin("arm7", false);
+  uint32_t boots = prefs.getUInt("boots", 0) + 1;
+  prefs.putUInt("boots", boots);
+  prefs.end();
+  char bootLine[24];
+  snprintf(bootLine, sizeof(bootLine), "BOOT #%u", (unsigned)boots);
+  glitchText(bootLine, 190, C_CYAN, &fonts::FreeMonoBold9pt7b);
+  Serial.printf("[boot] boot #%u, reset reason %d\n", (unsigned)boots, (int)esp_reset_reason());
   g.pushSprite(0, 0);
   ledBegin();
+  delay(1500);  // long enough to read the boot number
   radio::begin();
   Serial.printf("[boot] up, heap %u (largest %u)\n", (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getMaxAllocHeap());
 }
@@ -387,6 +456,11 @@ void loop() {
     s_gagUntil = now + TOUCH_GAG_COOLDOWN_MS;
   }
   s_wasTouched = touched;
+  // Hold to power off.
+  static uint32_t s_holdSince = 0;
+  if (!touched) s_holdSince = 0;
+  else if (!s_holdSince) s_holdSince = now;
+  else if (now - s_holdSince > POWER_HOLD_MS) powerOff();
   if (s_overlay != O_NONE && (int32_t)(now - s_overlayUntil) >= 0) {
     if (s_overlay == O_CONTAIN && s_evadePending) showOverlay(O_EVADED, 3000);
     else s_overlay = O_NONE;

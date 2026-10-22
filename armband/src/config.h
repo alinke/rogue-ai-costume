@@ -26,3 +26,11 @@
 #define LED_MAX_PERCENT 60    // it's bright, and it's right under your nose
 
 #define TOUCH_GAG_COOLDOWN_MS 2500
+
+// Power off: hold the screen this long. Everything shuts down and the board
+// sleeps; the battery chip (IP5306) then cuts the power itself after ~30 s at
+// that low draw -- SW1 on the back or plugging in USB starts it again. A tap
+// also wakes it (in case the chip keeps the power on).
+#define POWER_HOLD_MS 3000
+#define TOUCH_INT_PIN 21   // CST820 INT: wakes the board from the power-off sleep
+#define BACKLIGHT_PIN 27
