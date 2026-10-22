@@ -12,3 +12,6 @@ cloud/.keys
 web/*.local.html
 ios/**/xcuserdata/
 ios/build/
+# The iPad monitor: your photo service / site / room settings (see monitor/README.md)
+monitor/LabMonitor/Secrets.plist
+monitor/**/xcuserdata/

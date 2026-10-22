@@ -116,6 +116,7 @@ wins), and run a humanity test on guests.
 | `costume/` | The costume firmware — Guition JC8012P4A1C 10.1" (ESP32-P4). Full docs: [costume/README.md](costume/README.md) |
 | `scanner/` | The LAB-7 scanner — M5Stack Tab5 (ESP32-P4) or Waveshare ESP32-S3-Touch-LCD-3.49. Docs: [scanner/README.md](scanner/README.md) |
 | `armband/` | ARM-7, the AI's forearm terminal — Sunton ESP32-2432S024C 2.4" CYD. Docs: [armband/README.md](armband/README.md) |
+| `monitor/` | LAB-7 Monitor: a stationary **iPad** (iOS 12+) for the party -- the lab's containment monitor, a guest checkpoint with ID cards, and it gets "hacked" when the AI walks in. Docs: [monitor/README.md](monitor/README.md) |
 | `ios/` | The LAB-7 scanner as an **iPhone app** (same game, same beacons; works alongside the ESP32 scanners). Docs: [ios/README.md](ios/README.md) |
 | `hardware/` | 3D-print files (display mount, LED-strip clips) and laser-cut visor goggles: [hardware/README.md](hardware/README.md) |
 | `cloud/` | Optional photo service (Google Cloud Run + Storage): [cloud/README.md](cloud/README.md) |
