@@ -49,7 +49,7 @@ GLASS = (59.45, 43.05)
 VIEW = ((-GLASS[0] / 2 + 2.58 + GLASS[0] / 2 - 6.31) / 2, 0.0, GLASS[0] - 2.58 - 6.31 + 0.6, GLASS[1] - 2 * 2.58 + 0.6)
 LED = (-33.45, -12.45, 5.6)           # RGB LED1 (5x5 mm): x, y, window diameter
 LDR = (-34.25, 12.55, 3.0)            # light sensor (R21)
-USB = (-2.53, 13.0, 1.0)              # USB-C on the +x edge: centre y, opening width, top z
+USB = (-2.53, 13.0, 2.5)              # USB-C on the +x edge: centre y, opening width, top z (plug overmold room)
 SD = (2.08, 13.0, -0.5)               # SD slot through the -y edge: centre x, width, top z
 BACK_PARTS = 4.75                     # deepest part on the back, below z=0
 
@@ -180,7 +180,8 @@ def bezel_parts():
     body = body - cyl(LDR[0], LDR[1], Z_FRONT - 3, Z_TOP + 1, LDR[2])
     # USB-C (+x edge) and SD card (-y edge): open at the bottom, the pod closes them.
     uy, uw, uz = USB
-    body = body - box(IN_X - 1, OUT_X + 3, uy - uw / 2, uy + uw / 2, Z_SPLIT - 1, uz)
+    # ...right out through the end flange, so a cable plugs straight in.
+    body = body - box(IN_X - 1, EAR_X1 + 2, uy - uw / 2, uy + uw / 2, Z_SPLIT - 1, uz)
     sx_, sw, sz = SD
     body = body - box(sx_ - sw / 2, sx_ + sw / 2, -OUT_Y - 1, -IN_Y + 1, Z_SPLIT - 1, sz)
     # Green inlay, flush with the front.
@@ -222,6 +223,9 @@ def pod():
             x, y = sx * (EAR_X0 + 4.0), sy * EAR_Y
             body = body - cyl(x, y, zlow - 1, Z_SPLIT + 1, 3.4)
             body = body - cyl(x, y, zlow - 1, Z_SPLIT - 5.0, 6.2)
+    # A notch under the USB-C opening (in the bezel's +x flange) for big plugs.
+    uy, uw, _ = USB
+    body = body - box(IN_X - 1, EAR_X1 + 2, uy - uw / 2, uy + uw / 2, Z_SPLIT - 1.5, Z_SPLIT + 1)
     # Power switch in the -y side wall near the -x end (the battery goes toward
     # the +x end; a low rib keeps it there). The body sits in a shallow pocket
     # on the inside of the wall, the lever pokes out through a slot into a
