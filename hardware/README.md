@@ -58,8 +58,8 @@ the pod black. The jewel is its own small print in clear.
 **You also need:** 4x M3x6 screws (board into bezel), 4x M3x10 (pod onto
 bezel, from underneath), a 3.7 V LiPo (2000 mAh, 58 x 38 x 9 mm) with a
 **JST 1.25 mm 2-pin plug** (check polarity against the board's silkscreen
-before plugging in -- these plugs come both ways round), a mini slide switch
-(SS12D00 or similar), a 25 mm strap (hook-and-loop or elastic), foam tape.
+before plugging in -- these plugs come both ways round), a 3-pin mini slide
+switch (11.55 x 4 x 6 mm body, lever 1.84 mm; other sizes: `SWITCH` in the script), a 25 mm strap (hook-and-loop or elastic), foam tape.
 
 **Print:** PETG (or PLA), 0.2 mm, 3 walls. Bezel front-face down, no supports.
 Pod upside down (open side on the bed) with supports for the floor. Jewel cap
@@ -67,8 +67,10 @@ down, no supports; press it into the LED window (a drop of clear glue).
 
 **Assemble:** board screen-down into the bezel, four M3x6 screws through the
 board into the posts. Cut the battery's red wire and solder the slide switch in
-(glue it into its slot from the inside; insulate the joints). Battery into the
-pod toward the end away from the switch, held with foam tape; plug it into the
+(middle pin + one outer pin; insulate the joints). Press it into its pocket on
+the inside of the side wall, lever through the slot, and glue it (hot glue or
+epoxy). The lever ends level with the outside, in a finger recess. Battery into the
+pod on the other side of the low rib, held with foam tape; plug it into the
 board's BAT connector (the one next to the speaker connector on the top edge).
 Pod onto the bezel, four M3x10 screws from underneath. Strap through the slots.
 

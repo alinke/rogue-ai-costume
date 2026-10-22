@@ -30,7 +30,9 @@ from manifold3d import CrossSection, JoinType, Manifold, OpType
 ARM_CIRCUMFERENCE = 330.0   # mm, where it sits, over the jacket (13")
 STRAP_WIDTH = 25.0          # mm (hook-and-loop or elastic); 38 also fits
 BATTERY = (58.4, 38.1, 8.9)  # mm, L x W x thickness (2000 mAh, 2.3" x 1.5" x 0.35")
-SWITCH_HOLE = (8.8, 3.8)    # mm, slot for a mini slide switch (SS12D00 body: 8.6 x 3.5)
+# The power switch (3-pin mini slide switch): body length x thickness x height
+# (without pins), how far the lever sticks out, lever width, lever travel.
+SWITCH = dict(length=11.55, thick=4.0, height=6.0, lever_out=1.84, lever_w=2.2, travel=3.2)
 FIT = 0.4                   # mm clearance around the board
 SCREW_PILOT = 2.6           # mm, M3 self-tapping into PETG/PLA (4.0-4.2 for heat-set inserts)
 
@@ -137,8 +139,8 @@ FRONT_TRACES = (  # on the bezel's front, at the ends of the screen window (x, y
     [(33.6, -17.0, 3.0), (36.0, 15.5, 3.0), (-36.0, 8.0, 2.6)],
 )
 INLAY_DEPTH = 0.6  # 3 layers at 0.2 mm
-SIDE_TRACE = ([[(-21, -9.5), (-12, -9.5), (-8, -13.5), (14, -13.5), (18, -9.5), (34, -9.5)]],
-              [(-21, -9.5, 3.0), (34, -9.5, 3.0)])
+SIDE_TRACE = ([[(-15, -9.5), (-12, -9.5), (-8, -13.5), (14, -13.5), (18, -9.5), (34, -9.5)]],
+              [(-15, -9.5, 3.0), (34, -9.5, 3.0)])
 ENGRAVE = 0.8
 
 
@@ -212,12 +214,23 @@ def pod():
             x, y = sx * (EAR_X0 + 4.0), sy * EAR_Y
             body = body - cyl(x, y, zlow - 1, Z_SPLIT + 1, 3.4)
             body = body - cyl(x, y, zlow - 1, Z_SPLIT - 5.0, 6.2)
-    # Power switch through the -y side wall near the -x end (the battery goes
-    # toward the +x end), centred in the cavity's depth.
-    sw, sh = SWITCH_HOLE
+    # Power switch in the -y side wall near the -x end (the battery goes toward
+    # the +x end; a low rib keeps it there). The body sits in a shallow pocket
+    # on the inside of the wall, the lever pokes out through a slot into a
+    # finger recess: its tip ends level with the outside, nothing to snag.
+    sw = SWITCH
     zc = (Z_FLOOR + Z_SPLIT) / 2
-    x = -IN_X + 6.0
-    body = body - box(x - sw / 2, x + sw / 2, -OUT_Y - 1, -IN_Y + 1, zc - sh / 2, zc + sh / 2)
+    x = -IN_X + 0.4 + sw["length"] / 2 + 0.15
+    pocket, recess = 0.6, 1.0
+    wall_left = WALL - pocket - recess                   # wall between pocket and recess
+    body = body - box(x - sw["length"] / 2 - 0.15, x + sw["length"] / 2 + 0.15, -IN_Y - pocket, -IN_Y + 1,
+                      zc - sw["thick"] / 2 - 0.15, zc + sw["thick"] / 2 + 0.15)
+    slot = sw["lever_w"] + sw["travel"] + 0.6
+    body = body - box(x - slot / 2, x + slot / 2, -OUT_Y - 1, -IN_Y, zc - 1.3, zc + 1.3)
+    nook = Manifold.extrude(rrect(slot + 8.0, 8.0, 2.5), recess + 0.01).rotate((90, 0, 0)).translate((x, -OUT_Y + recess, zc))
+    body = body - nook
+    rib_x = x + sw["length"] / 2 + 1.0
+    body = body + box(rib_x, rib_x + 1.2, -IN_Y, IN_Y, Z_FLOOR - 0.1, Z_FLOOR + 3.0)
     # Engraved circuit trace down both long sides, and the ARM-7 label on +y.
     trace = strokes(SIDE_TRACE[0], TRACE_W, SIDE_TRACE[1])
     body = body - on_side(trace, 1, ENGRAVE) - on_side(trace, -1, ENGRAVE)
