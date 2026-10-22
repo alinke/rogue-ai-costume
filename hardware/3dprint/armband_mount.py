@@ -31,8 +31,9 @@ ARM_CIRCUMFERENCE = 330.0   # mm, where it sits, over the jacket (13")
 STRAP_WIDTH = 25.0          # mm (hook-and-loop or elastic); 38 also fits
 BATTERY = (58.4, 38.1, 8.9)  # mm, L x W x thickness (2000 mAh, 2.3" x 1.5" x 0.35")
 # The power switch (3-pin mini slide switch): body length x thickness x height
-# (without pins), how far the lever sticks out, lever width, lever travel.
-SWITCH = dict(length=11.55, thick=4.0, height=6.0, lever_out=1.84, lever_w=2.2, travel=3.2)
+# (without pins), how far the lever sticks out, lever size (square), lever
+# travel (the switch's own lever opening, 5.23 mm, minus the lever), centred.
+SWITCH = dict(length=11.55, thick=4.0, height=6.0, lever_out=1.84, lever_w=1.95, travel=5.23 - 1.95)
 FIT = 0.4                   # mm clearance around the board
 SCREW_PILOT = 2.6           # mm, M3 self-tapping into PETG/PLA (4.0-4.2 for heat-set inserts)
 
@@ -226,7 +227,7 @@ def pod():
     body = body - box(x - sw["length"] / 2 - 0.15, x + sw["length"] / 2 + 0.15, -IN_Y - pocket, -IN_Y + 1,
                       zc - sw["thick"] / 2 - 0.15, zc + sw["thick"] / 2 + 0.15)
     slot = sw["lever_w"] + sw["travel"] + 0.6
-    body = body - box(x - slot / 2, x + slot / 2, -OUT_Y - 1, -IN_Y, zc - 1.3, zc + 1.3)
+    body = body - box(x - slot / 2, x + slot / 2, -OUT_Y - 1, -IN_Y, zc - sw["lever_w"] / 2 - 0.3, zc + sw["lever_w"] / 2 + 0.3)
     nook = Manifold.extrude(rrect(slot + 8.0, 8.0, 2.5), recess + 0.01).rotate((90, 0, 0)).translate((x, -OUT_Y + recess, zc))
     body = body - nook
     rib_x = x + sw["length"] / 2 + 1.0
