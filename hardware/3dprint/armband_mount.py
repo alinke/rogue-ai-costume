@@ -64,9 +64,6 @@ Z_FRONT = SCREEN[3] + 0.2             # plate underside, just clear of the glass
 Z_TOP = Z_FRONT + FRONT
 Z_SPLIT = -(BACK_PARTS + 0.85)        # bezel / pod joint
 EAR_X0, EAR_X1, EAR_Y, EAR_W = OUT_X, OUT_X + 8.0, 15.0, 9.0
-END_X = EAR_X1 + 10.0                 # pod ends (strap bars)
-SLOT_X0 = EAR_X1 + 2.5                # strap slot
-SLOT_T = 3.2
 ARM_R = ARM_CIRCUMFERENCE / (2 * np.pi)
 Z_FLOOR = Z_SPLIT - (BATTERY[2] + 1.3)  # cavity floor
 Z_SADDLE = Z_FLOOR - 2.0                # underside at the centre line
@@ -147,8 +144,8 @@ FRONT_TRACES = (  # on the bezel's front, at the ends of the screen window (x, y
     [(33.6, -17.0, 3.0), (36.0, 15.5, 3.0), (-36.0, 8.0, 2.6)],
 )
 INLAY_DEPTH = 0.6  # 3 layers at 0.2 mm
-SIDE_TRACE = ([[(-15, -9.5), (-12, -9.5), (-8, -13.5), (14, -13.5), (18, -9.5), (34, -9.5)]],
-              [(-15, -9.5, 3.0), (34, -9.5, 3.0)])
+SIDE_TRACE = ([[(-15, -8.8), (-12, -8.8), (-8, -12.4), (14, -12.4), (18, -8.8), (34, -8.8)]],
+              [(-15, -8.8, 3.0), (34, -8.8, 3.0)])
 ENGRAVE = 0.8
 
 
@@ -200,81 +197,114 @@ def jewel():
     return pipe + cap
 
 
+def saddle_z(y):
+    """Height of the forearm's surface under the pod at y."""
+    return ARM_CZ + np.sqrt(ARM_R ** 2 - y ** 2)
+
+
+# Strap tunnels: two straps go round the forearm, each under the pod through a
+# pair of tunnels -- in through a long side's face, out through the underside
+# near that edge. Centred at these x positions; the tunnel's line (y, z) runs
+# from the underside (A) to the side face (B).
+STRAP_X = (-25.0, 25.0)
+TUNNEL = 3.6                           # mm, the strap's thickness + room
+TUNNEL_A = (14.0, None)                # on the underside (z follows the arm)
+TUNNEL_B_Z = -18.0                     # where it comes out of the side face
+BATTERY_ZONE_Z = -12.0                 # below this the cavity is only as wide as the battery
+SWITCH_LIP = 0.6                       # mm of wall in front of the switch's face
+
+
+def tunnel(sign, xc):
+    ay, by = TUNNEL_A[0], OUT_Y
+    az, bz = saddle_z(ay), TUNNEL_B_Z
+    d = np.array([by - ay, bz - az]); d /= np.linalg.norm(d)
+    n = np.array([-d[1], d[0]]) * TUNNEL / 2
+    p0 = np.array([ay, az]) - d * 6       # run on past both surfaces
+    p1 = np.array([by, bz]) + d * 4
+    pts = [tuple(p0 - n), tuple(p1 - n), tuple(p1 + n), tuple(p0 + n)]
+    cs = CrossSection([[(y, z) for y, z in pts]])
+    # (y, z) section, extruded along x
+    m = Manifold.extrude(cs, STRAP_WIDTH + 1.5).rotate((90, 0, 90)).translate((xc - (STRAP_WIDTH + 1.5) / 2, 0, 0))
+    return m if sign > 0 else m.mirror((0, 1, 0))
+
+
 def pod_parts():
     """-> (pod, green inlay)"""
-    zlow = ARM_CZ + np.sqrt(ARM_R ** 2 - OUT_Y ** 2) - 0.5
-    # Outline: full width under the bezel, tapering to the strap ends.
-    ew = STRAP_WIDTH / 2 + 4.5
-    pts = [(-END_X, -ew), (-EAR_X1, -OUT_Y), (EAR_X1, -OUT_Y), (END_X, -ew),
-           (END_X, ew), (EAR_X1, OUT_Y), (-EAR_X1, OUT_Y), (-END_X, ew)]
-    outline = CrossSection([pts]).offset(-2, JoinType.Round).offset(2, JoinType.Round, circular_segments=24)
+    zlow = saddle_z(OUT_Y) - 0.5
+    outline = crect(2 * (EAR_X1 + 2), 2 * OUT_Y, 8.0)
     body = cslab(outline, zlow, Z_SPLIT)
     # The saddle: the forearm's curve taken out of the underside.
-    arm = Manifold.cylinder(4 * END_X, ARM_R, ARM_R, 256).rotate((0, 90, 0)).translate((-2 * END_X, 0, ARM_CZ))
+    span = 2 * (EAR_X1 + 10)
+    arm = Manifold.cylinder(2 * span, ARM_R, ARM_R, 256).rotate((0, 90, 0)).translate((-span, 0, ARM_CZ))
     body = body - arm
-    # Battery cavity, open to the board.
-    body = body - box(-IN_X, IN_X, -IN_Y, IN_Y, Z_FLOOR, Z_SPLIT + 1)
+    # Cavity: full width up top (wires, the board's back), battery-wide below.
+    bw = BATTERY[1] / 2 + 1.25
+    body = body - box(-IN_X, IN_X, -IN_Y, IN_Y, BATTERY_ZONE_Z, Z_SPLIT + 1)
+    body = body - box(-IN_X, IN_X, -bw, bw, Z_FLOOR, BATTERY_ZONE_Z + 0.01)
     for sx in (-1, 1):
-        # The ends are thinner (strap bars).
-        x0, x1 = sorted((sx * EAR_X1, sx * (END_X + 1)))
-        body = body - box(x0, x1, -OUT_Y - 1, OUT_Y + 1, Z_SPLIT - 3.0, Z_SPLIT + 1)
-        # Strap slot.
-        x0, x1 = sorted((sx * SLOT_X0, sx * (SLOT_X0 + SLOT_T)))
-        body = body - slab(x1 - x0, STRAP_WIDTH + 1.5, 1.2, zlow - 1, Z_SPLIT + 1, (x0 + x1) / 2, 0)
         # Screws up into the bezel's flanges: through hole + counterbore from below.
         for sy in (-1, 1):
             x, y = sx * (EAR_X0 + 4.0), sy * EAR_Y
             body = body - cyl(x, y, zlow - 1, Z_SPLIT + 1, 3.4)
             body = body - cyl(x, y, zlow - 1, Z_SPLIT - 5.0, 6.2)
+    # Strap tunnels.
+    for xc in STRAP_X:
+        for sy in (-1, 1):
+            body = body - tunnel(sy, xc)
     # A notch under the USB-C opening (in the bezel's +x flange) for big plugs.
     uy, uw, _ = USB
     body = body - box(IN_X - 1, EAR_X1 + 2, uy - uw / 2, uy + uw / 2, Z_SPLIT - 1.5, Z_SPLIT + 1)
     # Power switch in the -y side wall near the -x end (the battery goes toward
-    # the +x end; a low rib keeps it there). The body sits in a shallow pocket
-    # on the inside of the wall, the lever pokes out through a slot into a
-    # finger recess: its tip ends level with the outside, nothing to snag.
+    # the +x end; a low rib keeps it there). Its face rests on a thin lip at the
+    # outside, so the lever sticks out ~1.2 mm (the switch cap adds ~3 mm).
     sw = SWITCH
     zc = (Z_FLOOR + Z_SPLIT) / 2
     x = -IN_X + 0.4 + sw["length"] / 2 + SWITCH_FIT
-    pocket, recess = 0.6, 1.0
-    wall_left = WALL - pocket - recess                   # wall between pocket and recess
-    body = body - box(x - sw["length"] / 2 - SWITCH_FIT, x + sw["length"] / 2 + SWITCH_FIT, -IN_Y - pocket, -IN_Y + 1,
-                      zc - sw["thick"] / 2 - SWITCH_FIT, zc + sw["thick"] / 2 + SWITCH_FIT)
+    x0, x1 = x - sw["length"] / 2 - SWITCH_FIT, x + sw["length"] / 2 + SWITCH_FIT
+    zb, zt = zc - sw["thick"] / 2 - SWITCH_FIT, zc + sw["thick"] / 2 + SWITCH_FIT
+    face = -OUT_Y + SWITCH_LIP                            # the switch's face
+    yd = face + sw["height"]                              # its back (pins beyond)
+    body = body - box(x0, x1, face, yd + 0.5, zb, zt + 2)  # its pocket
     slot = sw["lever_w"] + sw["travel"] + 2 * LEVER_FIT
-    body = body - box(x - slot / 2, x + slot / 2, -OUT_Y - 1, -IN_Y,
+    body = body - box(x - slot / 2, x + slot / 2, -OUT_Y - 1, face + 0.01,
                       zc - sw["lever_w"] / 2 - LEVER_FIT, zc + sw["lever_w"] / 2 + LEVER_FIT)
-    nook = Manifold.extrude(rrect(slot + 8.0, 8.0, 2.5), recess + 0.01).rotate((90, 0, 0)).translate((x, -OUT_Y + recess, zc))
-    body = body - nook
-    rib_x = x + sw["length"] / 2 + 1.0
-    body = body + box(rib_x, rib_x + 1.2, -IN_Y, IN_Y, Z_FLOOR - 0.1, Z_FLOOR + 3.0)
+    rib_x = x1 + 1.0
+    body = body + box(rib_x, rib_x + 1.2, -bw, bw, Z_FLOOR - 0.1, Z_FLOOR + 3.0)
     # Cradle: the switch drops in from the open side (pins toward the middle),
     # onto a ledge, between the end wall and a stop, and clicks under two small
     # catches. Flipping the lever pushes it sideways into the stops; a dab of
     # glue is extra.
-    x0, x1 = x - sw["length"] / 2 - SWITCH_FIT, x + sw["length"] / 2 + SWITCH_FIT
-    zb, zt = zc - sw["thick"] / 2 - SWITCH_FIT, zc + sw["thick"] / 2 + SWITCH_FIT
-    yd = -IN_Y + sw["height"] - 0.6                       # as deep as the body
-    body = body + box(x0, x1, -IN_Y - 0.01, yd, Z_FLOOR - 0.1, zb)          # ledge
-    body = body + box(-IN_X - 0.1, x0, -IN_Y - 0.01, yd, Z_FLOOR - 0.1, zt + 0.8)  # end stop
-    body = body + box(x1, x1 + 1.6, -IN_Y - 0.01, yd, Z_FLOOR - 0.1, zt + 0.8)     # stop
-    for xa, xb in ((x0 - 0.01, x0 + 0.3), (x1 - 0.3, x1 + 0.01)):         # catches over the body
-        catch = Manifold.batch_hull([box(xa, xb, -IN_Y - 0.01, yd, zt + 0.1, zt + 0.4),
-                                     box(xa if xa < x else xb - 0.01, xb if xa < x else xb, -IN_Y - 0.01, yd,
+    yi = yd - 0.6
+    body = body + box(x0, x1, face, yi, Z_FLOOR - 0.1, zb)                       # ledge
+    body = body + box(-IN_X - 0.1, x0, face, yi, Z_FLOOR - 0.1, zt + 0.8)          # end stop
+    body = body + box(x1, x1 + 1.6, face, yi, Z_FLOOR - 0.1, zt + 0.8)             # stop
+    for xa, xb in ((x0 - 0.01, x0 + 0.3), (x1 - 0.3, x1 + 0.01)):                 # catches over the body
+        catch = Manifold.batch_hull([box(xa, xb, face, yi, zt + 0.1, zt + 0.4),
+                                     box(xa if xa < x else xb - 0.01, xb if xa < x else xb, face, yi,
                                          zt + 0.79, zt + 0.8)])
         body = body + catch
-    # Engraved circuit trace down both long sides, and the ARM-7 label on +y.
-    trace = strokes(SIDE_TRACE[0], TRACE_W, SIDE_TRACE[1])
-    # Circuit trace down both long sides and the ARM-7 label on +y: grooves,
-    # filled flush by a green inlay (printed on its side, the colour change is
-    # only in the first and last few layers). Seen from +y, x runs right-to-left:
-    # the text is mirrored so it reads from outside.
-    label, length = text("ARM-7", 5.5, 1.1)
+    # Circuit trace down both long sides and the ARM-7 label on +y (between the
+    # strap tunnels): grooves, filled flush by a green inlay (printed on its
+    # side, the colour change is only in the first and last few layers). Seen
+    # from +y, x runs right-to-left: the text is mirrored so it reads from outside.
+    label, length = text("ARM-7", 4.5, 1.0)
     trace = strokes(SIDE_TRACE[0], TRACE_W, SIDE_TRACE[1])
     grooves = Manifold.batch_boolean([on_side(trace, 1, ENGRAVE), on_side(trace, -1, ENGRAVE),
-                                      on_side(label.mirror((1, 0)).translate((length / 2 - 4, -21.5)), 1, ENGRAVE)],
+                                      on_side(label.mirror((1, 0)).translate((length / 2, -21.2)), 1, ENGRAVE)],
                                      OpType.Add)
     inlay = grooves ^ body
     return body - inlay, inlay
+
+
+def switch_cap():
+    """A cap glued onto the switch's lever: something to push with."""
+    sw = SWITCH
+    w = sw["lever_w"] + 0.2                               # socket
+    cap = Manifold.batch_hull([box(-2.2, 2.2, -1.9, 1.9, 0, 2.0), box(-1.8, 1.8, -1.5, 1.5, 2.0, 3.0)])
+    cap = cap - box(-w / 2, w / 2, -w / 2, w / 2, -0.1, 1.0)
+    for gx in (-1.2, 0.0, 1.2):                           # grip ridges across the push direction
+        cap = cap - box(gx - 0.25, gx + 0.25, -2, 2, 2.6, 3.1)
+    return cap
 
 
 def write_stl(man, path):
@@ -295,10 +325,10 @@ if __name__ == "__main__":
     b, inlay = bezel_parts()
     p, p_inlay = pod_parts()
     parts = {"armband_bezel": b, "armband_bezel_inlay": inlay, "armband_jewel": jewel(), "armband_pod": p,
-             "armband_pod_inlay": p_inlay}
+             "armband_pod_inlay": p_inlay, "armband_switch_cap": switch_cap()}
     for name, m in parts.items():
         write_stl(m, os.path.join(here, name + ".stl"))
         lo, hi = m.bounding_box()[:3], m.bounding_box()[3:]
         print(f"{name}: {hi[0]-lo[0]:.1f} x {hi[1]-lo[1]:.1f} x {hi[2]-lo[2]:.1f} mm, {m.volume()/1000:.2f} cm3")
-    print(f"arm radius {ARM_R:.1f} mm, total height {Z_TOP - (ARM_CZ + np.sqrt(ARM_R**2 - OUT_Y**2)):.1f} mm at the edges, "
+    print(f"arm radius {ARM_R:.1f} mm, total height {Z_TOP - saddle_z(OUT_Y):.1f} mm at the edges, "
           f"{Z_TOP - Z_SADDLE:.1f} mm at the centre line")

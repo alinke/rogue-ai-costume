@@ -42,12 +42,13 @@ with green circuit traces like the costume's light channels.
 | `armband_bezel.stl` | matte black PETG | Front: frames the screen, holds the board on its four M3 holes, LED and light-sensor windows, cut-outs for USB-C and the SD card, sloped flanges for the pod's screws. |
 | `armband_bezel_inlay.stl` | translucent neon-green PETG | The circuit traces, flush in the bezel's front (3 layers). |
 | `armband_jewel.stl` | clear / natural PETG | The "status jewel": a faceted hex cap with a light pipe down to the RGB LED. |
-| `armband_pod.stl` | matte black PETG | Back: battery compartment, power-switch cradle, a saddle curved to the forearm (330 mm round, over a jacket), strap slots for a 25 mm strap at both ends. |
+| `armband_pod.stl` | matte black PETG | Back: battery compartment, power-switch cradle, a saddle curved to the forearm (330 mm round, over a jacket), and four strap tunnels through its long sides' bottom edges for two 25 mm straps round the arm. |
 | `armband_pod_inlay.stl` | translucent neon-green PETG | The circuit traces down both long sides of the pod and the ARM-7 label, flush. |
+| `armband_switch_cap.stl` | either | A cap glued onto the power switch's lever (which only just clears the case): ~3 mm more to push. Print a few; cap side down. |
 | `armband_mount.py` | | The source (Python + `manifold3d`): arm size, strap width, battery size, fit and the trace layout at the top; `python3 armband_mount.py` rewrites the STLs. |
 
 Fitted to the board's own 3D model and checked for collisions with it; about
-116 x 49 mm, 26 mm tall at the centre. The arm runs along the long side.
+100 x 49 mm, 26 mm tall at the centre. It sits lengthwise along the forearm.
 
 **Colours.** With a multi-colour printer (AMS): load `armband_bezel.stl` and
 `armband_bezel_inlay.stl` together as one object (Bambu Studio / Orca: add the
@@ -60,7 +61,7 @@ the pod black. The jewel is its own small print in clear.
 bezel, from underneath), a 3.7 V LiPo (2000 mAh, 58 x 38 x 9 mm) with a
 **JST 1.25 mm 2-pin plug** (check polarity against the board's silkscreen
 before plugging in -- these plugs come both ways round), a 3-pin mini slide
-switch (11.55 x 4 x 6 mm body, lever 1.84 mm; other sizes: `SWITCH` in the script), a 25 mm strap (hook-and-loop or elastic), foam tape.
+switch (11.55 x 4 x 6 mm body, lever 1.84 mm; other sizes: `SWITCH` in the script), two 25 mm straps, up to ~3 mm thick (hook-and-loop), foam tape.
 
 **Print:** PETG (or PLA), 0.2 mm, **4 walls** (the screw posts then print
 solid). Bezel front-face down, no supports.
@@ -79,7 +80,10 @@ on top makes it permanent. The lever ends level with the outside, in a finger
 recess. Battery into the
 pod on the other side of the low rib, held with foam tape; plug it into the
 board's BAT connector (the one next to the speaker connector on the top edge).
-Pod onto the bezel, four M3x10 screws from underneath. Strap through the slots.
+Pod onto the bezel, four M3x10 screws from underneath. Each strap goes round
+the arm and under the pod: in through a tunnel in one long side, across under
+the pod, out through the matching tunnel in the other side (the tunnels open on
+the side faces and on the underside, near the edges).
 
 **Battery gauge (optional):** two 100 kΩ resistors from the switched battery +
 to GND, the middle to GPIO35 on the board's P3 connector -- see
