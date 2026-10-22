@@ -34,13 +34,13 @@ SWITCH_HOLE = (8.8, 3.8)    # mm, slot for a mini slide switch (SS12D00 body: 8.
 FIT = 0.4                   # mm clearance around the board
 SCREW_PILOT = 2.6           # mm, M3 self-tapping into PETG/PLA (4.0-4.2 for heat-set inserts)
 
-# ---- The board (measured from the STL; LED from the product photo) ---------------
+# ---- The board (measured from esp32-2432s024c.stl) --------------------------------
 PCB_X, PCB_Y = 37.2, 21.45           # half sizes
 HOLES = [(sx * 34.0, sy * 18.25) for sx in (-1, 1) for sy in (-1, 1)]
 SCREEN = (-30.25, 30.91, 21.5, 5.94)  # x from/to, half height, glass top z
 VIEW = (0.33, 0.0, 52.0, 39.5)        # window: centre x/y, size (active area is 48.96 x 36.72)
-LED = (33.5, 13.0, 5.0)               # RGB LED1: x, y, window diameter
-LDR = (34.2, -11.5, 3.0)              # light sensor
+LED = (-33.45, -12.45, 5.6)           # RGB LED1 (5x5 mm): x, y, window diameter
+LDR = (-34.25, 12.55, 3.0)            # light sensor (R21)
 USB = (-2.53, 13.0, 1.0)              # USB-C on the +x edge: centre y, opening width, top z
 SD = (2.08, 13.0, -0.5)               # SD slot through the -y edge: centre x, width, top z
 BACK_PARTS = 4.75                     # deepest part on the back, below z=0
