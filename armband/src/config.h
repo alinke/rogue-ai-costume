@@ -33,3 +33,11 @@
 // also wakes it (in case the chip keeps the power on): checked 4x a second.
 #define POWER_HOLD_MS 3000
 #define BACKLIGHT_PIN 27
+
+// Battery gauge. The board has no battery sense of its own: two 100k resistors
+// in series from the battery's + (after the switch) to GND, the middle to
+// GPIO35 (on the 4-pin connector P3: IO21, IO22, IO35, GND). -1 = no gauge.
+#define BATTERY_SENSE_PIN 35
+#define BATTERY_DIVIDER 2.0f      // (R1 + R2) / R2
+#define BATTERY_MIN_VALID 2.8f    // below this (V at the battery) = not wired up: no gauge
+#define BATTERY_LOW_PERCENT 15    // amber below 40%, red and blinking below this

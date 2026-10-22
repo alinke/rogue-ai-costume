@@ -36,11 +36,26 @@ LAB-7 scanners already send, so nothing else needs changing or pairing.
 
 At power-on the LED blinks red, green, blue once (a wiring check).
 
+- **Battery gauge** in the top bar (icon + %): green, amber below 40%, red and
+  blinking below 15%. Needs a small mod -- the board can't measure its battery
+  by itself (see Hardware). Without the mod the gauge just doesn't show.
+- **Standby:** hold the screen 3 s ("CORE LINK SEVERED"): screen, LED and
+  Bluetooth off; a tap brings it back. Still draws a few mA -- the slide switch
+  in the battery wire is the real off.
+
 ## Hardware
 
 Sunton **ESP32-2432S024C**: 2.4" 320×240 ILI9341, CST820 capacitive touch,
-classic ESP32 (Bluetooth built in), RGB LED. Powered by a battery (see the mount
-notes in [../hardware/README.md](../hardware/README.md)).
+classic ESP32 (Bluetooth built in), RGB LED, and a charger for a 3.7 V LiPo on
+its BAT connector (JST 1.25 mm 2-pin). Mount, battery and switch:
+[../hardware/README.md](../hardware/README.md).
+
+**Battery gauge mod:** two 100 kΩ resistors in series from the battery's +
+(on the board side of the power switch) to GND; the point between them to
+**GPIO35**. GPIO35 and GND are on the board's 4-pin connector **P3**
+(IO21, IO22, IO35, GND -- a JST 1.25 mm 4-pin pigtail). The divider halves
+the battery's 3.5-4.2 V into the ESP32's range and draws 0.02 mA. Other
+resistor values: `BATTERY_DIVIDER` in `src/config.h`.
 
 ## Flash it
 
@@ -59,6 +74,8 @@ cd armband && pio run -t upload
 | `NEAR_DBM`, `CLOSE_DBM` | -70, -58 | same as the costume's, so both agree on "near" |
 | `LED_MAX_PERCENT` | 60 | the LED is bright |
 | `LED_R_PIN`/`G`/`B`, `LED_ACTIVE_LOW` | 4, 16, 17, 1 | |
+| `BATTERY_SENSE_PIN`, `BATTERY_DIVIDER` | 35, 2.0 | the battery gauge mod; -1 = no gauge |
+| `POWER_HOLD_MS` | 3000 | hold the screen this long for standby |
 
 ## Serial (115200)
 

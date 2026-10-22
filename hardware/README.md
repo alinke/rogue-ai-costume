@@ -76,6 +76,11 @@ pod on the other side of the low rib, held with foam tape; plug it into the
 board's BAT connector (the one next to the speaker connector on the top edge).
 Pod onto the bezel, four M3x10 screws from underneath. Strap through the slots.
 
+**Battery gauge (optional):** two 100 kΩ resistors from the switched battery +
+to GND, the middle to GPIO35 on the board's P3 connector -- see
+[armband/README.md](../armband/README.md). They fit in the pod next to the
+switch; heat-shrink them.
+
 **Charging:** the board charges the battery itself through its USB-C port (it
 has a power-bank chip, U8 in the schematic), with the switch **on**. The switch
 off = fully off, no standby drain.

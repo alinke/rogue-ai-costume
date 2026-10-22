@@ -133,6 +133,60 @@ static void drawOverlay(uint32_t now) {
   }
 }
 
+// ---- Battery gauge ---------------------------------------------------------------
+// The battery voltage through a divider on BATTERY_SENSE_PIN (see config.h),
+// smoothed: it sags while the screen and radio draw, and jumps when the
+// charger is on.
+static float s_battV = 0;   // 0 = no reading yet / not wired
+static int s_battPct = -1;
+
+static int batteryPercent(float v) {
+  // A LiPo under ~0.3 A, volts -> %.
+  static const float V[] = {3.50f, 3.65f, 3.70f, 3.73f, 3.76f, 3.80f, 3.84f, 3.90f, 3.97f, 4.05f, 4.15f};
+  if (v <= V[0]) return 0;
+  for (int i = 1; i < 11; i++)
+    if (v < V[i]) return (int)((i - 1) * 10 + 10 * (v - V[i - 1]) / (V[i] - V[i - 1]));
+  return 100;
+}
+
+static void batteryTick(uint32_t now) {
+#if BATTERY_SENSE_PIN >= 0
+  static uint32_t next = 0;
+  if ((int32_t)(now - next) < 0) return;
+  next = now + 1000;
+  uint32_t mv = 0;
+  for (int i = 0; i < 16; i++) mv += analogReadMilliVolts(BATTERY_SENSE_PIN);
+  float v = mv / 16.0f / 1000.0f * BATTERY_DIVIDER;
+  if (v < BATTERY_MIN_VALID) {
+    s_battV = 0;
+    s_battPct = -1;
+    return;
+  }
+  s_battV = s_battV > 0 ? s_battV + (v - s_battV) * 0.1f : v;
+  s_battPct = batteryPercent(s_battV);
+#else
+  (void)now;
+#endif
+}
+
+// Battery icon + %, right-aligned so it ends at x.
+static void drawBattery(uint32_t now, int x, int y) {
+  if (s_battPct < 0) return;
+  bool low = s_battPct <= BATTERY_LOW_PERCENT;
+  uint32_t col = low ? C_RED : s_battPct < 40 ? C_AMBER : C_GREEN;
+  if (low && ((now / 400) & 1)) col = scale(col, 0.25f);
+  char b[6];
+  snprintf(b, sizeof(b), "%d%%", s_battPct);
+  g.setFont(&fonts::Font0);
+  g.setTextDatum(textdatum_t::middle_right);
+  g.setTextColor(col);
+  g.drawString(b, x, y);
+  int bx = x - g.textWidth(b) - 4 - 20;
+  g.drawRect(bx, y - 5, 18, 10, col);
+  g.fillRect(bx + 18, y - 2, 2, 4, col);
+  g.fillRect(bx + 2, y - 3, max(1, 14 * s_battPct / 100), 6, col);
+}
+
 // ---- Main screen ---------------------------------------------------------------
 static constexpr int RCX = 104, RCY = 134, RR = 96;  // radar
 static constexpr int PX = 214;                        // right panel
@@ -240,6 +294,7 @@ static void drawHeader(uint32_t now, const radio::Core& c) {
   g.setTextDatum(textdatum_t::middle_right);
   g.setTextColor(c.seen ? C_GREEN : C_RED);
   g.drawString(c.seen ? "CORE LINK" : "CORE LOST", W - 18, 11);
+  drawBattery(now, W - 18 - g.textWidth("CORE LINK") - 8, 11);
   bool on = c.seen ? ((now / 500) & 1) : ((now / 200) & 1);
   g.fillCircle(W - 9, 11, 4, on ? (c.seen ? C_GREEN : C_RED) : C_HEADER);
 }
@@ -287,6 +342,8 @@ static void demo(uint32_t now, radio::Core& c, radio::Hunter& h) {
   c.activity = ((int)t % 20) < 10 ? A_IDLE : A_SCANNING;
   c.scanned = 23;
   c.contained = 4;
+  s_battV = 3.86f;
+  s_battPct = batteryPercent(s_battV);
   float u = fmodf(t, 24.0f) / 24.0f;  // walks in from far away, then leaves
   h.seen = u < 0.9f;
   h.rssi = (int)(-92 + 40 * sinf(u / 0.9f * PI));
@@ -416,6 +473,7 @@ void loop() {
   next = now + FRAME_MS;
 
   serialCommands();
+  batteryTick(now);
   radio::Core c = radio::core();
   radio::Hunter h = radio::hunter();
   if (s_demo) demo(now, c, h);
@@ -484,7 +542,8 @@ void loop() {
 
   if ((int32_t)(now - nextLog) >= 0) {
     nextLog = now + 5000;
-    Serial.printf("[state] core %s %d dBm threat %u act %u | hunter %s %d dBm | heap %u\n", c.seen ? "seen" : "lost",
-                  c.rssi, c.threat, c.activity, h.seen ? "seen" : "none", h.rssi, (unsigned)ESP.getFreeHeap());
+    Serial.printf("[state] core %s %d dBm threat %u act %u | hunter %s %d dBm | battery %.2f V %d%% | heap %u\n",
+                  c.seen ? "seen" : "lost", c.rssi, c.threat, c.activity, h.seen ? "seen" : "none", h.rssi, s_battV,
+                  s_battPct, (unsigned)ESP.getFreeHeap());
   }
 }
