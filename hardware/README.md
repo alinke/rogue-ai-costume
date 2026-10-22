@@ -42,7 +42,8 @@ with green circuit traces like the costume's light channels.
 | `armband_bezel.stl` | matte black PETG | Front: frames the screen, holds the board on its four M3 holes, LED and light-sensor windows, cut-outs for USB-C and the SD card, sloped flanges for the pod's screws. |
 | `armband_bezel_inlay.stl` | translucent neon-green PETG | The circuit traces, flush in the bezel's front (3 layers). |
 | `armband_jewel.stl` | clear / natural PETG | The "status jewel": a faceted hex cap with a light pipe down to the RGB LED. |
-| `armband_pod.stl` | matte black PETG | Back: battery compartment, power-switch slot, a saddle curved to the forearm (330 mm round, over a jacket), strap slots for a 25 mm strap at both ends, engraved traces and ARM-7 on the sides. |
+| `armband_pod.stl` | matte black PETG | Back: battery compartment, power-switch cradle, a saddle curved to the forearm (330 mm round, over a jacket), strap slots for a 25 mm strap at both ends. |
+| `armband_pod_inlay.stl` | translucent neon-green PETG | The circuit traces down both long sides of the pod and the ARM-7 label, flush. |
 | `armband_mount.py` | | The source (Python + `manifold3d`): arm size, strap width, battery size, fit and the trace layout at the top; `python3 armband_mount.py` rewrites the STLs. |
 
 Fitted to the board's own 3D model and checked for collisions with it; about
@@ -63,7 +64,9 @@ switch (11.55 x 4 x 6 mm body, lever 1.84 mm; other sizes: `SWITCH` in the scrip
 
 **Print:** PETG (or PLA), 0.2 mm, **4 walls** (the screw posts then print
 solid). Bezel front-face down, no supports.
-Pod upside down (open side on the bed) with supports for the floor. Jewel cap
+Pod **on its side** (a long side on the bed), with `armband_pod_inlay.stl` added as a part
+in green: the inlays sit on the two long sides, so the colour changes are only in the
+first and last few layers. Jewel cap
 down, no supports; press it into the LED window (a drop of clear glue).
 
 **Assemble:** board screen-down into the bezel, four M3x6 screws through the

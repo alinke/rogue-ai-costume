@@ -34,6 +34,8 @@ BATTERY = (58.4, 38.1, 8.9)  # mm, L x W x thickness (2000 mAh, 2.3" x 1.5" x 0.
 # (without pins), how far the lever sticks out, lever size (square), lever
 # travel (the switch's own lever opening, 5.23 mm, minus the lever), centred.
 SWITCH = dict(length=11.55, thick=4.0, height=6.0, lever_out=1.84, lever_w=1.95, travel=5.23 - 1.95)
+SWITCH_FIT = 0.45   # mm a side around the switch body (0.15 printed ~0.55 mm too tight in PETG)
+LEVER_FIT = 0.55    # mm a side around the lever's slot
 FIT = 0.4                   # mm clearance around the board
 SCREW_PILOT = 2.6           # mm, the pod's M3 screws into the bezel's flanges
 BOARD_SCREW_PILOT = 2.8     # mm, the board's M3 x 6 screws into the bezel's posts (prints ~2.6-2.7: easy to drive)
@@ -198,7 +200,8 @@ def jewel():
     return pipe + cap
 
 
-def pod():
+def pod_parts():
+    """-> (pod, green inlay)"""
     zlow = ARM_CZ + np.sqrt(ARM_R ** 2 - OUT_Y ** 2) - 0.5
     # Outline: full width under the bezel, tapering to the strap ends.
     ew = STRAP_WIDTH / 2 + 4.5
@@ -232,13 +235,14 @@ def pod():
     # finger recess: its tip ends level with the outside, nothing to snag.
     sw = SWITCH
     zc = (Z_FLOOR + Z_SPLIT) / 2
-    x = -IN_X + 0.4 + sw["length"] / 2 + 0.15
+    x = -IN_X + 0.4 + sw["length"] / 2 + SWITCH_FIT
     pocket, recess = 0.6, 1.0
     wall_left = WALL - pocket - recess                   # wall between pocket and recess
-    body = body - box(x - sw["length"] / 2 - 0.15, x + sw["length"] / 2 + 0.15, -IN_Y - pocket, -IN_Y + 1,
-                      zc - sw["thick"] / 2 - 0.15, zc + sw["thick"] / 2 + 0.15)
-    slot = sw["lever_w"] + sw["travel"] + 0.6
-    body = body - box(x - slot / 2, x + slot / 2, -OUT_Y - 1, -IN_Y, zc - sw["lever_w"] / 2 - 0.3, zc + sw["lever_w"] / 2 + 0.3)
+    body = body - box(x - sw["length"] / 2 - SWITCH_FIT, x + sw["length"] / 2 + SWITCH_FIT, -IN_Y - pocket, -IN_Y + 1,
+                      zc - sw["thick"] / 2 - SWITCH_FIT, zc + sw["thick"] / 2 + SWITCH_FIT)
+    slot = sw["lever_w"] + sw["travel"] + 2 * LEVER_FIT
+    body = body - box(x - slot / 2, x + slot / 2, -OUT_Y - 1, -IN_Y,
+                      zc - sw["lever_w"] / 2 - LEVER_FIT, zc + sw["lever_w"] / 2 + LEVER_FIT)
     nook = Manifold.extrude(rrect(slot + 8.0, 8.0, 2.5), recess + 0.01).rotate((90, 0, 0)).translate((x, -OUT_Y + recess, zc))
     body = body - nook
     rib_x = x + sw["length"] / 2 + 1.0
@@ -247,8 +251,8 @@ def pod():
     # onto a ledge, between the end wall and a stop, and clicks under two small
     # catches. Flipping the lever pushes it sideways into the stops; a dab of
     # glue is extra.
-    x0, x1 = x - sw["length"] / 2 - 0.15, x + sw["length"] / 2 + 0.15
-    zb, zt = zc - sw["thick"] / 2 - 0.15, zc + sw["thick"] / 2 + 0.15
+    x0, x1 = x - sw["length"] / 2 - SWITCH_FIT, x + sw["length"] / 2 + SWITCH_FIT
+    zb, zt = zc - sw["thick"] / 2 - SWITCH_FIT, zc + sw["thick"] / 2 + SWITCH_FIT
     yd = -IN_Y + sw["height"] - 0.6                       # as deep as the body
     body = body + box(x0, x1, -IN_Y - 0.01, yd, Z_FLOOR - 0.1, zb)          # ledge
     body = body + box(-IN_X - 0.1, x0, -IN_Y - 0.01, yd, Z_FLOOR - 0.1, zt + 0.8)  # end stop
@@ -260,11 +264,17 @@ def pod():
         body = body + catch
     # Engraved circuit trace down both long sides, and the ARM-7 label on +y.
     trace = strokes(SIDE_TRACE[0], TRACE_W, SIDE_TRACE[1])
-    body = body - on_side(trace, 1, ENGRAVE) - on_side(trace, -1, ENGRAVE)
+    # Circuit trace down both long sides and the ARM-7 label on +y: grooves,
+    # filled flush by a green inlay (printed on its side, the colour change is
+    # only in the first and last few layers). Seen from +y, x runs right-to-left:
+    # the text is mirrored so it reads from outside.
     label, length = text("ARM-7", 5.5, 1.1)
-    # Seen from +y, x runs right-to-left: mirror the text so it reads from outside.
-    body = body - on_side(label.mirror((1, 0)).translate((length / 2 - 4, -21.5)), 1, ENGRAVE)
-    return body
+    trace = strokes(SIDE_TRACE[0], TRACE_W, SIDE_TRACE[1])
+    grooves = Manifold.batch_boolean([on_side(trace, 1, ENGRAVE), on_side(trace, -1, ENGRAVE),
+                                      on_side(label.mirror((1, 0)).translate((length / 2 - 4, -21.5)), 1, ENGRAVE)],
+                                     OpType.Add)
+    inlay = grooves ^ body
+    return body - inlay, inlay
 
 
 def write_stl(man, path):
@@ -283,7 +293,9 @@ def write_stl(man, path):
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     b, inlay = bezel_parts()
-    parts = {"armband_bezel": b, "armband_bezel_inlay": inlay, "armband_jewel": jewel(), "armband_pod": pod()}
+    p, p_inlay = pod_parts()
+    parts = {"armband_bezel": b, "armband_bezel_inlay": inlay, "armband_jewel": jewel(), "armband_pod": p,
+             "armband_pod_inlay": p_inlay}
     for name, m in parts.items():
         write_stl(m, os.path.join(here, name + ".stl"))
         lo, hi = m.bounding_box()[:3], m.bounding_box()[3:]
