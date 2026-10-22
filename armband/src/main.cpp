@@ -325,8 +325,8 @@ static void serialCommands() {
 
 // ---- Power off ----------------------------------------------------------------------
 // Everything off and a light sleep (a few mA): below the IP5306's ~45 mA
-// light-load limit, so it cuts the power itself after ~30 s. If it doesn't, a
-// tap wakes the board (the touch INT line; GPIO21 can't wake deep sleep).
+// light-load limit, so it may cut the power itself after ~30 s. If it doesn't,
+// a tap wakes the board.
 static void powerOff() {
   Serial.println("[power] off");
   for (int i = 3; i >= 1; i--) {
@@ -358,16 +358,14 @@ static void powerOff() {
   delay(500);
   Serial.println("[power] sleeping; tap to wake (or the battery chip cuts power)");
   Serial.flush();
-  // Wake when the touch controller's INT line leaves its idle level (read
-  // here: it isn't the same on every CST8xx).
-  pinMode(TOUCH_INT_PIN, INPUT);
-  delay(50);
-  int idle = digitalRead(TOUCH_INT_PIN);
-  Serial.printf("[power] touch INT idle %s\n", idle ? "high" : "low");
-  Serial.flush();
-  gpio_wakeup_enable((gpio_num_t)TOUCH_INT_PIN, idle ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
-  esp_sleep_enable_gpio_wakeup();
-  esp_light_sleep_start();
+  // Wake on a tap: the touch controller's INT line doesn't reach the sleep
+  // logic, so wake 4x a second, ask the controller over I2C, and sleep again.
+  // Still only a few mA on average.
+  esp_sleep_enable_timer_wakeup(250 * 1000);
+  for (;;) {
+    esp_light_sleep_start();
+    if (lcd.getTouch(&tx, &ty) > 0) break;
+  }
   Serial.println("[power] woken by touch");
   for (int pin : {LED_R_PIN, LED_G_PIN, LED_B_PIN, BACKLIGHT_PIN}) gpio_hold_dis((gpio_num_t)pin);
   esp_restart();
