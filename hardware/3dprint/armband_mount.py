@@ -35,13 +35,18 @@ BATTERY = (58.4, 38.1, 8.9)  # mm, L x W x thickness (2000 mAh, 2.3" x 1.5" x 0.
 # travel (the switch's own lever opening, 5.23 mm, minus the lever), centred.
 SWITCH = dict(length=11.55, thick=4.0, height=6.0, lever_out=1.84, lever_w=1.95, travel=5.23 - 1.95)
 FIT = 0.4                   # mm clearance around the board
-SCREW_PILOT = 2.6           # mm, M3 self-tapping into PETG/PLA (4.0-4.2 for heat-set inserts)
+SCREW_PILOT = 2.6           # mm, the pod's M3 screws into the bezel's flanges
+BOARD_SCREW_PILOT = 2.8     # mm, the board's M3 x 6 screws into the bezel's posts (prints ~2.6-2.7: easy to drive)
 
 # ---- The board (measured from esp32-2432s024c.stl) --------------------------------
 PCB_X, PCB_Y = 37.2, 21.45           # half sizes
 HOLES = [(sx * 34.0, sy * 18.25) for sx in (-1, 1) for sy in (-1, 1)]
 SCREEN = (-30.25, 30.91, 21.5, 5.94)  # x from/to, half height, glass top z
-VIEW = (0.33, 0.0, 52.0, 39.5)        # window: centre x/y, size (active area is 48.96 x 36.72)
+# Window = the screen's viewable area (measured on the real glass, 59.45 x 43.05,
+# taken as centred on the board like in the STL: 2.58 mm border on the LED end,
+# top and bottom, 6.31 mm on the other end), plus 0.3 mm a side.
+GLASS = (59.45, 43.05)
+VIEW = ((-GLASS[0] / 2 + 2.58 + GLASS[0] / 2 - 6.31) / 2, 0.0, GLASS[0] - 2.58 - 6.31 + 0.6, GLASS[1] - 2 * 2.58 + 0.6)
 LED = (-33.45, -12.45, 5.6)           # RGB LED1 (5x5 mm): x, y, window diameter
 LDR = (-34.25, 12.55, 3.0)            # light sensor (R21)
 USB = (-2.53, 13.0, 1.0)              # USB-C on the +x edge: centre y, opening width, top z
@@ -160,17 +165,19 @@ def bezel_parts():
             body = body - cyl(sx * (EAR_X0 + 4.0), sy * EAR_Y, Z_SPLIT - 1, Z_SPLIT + 5.0, SCREW_PILOT)
     # Inside: room for the board and the screen.
     body = body - box(-IN_X, IN_X, -IN_Y, IN_Y, Z_SPLIT - 1, Z_FRONT)
+    # Posts on the board's holes: 5.6 mm, flared where they meet the front (the
+    # flare stays above the screen's edge layers and the LED).
+    for x, y in HOLES:
+        body = body + cyl(x, y, 1.6, Z_FRONT + 0.1, 5.6)
+        body = body + Manifold.cylinder(2.0, 2.8, 3.5, 48).translate((x, y, Z_FRONT - 2.0 + 0.05))
+        body = body - cyl(x, y, 1.6 - 0.1, 1.6 + 4.2, BOARD_SCREW_PILOT)
     # Screen window, chamfered outward.
     cx, cy, w, h = VIEW
     win = Manifold.batch_hull([slab(w, h, 1.0, Z_FRONT - 0.5, Z_FRONT + 0.3, cx, cy),
                                slab(w + 2 * FRONT, h + 2 * FRONT, 2.0, Z_TOP, Z_TOP + 0.5, cx, cy)])
     body = body - win
-    body = body - cyl(LED[0], LED[1], Z_FRONT - 1, Z_TOP + 1, LED[2])
-    body = body - cyl(LDR[0], LDR[1], Z_FRONT - 1, Z_TOP + 1, LDR[2])
-    # Posts on the board's holes.
-    for x, y in HOLES:
-        body = body + cyl(x, y, 1.6, Z_FRONT + 0.1, 4.6)
-        body = body - cyl(x, y, 1.6 - 0.1, 1.6 + 4.2, SCREW_PILOT)
+    body = body - cyl(LED[0], LED[1], Z_FRONT - 3, Z_TOP + 1, LED[2])
+    body = body - cyl(LDR[0], LDR[1], Z_FRONT - 3, Z_TOP + 1, LDR[2])
     # USB-C (+x edge) and SD card (-y edge): open at the bottom, the pod closes them.
     uy, uw, uz = USB
     body = body - box(IN_X - 1, OUT_X + 3, uy - uw / 2, uy + uw / 2, Z_SPLIT - 1, uz)
@@ -185,8 +192,8 @@ def jewel():
     """Clear 'status jewel' over the RGB LED: a light pipe down to the LED, a faceted hex cap."""
     x, y, d = LED
     pipe = cyl(x, y, 3.7, Z_TOP + 0.1, d - 0.25)  # LED top is at z 3.37
-    cap = Manifold.batch_hull([Manifold.cylinder(0.8, 4.85, 4.85, 6).translate((x, y, Z_TOP)),
-                               Manifold.cylinder(0.01, 2.9, 2.9, 6).translate((x, y, Z_TOP + 1.8))])
+    cap = Manifold.batch_hull([Manifold.cylinder(0.8, 4.85, 4.85, 6).rotate((0, 0, 30)).translate((x, y, Z_TOP)),
+                               Manifold.cylinder(0.01, 2.9, 2.9, 6).rotate((0, 0, 30)).translate((x, y, Z_TOP + 1.8))])
     return pipe + cap
 
 
