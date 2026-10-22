@@ -67,9 +67,11 @@ down, no supports; press it into the LED window (a drop of clear glue).
 
 **Assemble:** board screen-down into the bezel, four M3x6 screws through the
 board into the posts. Cut the battery's red wire and solder the slide switch in
-(middle pin + one outer pin; insulate the joints). Press it into its pocket on
-the inside of the side wall, lever through the slot, and glue it (hot glue or
-epoxy). The lever ends level with the outside, in a finger recess. Battery into the
+(middle pin + one outer pin; insulate the joints). Push it down into its
+cradle on the inside of the side wall (pins toward the middle, lever into the
+slot) until it clicks under the two small catches; a dab of hot glue or epoxy
+on top makes it permanent. The lever ends level with the outside, in a finger
+recess. Battery into the
 pod on the other side of the low rib, held with foam tape; plug it into the
 board's BAT connector (the one next to the speaker connector on the top edge).
 Pod onto the bezel, four M3x10 screws from underneath. Strap through the slots.

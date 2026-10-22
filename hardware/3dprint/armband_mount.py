@@ -232,6 +232,21 @@ def pod():
     body = body - nook
     rib_x = x + sw["length"] / 2 + 1.0
     body = body + box(rib_x, rib_x + 1.2, -IN_Y, IN_Y, Z_FLOOR - 0.1, Z_FLOOR + 3.0)
+    # Cradle: the switch drops in from the open side (pins toward the middle),
+    # onto a ledge, between the end wall and a stop, and clicks under two small
+    # catches. Flipping the lever pushes it sideways into the stops; a dab of
+    # glue is extra.
+    x0, x1 = x - sw["length"] / 2 - 0.15, x + sw["length"] / 2 + 0.15
+    zb, zt = zc - sw["thick"] / 2 - 0.15, zc + sw["thick"] / 2 + 0.15
+    yd = -IN_Y + sw["height"] - 0.6                       # as deep as the body
+    body = body + box(x0, x1, -IN_Y - 0.01, yd, Z_FLOOR - 0.1, zb)          # ledge
+    body = body + box(-IN_X - 0.1, x0, -IN_Y - 0.01, yd, Z_FLOOR - 0.1, zt + 0.8)  # end stop
+    body = body + box(x1, x1 + 1.6, -IN_Y - 0.01, yd, Z_FLOOR - 0.1, zt + 0.8)     # stop
+    for xa, xb in ((x0 - 0.01, x0 + 0.3), (x1 - 0.3, x1 + 0.01)):         # catches over the body
+        catch = Manifold.batch_hull([box(xa, xb, -IN_Y - 0.01, yd, zt + 0.1, zt + 0.4),
+                                     box(xa if xa < x else xb - 0.01, xb if xa < x else xb, -IN_Y - 0.01, yd,
+                                         zt + 0.79, zt + 0.8)])
+        body = body + catch
     # Engraved circuit trace down both long sides, and the ARM-7 label on +y.
     trace = strokes(SIDE_TRACE[0], TRACE_W, SIDE_TRACE[1])
     body = body - on_side(trace, 1, ENGRAVE) - on_side(trace, -1, ENGRAVE)
