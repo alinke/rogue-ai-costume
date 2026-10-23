@@ -43,12 +43,24 @@ struct Screen {
     var rogueCount = 0
     var rollCall: [UIImage] = []
     var tiles: [(UIImage?, String, Bool, Bool)] = []   // the wall's page: image, label, from the AI, a rogue AI
+    var viewer: (UIImage, String, Bool, Bool)?        // a photo opened full screen (same fields)
+    var viewerQR: UIImage?
     var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
 }
 
 final class MonitorView: UIView {
     var s = Screen()
+    /// Where things were drawn (canvas coords), for taps: the wall's tiles, the viewer's buttons.
+    private(set) var tileFrames: [CGRect] = []
+    private(set) var shareFrame = CGRect.null
+    private(set) var closeFrame = CGRect.null
+
+    /// View point -> canvas point.
+    func toCanvas(_ p: CGPoint) -> CGPoint {
+        let f = fit
+        return CGPoint(x: (p.x - f.dx) / f.scale, y: (p.y - f.dy) / f.scale)
+    }
 
     static let W: CGFloat = 1024, H: CGFloat = 768
     static let thumb = CGRect(x: 24, y: 470, width: 320, height: 240)  // the checkpoint camera, calm screen
@@ -101,7 +113,7 @@ final class MonitorView: UIView {
         c.translateBy(x: f.dx, y: f.dy)
         c.scaleBy(x: f.scale, y: f.scale)
         switch s.mode {
-        case .calm: s.wall ? drawWall(c) : drawCalm(c)
+        case .calm: s.wall ? (s.viewer != nil ? drawViewer(c) : drawWall(c)) : drawCalm(c)
         case .card: drawCard(c)
         case .intrusion: drawIntrusion(c)
         case .cleared: drawCleared(c)
@@ -212,6 +224,7 @@ final class MonitorView: UIView {
 
         // The slide (or the roll call).
         let sp = CGRect(x: 24, y: 88, width: W - 48, height: 626)
+        if s.tiles.isEmpty || s.wallRogue || !s.rollCall.isEmpty { tileFrames = [] }
         if !s.rollCall.isEmpty {
             drawRollCall(c, sp)
         } else if !s.tiles.isEmpty && !s.wallRogue {
@@ -260,7 +273,45 @@ final class MonitorView: UIView {
     }
 
     /// A page of the evidence: 4 x 2 tiles, each photo fitted in, its label under it.
+    /// A photo from the wall, full screen: QR code to take it home, share, close.
+    private func drawViewer(_ c: CGContext) {
+        guard let v = s.viewer else { return }
+        let W = MonitorView.W, H = MonitorView.H
+        UIColor(hex: 0x05090F).setFill(); c.fill(CGRect(x: 0, y: 0, width: W, height: H))
+        let pic = CGRect(x: 24, y: 24, width: 640, height: H - 48)
+        if v.3 {
+            MonitorView.red.setStroke(); c.setLineWidth(6); c.stroke(pic.insetBy(dx: -3, dy: -3))
+        }
+        drawImage(v.0, aspectFit: pic, c)
+        let x: CGFloat = 690
+        let title = v.3 ? "ROGUE AI" : v.2 ? "ASSIMILATED" : "VERIFIED HUMAN"
+        text(title, x, 96, 32, v.3 || v.2 ? MonitorView.bad : MonitorView.ok, .heavy)
+        text(v.2 ? "FILED BY ROGUE.AI" : (v.1.isEmpty ? "LAB-7 FIELD SCAN" : v.1), x, 138, 16, MonitorView.white, .bold, mono: true)
+        if let qr = s.viewerQR {
+            let q = CGRect(x: x + 14, y: 190, width: 260, height: 260)
+            UIColor.white.setFill(); c.fill(q.insetBy(dx: -14, dy: -14))
+            c.interpolationQuality = .none
+            qr.draw(in: q)
+            text("SCAN TO GET THIS PHOTO", x, 480, 20, MonitorView.white, .heavy)
+            text("on your phone -- then save it", x, 508, 15, MonitorView.pale)
+        }
+        // Buttons.
+        shareFrame = CGRect(x: x, y: 556, width: 288, height: 64)
+        MonitorView.steel.setFill(); c.fill(shareFrame)
+        MonitorView.pale.setStroke(); c.setLineWidth(2); c.stroke(shareFrame)
+        text("SHARE", shareFrame.midX, shareFrame.minY + 18, 24, MonitorView.white, .heavy, align: .center)
+        closeFrame = CGRect(x: W - 76, y: 24, width: 52, height: 52)
+        MonitorView.panel.setFill(); c.fill(closeFrame)
+        MonitorView.pale.setStroke(); c.stroke(closeFrame)
+        c.setLineWidth(4)
+        c.move(to: CGPoint(x: closeFrame.minX + 16, y: closeFrame.minY + 16)); c.addLine(to: CGPoint(x: closeFrame.maxX - 16, y: closeFrame.maxY - 16))
+        c.move(to: CGPoint(x: closeFrame.maxX - 16, y: closeFrame.minY + 16)); c.addLine(to: CGPoint(x: closeFrame.minX + 16, y: closeFrame.maxY - 16))
+        c.strokePath()
+        text("TAP ANYWHERE TO CLOSE", x, H - 50, 14, MonitorView.pale, .bold)
+    }
+
     private func drawTiles(_ c: CGContext, _ r: CGRect) {
+        tileFrames = []
         MonitorView.panel.setFill(); c.fill(r)
         MonitorView.steel.setStroke(); c.setLineWidth(2); c.stroke(r)
         text("EVIDENCE // \(s.wallCount) FILED TONIGHT", r.minX + 16, r.minY + 8, 15, MonitorView.pale, .bold)
@@ -270,6 +321,7 @@ final class MonitorView: UIView {
         for (i, t) in s.tiles.prefix(cols * rows).enumerated() {
             let cell = CGRect(x: r.minX + 12 + CGFloat(i % cols) * gw, y: r.minY + 32 + CGFloat(i / cols) * gh, width: gw, height: gh)
                 .insetBy(dx: 6, dy: 6)
+            tileFrames.append(cell)
             let pic = CGRect(x: cell.minX, y: cell.minY, width: cell.width, height: cell.height - 24)
             if t.3 {  // a rogue AI: red frame and tag
                 UIColor(hex: 0x2A0508).setFill(); c.fill(cell)

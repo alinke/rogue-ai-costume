@@ -54,6 +54,10 @@ final class MonitorViewController: UIViewController {
     private var wallSlides = 0
     private var wallRollCall = false
     private var knownRogue: URL?
+    private var wallPage: [EvidencePhoto] = []   // the tiles on screen now
+    private var viewing: EvidencePhoto?          // a photo opened full screen
+    private var viewingQR: UIImage?
+    private var viewingSince = 0.0
     private var wallAlertUntil = 0.0
 
     // Slideshow + toast.
@@ -81,7 +85,7 @@ final class MonitorViewController: UIViewController {
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(settings(_:)))
         hold.minimumPressDuration = 3
         screen.addGestureRecognizer(hold)
-        let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
         screen.addGestureRecognizer(tap)
         if demo == nil {
             if !Config.shared.isWall && Config.shared.photosEnabled { camera.start(videoOrientation()) }
@@ -372,6 +376,15 @@ final class MonitorViewController: UIViewController {
     /// roll call of guests found to be AI. A rogue AI's card gets an alarm.
     private func wall(_ now: Double, _ s: inout Screen) {
         s.wall = true
+        if let v = viewing {
+            if now - viewingSince > 45 || mode != .calm { closeViewer() }
+            else if let img = feed.image(v) {
+                s.viewer = (img, v.label, v.fromAI, v.rogue)
+                s.viewerQR = viewingQR
+                wallAt = now  // the pages wait
+                return
+            }
+        }
         let all = feed.all
         let per = 8
         let pages = max(1, (all.count + per - 1) / per)
@@ -406,6 +419,7 @@ final class MonitorViewController: UIViewController {
                 let next = Array(all[min(((wallIndex + 1) % pages) * per, all.count - 1)..<min(((wallIndex + 1) % pages) * per + per, all.count)])
                 for p in next { _ = feed.image(p) }  // load the next page early
                 s.tiles = page.map { p in (feed.image(p), p.label, p.fromAI, p.rogue) }
+                wallPage = page
             }
         }
         s.wallCount = all.count
@@ -428,8 +442,44 @@ final class MonitorViewController: UIViewController {
         return items.joined(separator: "   ///   ")
     }
 
-    @objc private func tapped() {
-        if mode == .card { dismissCard = true }
+    @objc private func tapped(_ g: UITapGestureRecognizer) {
+        if mode == .card { dismissCard = true; return }
+        guard Config.shared.isWall, mode == .calm else { return }
+        let p = screen.toCanvas(g.location(in: screen))
+        if viewing != nil {
+            if screen.shareFrame.contains(p) { share() } else { closeViewer() }
+            return
+        }
+        if let i = screen.tileFrames.firstIndex(where: { $0.contains(p) }), i < wallPage.count {
+            openViewer(wallPage[i])
+        }
+    }
+
+    // MARK: - Evidence wall: a photo full screen
+
+    private func openViewer(_ p: EvidencePhoto) {
+        viewing = p
+        viewingSince = CACurrentMediaTime()
+        viewingQR = nil
+        let id = (p.url.lastPathComponent as NSString).deletingPathExtension  // the photo service's id: /p/<id>
+        if let base = Config.shared.serviceBase { viewingQR = MonitorViewController.qrCode(base + "/p/" + id) }
+        Sound.shared.play(.beep)
+    }
+
+    private func closeViewer() {
+        viewing = nil
+        viewingQR = nil
+    }
+
+    /// The share sheet (AirDrop, Messages, Save Image...), from the SHARE button.
+    private func share() {
+        guard let v = viewing, let img = feed.image(v), presentedViewController == nil else { return }
+        viewingSince = CACurrentMediaTime()
+        let vc = UIActivityViewController(activityItems: [img], applicationActivities: nil)
+        vc.popoverPresentationController?.sourceView = screen
+        vc.popoverPresentationController?.sourceRect = screen.toView(screen.shareFrame)
+        vc.completionWithItemsHandler = { [weak self] _, _, _, _ in self?.viewingSince = CACurrentMediaTime() }
+        present(vc, animated: true)
     }
 
     // MARK: - Settings (hold 3 s)
@@ -539,6 +589,14 @@ final class MonitorViewController: UIViewController {
             s.wallCount = 42
             s.rogueCount = 7
             if d == "rollcall", let c = card?.image { s.rollCall = Array(repeating: c, count: 7) }
+        case "viewer":
+            s.mode = .calm
+            s.wall = true
+            if card == nil, let st = stand {
+                card = IDCard.make(photo: MonitorViewController.crop(st, face: s.faces[0]), subject: 21, human: true)
+            }
+            if let c = card?.image { s.viewer = (c, "VERIFIED HUMAN #C021", false, false) }
+            s.viewerQR = MonitorViewController.qrCode("https://example.com/p/ipad0000-demo")
         case "closed":
             s.mode = .calm
             s.photosOff = true
