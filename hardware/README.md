@@ -29,6 +29,7 @@ back stays reachable (USB ports, SD card, the UART/LED connector).
 | `channel_60mm_endcap.stl` | Channel with a closed end. |
 | `splice_25mm.stl` | Joins two strip ends. |
 | `saddle_clip.stl` | Saddle clip for crossing a seam. |
+| `badge_led_base.stl` | The researcher badge's LED base: clips onto the badge's bottom edge, two 3 mm LEDs light the clear layer's edge, a cradle for a 1 x CR2032 holder with switch (23.9 x 34.1 mm). See [badge/](badge/README.md). |
 
 ### ARM-7 armband mount (2.4" CYD + 2000 mAh battery, forearm)
 
@@ -101,6 +102,22 @@ sewn on through their flange holes.
 
 The ROGUE.AI visor goggles, in two sizes for different glasses:
 `rogue_ai_visor_glasses_A.svg` (+ `.ai` source) and `rogue_ai_visor_glasses_B.ai`.
+
+### LAB-7 researcher badge (edge-lit acrylic)
+
+<img src="../docs/images/badge-template.png" width="220" alt="The researcher badge, lit: LAB-7 CONTAINMENT DIVISION, photo window, name, CLEARANCE: OMEGA, barcode">
+
+The researcher's ID badge, 64 x 122 mm on a lanyard: 1/8" clear acrylic engraved
+from behind over 1/8" blue, a printed photo between them, and two LEDs in the
+printed base making the engraving glow. The files here are the **template**
+(placeholder name, no photo); make your own with your name and photo with
+[`badge/badge.py`](badge/README.md), which also writes the photo insert.
+
+| File | What |
+|---|---|
+| `badge_front_clear_MIRRORED.svg` | 1/8" clear. Red = cut, black = engrave; mirrored -- engrave the face that goes against the photo. |
+| `badge_back_blue_outer.svg` | 1/8" blue, engraved face up: the badge's back (the small print). |
+| `badge_back_blue_inner_pocket.svg` | The same piece flipped: a shallow pocket for the photo. |
 
 ## Wiring
 
