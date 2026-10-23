@@ -87,6 +87,9 @@ final class Camera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         lock.lock(); _faces = found; lock.unlock()
     }
 
+    func stop() { q.async { if self.session.isRunning { self.session.stopRunning() } } }
+    func resume() { q.async { if !self.session.isRunning && !self.session.inputs.isEmpty { self.session.startRunning() } } }
+
     /// The latest frame, as on screen.
     func snapshot() -> UIImage? {
         lock.lock(); let px = latest; lock.unlock()

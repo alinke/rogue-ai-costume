@@ -32,6 +32,11 @@ final class Config {
         get { str("sector", "SECTOR 3") }
         set { d.set(newValue.uppercased(), forKey: "sector") }
     }
+    /// This iPad's job: the checkpoint monitor, or the evidence wall (no camera).
+    var isWall: Bool {
+        get { str("role", "checkpoint") == "wall" }
+        set { d.set(newValue ? "wall" : "checkpoint", forKey: "role") }
+    }
     /// How often a guest comes out COMPROMISED (%).
     var compromisedPercent: Int { int("compromisedPercent", 20) }
     /// The costume's signal this strong (dBm): it's in the room -- intrusion.

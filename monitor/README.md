@@ -14,6 +14,19 @@ UIKit, **iOS 12+** -- an original iPad Air (iOS 12.5.8) works.
 
 Nothing to pair or change on the costume or scanners: the monitor only listens.
 
+## Two jobs: checkpoint or evidence wall
+
+Each iPad runs one of two roles (hold the screen 3 s → **Switch to: Evidence Wall /
+Checkpoint**; it remembers):
+
+- **Checkpoint** (above): the monitor with the camera and the humanity checkpoint.
+- **Evidence wall** (no camera): a big slideshow of every photo of the night, 7 s each;
+  a guest found to be AI gets a red **ROGUE AI IDENTIFIED** alert (with an alarm), and
+  every tenth slide a **ROGUE AI ROLL CALL** of everyone flagged so far. Beside it the
+  scoreboard, a **ROGUE.AI tracker** (radar: the costume's blip, nearer the centre the
+  stronger its signal, "IN THIS ROOM / NEARBY / ELSEWHERE"), its threat level and what
+  it's doing. The intrusion / beam / midnight screens happen here too.
+
 ## Settings
 
 `LabMonitor/Secrets.plist` (never committed -- copy `Secrets.example.plist`):

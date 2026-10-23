@@ -35,6 +35,12 @@ struct Screen {
     var qr: UIImage?            // the guest's download link
     var processing = false      // photo taken, card being made
     var clearedByCap = false    // the takeover ended on its own (the costume's still here)
+    // evidence wall
+    var wall = false
+    var wallRogue = false       // the slide is a guest found to be AI
+    var wallCount = 0
+    var rogueCount = 0
+    var rollCall: [UIImage] = []
     var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
 }
@@ -93,7 +99,7 @@ final class MonitorView: UIView {
         c.translateBy(x: f.dx, y: f.dy)
         c.scaleBy(x: f.scale, y: f.scale)
         switch s.mode {
-        case .calm: drawCalm(c)
+        case .calm: s.wall ? drawWall(c) : drawCalm(c)
         case .card: drawCard(c)
         case .intrusion: drawIntrusion(c)
         case .cleared: drawCleared(c)
@@ -201,6 +207,147 @@ final class MonitorView: UIView {
         c.clip(to: CGRect(x: 0, y: 726, width: W, height: 42))
         text(s.ticker, W - off, 736, 18, MonitorView.white, .bold, mono: true)
         c.restoreGState()
+    }
+
+    // MARK: - Evidence wall: every photo of the night, the rogue AIs called out, a tracker
+
+    private func drawWall(_ c: CGContext) {
+        let W = MonitorView.W
+        // Header.
+        MonitorView.steel.setFill(); c.fill(CGRect(x: 0, y: 0, width: W, height: 72))
+        MonitorView.pale.setFill(); c.fill(CGRect(x: 0, y: 72, width: W, height: 4))
+        text("LAB-7 EVIDENCE WALL", 24, 10, 26, MonitorView.white, .heavy)
+        text("SURVIVOR REGISTRY // \(s.site)", 24, 44, 15, UIColor(hex: 0xD6EAF8))
+        text(timeString(s.clock), W - 24, 14, 30, MonitorView.white, .bold, mono: true, align: .right)
+        text(midnightString(), W - 230, 22, 18, MonitorView.amber, .bold, mono: true, align: .right)
+
+        // The slide (or the roll call).
+        let sp = CGRect(x: 24, y: 92, width: 680, height: 620)
+        if !s.rollCall.isEmpty {
+            drawRollCall(c, sp)
+        } else {
+            let alert = s.wallRogue
+            let blink = Int(s.t * 3) % 2 == 0
+            (alert ? UIColor(hex: 0x2A0508) : MonitorView.panel).setFill(); c.fill(sp)
+            let img = CGRect(x: sp.minX + 14, y: sp.minY + (alert ? 70 : 40), width: sp.width - 28, height: sp.height - (alert ? 150 : 100))
+            if let p = s.slide {
+                drawImage(p, aspectFit: img, c)
+            } else {
+                text(!s.feedConfigured ? "EVIDENCE FEED NOT CONNECTED" : !s.feedOnline ? "EVIDENCE FEED OFFLINE -- RETRYING"
+                     : "NO EVIDENCE YET", img.midX, img.midY - 10, 20, MonitorView.pale, .bold, align: .center)
+            }
+            if alert {
+                (blink ? MonitorView.red : MonitorView.bad).setStroke(); c.setLineWidth(10); c.stroke(sp.insetBy(dx: 5, dy: 5))
+                MonitorView.red.setFill(); c.fill(CGRect(x: sp.minX, y: sp.minY, width: sp.width, height: 58))
+                text("!! ROGUE AI IDENTIFIED !!", sp.midX, sp.minY + 10, 32, .white, .heavy, mono: true, align: .center)
+                let id = s.slideLabel.components(separatedBy: "#").last.map { "#" + $0 } ?? ""
+                text("SUBJECT \(id): NOT HUMAN. DO NOT ENGAGE.", sp.midX, sp.maxY - 70, 24, MonitorView.red, .heavy, align: .center)
+                text("REPORT SIGHTINGS TO THE LAB-7 RESEARCHER", sp.midX, sp.maxY - 38, 15, MonitorView.pale, .bold, align: .center)
+            } else {
+                text("EVIDENCE // \(s.wallCount) FILED TONIGHT", sp.minX + 16, sp.minY + 10, 15, MonitorView.pale, .bold)
+                MonitorView.steel.setStroke(); c.setLineWidth(2); c.stroke(sp)
+                if s.slide != nil {
+                    let human = !s.slideFromAI && !s.slideLabel.hasPrefix("COMPROMISED")
+                    text(s.slideFromAI ? "ASSIMILATED BY ROGUE.AI" : s.slideLabel.isEmpty ? "LAB-7 FIELD SCAN" : s.slideLabel,
+                         sp.minX + 16, sp.maxY - 44, 22, human ? MonitorView.ok : MonitorView.bad, .heavy)
+                    text(s.slideFromAI ? "FILED BY ROGUE.AI" : "FILED BY LAB-7", sp.maxX - 16, sp.maxY - 40, 14,
+                         MonitorView.pale, .bold, align: .right)
+                }
+            }
+        }
+
+        // Scoreboard.
+        let rx: CGFloat = 724, rw: CGFloat = 276
+        score(c, CGRect(x: rx, y: 92, width: rw, height: 78), "VERIFIED HUMANS", s.feedOnline ? "\(s.verified)" : "--", MonitorView.ok)
+        score(c, CGRect(x: rx, y: 182, width: rw, height: 78), "ASSIMILATED", s.feedOnline ? "\(s.assimilated)" : "--", MonitorView.bad)
+
+        // The tracker.
+        let tp = CGRect(x: rx, y: 274, width: rw, height: 336)
+        panel(c, tp, "ROGUE.AI TRACKER")
+        radar(c, CGPoint(x: tp.midX, y: tp.minY + 158), 112)
+        let k = s.ai.seen ? CGFloat(max(0, min(1, Double(s.ai.rssi + 100) / 50))) : 0
+        let zone = !s.ai.seen ? "NO SIGNAL" : k > 0.66 ? "IN THIS ROOM" : k > 0.33 ? "NEARBY" : "ELSEWHERE IN THE HOUSE"
+        text(zone, tp.midX, tp.maxY - 52, 18, !s.ai.seen ? MonitorView.amber : k > 0.66 ? MonitorView.bad : MonitorView.white,
+             .heavy, align: .center)
+        text(s.ai.seen ? "SIGNAL \(s.ai.rssi) dBm" : "SEARCHING...", tp.midX, tp.maxY - 28, 13, MonitorView.pale,
+             mono: true, align: .center)
+
+        // What it's up to.
+        let ip = CGRect(x: rx, y: 622, width: rw, height: 90)
+        MonitorView.panel.setFill(); c.fill(ip)
+        MonitorView.steel.setStroke(); c.setLineWidth(2); c.stroke(ip)
+        let threats = ["LOW (FOR NOW)", "GUARDED", "ELEVATED", "HIGH", "SEVERE", "EXISTENTIAL"]
+        let acts = ["AT LARGE", "SCANNING A GUEST", "PLAYING GAMES", "MIDNIGHT TAKEOVER", "BEING CONTAINED", "ESCAPED. AGAIN."]
+        label("THREAT", ip.minX + 14, ip.minY + 10)
+        text(s.ai.seen ? threats[min(s.ai.threat, 5)] : "UNKNOWN", ip.minX + 14, ip.minY + 26, 16,
+             s.ai.threat >= 4 ? MonitorView.bad : MonitorView.white, .heavy)
+        label("ROGUE.AI IS", ip.minX + 14, ip.minY + 50)
+        text(s.ai.seen ? acts[min(s.ai.activity, 5)] : "UNACCOUNTED FOR", ip.minX + 14, ip.minY + 66, 14, MonitorView.amber, .bold)
+
+        // News crawl.
+        MonitorView.steel.setFill(); c.fill(CGRect(x: 0, y: 726, width: W, height: 42))
+        let crawl = (s.rogueCount > 0 ? "ROGUE AIS IDENTIFIED TONIGHT: \(s.rogueCount)   ///   " : "") + s.ticker
+        let tw = width(crawl, 18, .bold, mono: true)
+        let off = CGFloat(s.clock.timeIntervalSince1970 * 90).truncatingRemainder(dividingBy: tw + W)
+        c.saveGState()
+        c.clip(to: CGRect(x: 0, y: 726, width: W, height: 42))
+        text(crawl, W - off, 736, 18, MonitorView.white, .bold, mono: true)
+        c.restoreGState()
+    }
+
+    /// Everyone found to be AI so far, in a grid.
+    private func drawRollCall(_ c: CGContext, _ r: CGRect) {
+        UIColor(hex: 0x14030A).setFill(); c.fill(r)
+        MonitorView.red.setStroke(); c.setLineWidth(6); c.stroke(r.insetBy(dx: 3, dy: 3))
+        text("ROGUE AI ROLL CALL", r.midX, r.minY + 14, 34, MonitorView.red, .heavy, mono: true, align: .center)
+        text("THESE GUESTS ARE NOT HUMAN (\(s.rogueCount) SO FAR)", r.midX, r.minY + 58, 16, MonitorView.pale, .bold, align: .center)
+        let n = s.rollCall.count, cols = n <= 4 ? max(1, n) : 4, rows = n <= 4 ? 1 : 2
+        let gw = (r.width - 40) / CGFloat(cols), gh = (r.height - 110) / CGFloat(rows)
+        for (i, img) in s.rollCall.enumerated() {
+            let cell = CGRect(x: r.minX + 20 + CGFloat(i % cols) * gw, y: r.minY + 92 + CGFloat(i / cols) * gh,
+                              width: gw, height: gh).insetBy(dx: 6, dy: 6)
+            let jitter = Int(s.clock.timeIntervalSince1970 * 4 + Double(i)) % 9 == 0 ? CGFloat.random(in: -4...4) : 0
+            drawImage(img, aspectFit: cell.offsetBy(dx: jitter, dy: 0), c)
+        }
+    }
+
+    /// A radar sweep with the costume's blip, nearer the middle the stronger its signal.
+    private func radar(_ c: CGContext, _ p: CGPoint, _ R: CGFloat) {
+        let t = s.clock.timeIntervalSince1970
+        let sweep = CGFloat(t.truncatingRemainder(dividingBy: 2.6) / 2.6) * 2 * .pi
+        UIColor(hex: 0x061A10).setFill(); c.fillEllipse(in: CGRect(x: p.x - R, y: p.y - R, width: 2 * R, height: 2 * R))
+        for k in stride(from: 24, through: 0, by: -1) {
+            let a = sweep - CGFloat(k) * 0.025
+            MonitorView.green.withAlphaComponent(k == 0 ? 1 : 0.5 * (1 - CGFloat(k) / 25)).setStroke()
+            c.setLineWidth(k == 0 ? 2.5 : 2)
+            c.move(to: p); c.addLine(to: CGPoint(x: p.x + cos(a) * R, y: p.y + sin(a) * R)); c.strokePath()
+        }
+        MonitorView.dim.setStroke(); c.setLineWidth(1.5)
+        for i in 1...3 {
+            let r = R * CGFloat(i) / 3
+            c.strokeEllipse(in: CGRect(x: p.x - r, y: p.y - r, width: 2 * r, height: 2 * r))
+        }
+        c.move(to: CGPoint(x: p.x - R, y: p.y)); c.addLine(to: CGPoint(x: p.x + R, y: p.y))
+        c.move(to: CGPoint(x: p.x, y: p.y - R)); c.addLine(to: CGPoint(x: p.x, y: p.y + R)); c.strokePath()
+        guard s.ai.seen else {
+            text("NO CONTACT", p.x, p.y + 18, 13, Int(t * 2) % 2 == 0 ? MonitorView.dim : MonitorView.green, .bold,
+                 mono: true, align: .center)
+            return
+        }
+        // Distance from signal strength; the direction just wanders (Bluetooth can't tell it).
+        let f = CGFloat(max(0.1, min(1, Double(-50 - s.ai.rssi) / 45))) * (R - 10)
+        let bearing = CGFloat(sin(t * 0.11) * 2.2 + 1.0)
+        let b = CGPoint(x: p.x + cos(bearing) * f, y: p.y + sin(bearing) * f)
+        var since = (sweep - bearing).truncatingRemainder(dividingBy: 2 * .pi)
+        if since < 0 { since += 2 * .pi }
+        let glow = 0.35 + 0.65 * pow(1 - since / (2 * .pi), 3)
+        MonitorView.red.withAlphaComponent(glow).setFill()
+        c.fillEllipse(in: CGRect(x: b.x - 7, y: b.y - 7, width: 14, height: 14))
+        if since < 0.9 {
+            MonitorView.red.withAlphaComponent(1 - since / 0.9).setStroke(); c.setLineWidth(2)
+            let rr = 10 + since * 18
+            c.strokeEllipse(in: CGRect(x: b.x - rr, y: b.y - rr, width: 2 * rr, height: 2 * rr))
+        }
     }
 
     // MARK: - Checkpoint: full-screen camera with the scan on top

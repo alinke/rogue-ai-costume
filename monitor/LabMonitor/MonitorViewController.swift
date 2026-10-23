@@ -48,6 +48,14 @@ final class MonitorViewController: UIViewController {
     private var prevActivity = -1
     private var nextGlitchSound = 0.0
 
+    // Evidence wall: the slide shown, when it changed, and the roll call of AIs.
+    private var wallIndex = 0
+    private var wallAt = 0.0
+    private var wallSlides = 0
+    private var wallRollCall = false
+    private var wallShown: EvidencePhoto?
+    private var wallAlerted: URL?
+
     // Slideshow + toast.
     private var slide = 0
     private var slideAt = 0.0
@@ -76,7 +84,7 @@ final class MonitorViewController: UIViewController {
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
         screen.addGestureRecognizer(tap)
         if demo == nil {
-            camera.start(videoOrientation())
+            if !Config.shared.isWall { camera.start(videoOrientation()) }
             feed.start()
         }
         let l = CADisplayLink(target: self, selector: #selector(frame))
@@ -107,6 +115,8 @@ final class MonitorViewController: UIViewController {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         switch mode {
+        case _ where Config.shared.isWall:
+            camera.preview.isHidden = true
         case .calm:
             camera.preview.isHidden = false
             camera.preview.frame = screen.toView(MonitorView.thumb)
@@ -212,7 +222,7 @@ final class MonitorViewController: UIViewController {
         // The checkpoint.
         switch mode {
         case .calm:
-            if close && now >= cooldownUntil && !waitFaceGone && camera.available { faceHold += dt } else { faceHold = 0 }
+            if close && now >= cooldownUntil && !waitFaceGone && camera.available && !cfg.isWall { faceHold += dt } else { faceHold = 0 }
             if faceHold > 0.8 { startCheckpoint() }
         case .checkpoint:
             let t = now - modeStart
@@ -351,8 +361,47 @@ final class MonitorViewController: UIViewController {
         s.cardGroup = groupCount
         if now < toastUntil { s.toast = toast }
         s.ticker = ticker(ai)
+        if cfg.isWall { wall(now, &s) }
         screen.s = s
         screen.setNeedsDisplay()
+    }
+
+    /// The evidence wall: every photo in turn (7 s each); every tenth slide, the
+    /// roll call of guests found to be AI. A rogue AI's card gets an alarm.
+    private func wall(_ now: Double, _ s: inout Screen) {
+        s.wall = true
+        let all = feed.all
+        if now - wallAt > (wallRollCall ? 10 : 7) {
+            wallAt = now
+            if wallRollCall {
+                wallRollCall = false
+                wallIndex += 1
+            } else {
+                wallSlides += 1
+                if wallSlides % 10 == 0 && !feed.rogues.isEmpty { wallRollCall = true } else { wallIndex += 1 }
+            }
+        }
+        if !all.isEmpty {
+            // Load this one and the next few; show it once it's in (the last one until then).
+            for k in 0..<3 { _ = feed.image(all[(wallIndex + k) % all.count]) }
+            let p = all[wallIndex % all.count]
+            if feed.image(p) != nil { wallShown = p }
+        }
+        if let p = wallShown, let img = feed.image(p) {
+            s.slide = img
+            s.slideLabel = p.label
+            s.slideFromAI = p.fromAI
+            s.wallRogue = p.rogue && !wallRollCall
+            if s.wallRogue && wallAlerted != p.url && mode == .calm {
+                wallAlerted = p.url
+                Sound.shared.play(.fail)
+            }
+        }
+        s.wallCount = all.count
+        s.rogueCount = feed.rogues.count
+        if wallRollCall {
+            s.rollCall = feed.rogues.prefix(8).compactMap { feed.image($0) }
+        }
     }
 
     private func ticker(_ ai: AiState) -> String {
@@ -386,6 +435,13 @@ final class MonitorViewController: UIViewController {
                                   preferredStyle: .alert)
         a.addTextField { $0.text = cfg.sector; $0.placeholder = "Room name" }
         a.addTextField { $0.text = "\(cfg.intrusionDbm)"; $0.placeholder = "In-this-room dBm"; $0.keyboardType = .numbersAndPunctuation }
+        a.addAction(UIAlertAction(title: cfg.isWall ? "Switch to: Checkpoint" : "Switch to: Evidence Wall", style: .default) { _ in
+            cfg.isWall.toggle()
+            if cfg.isWall { self.camera.stop() } else if self.camera.available { self.camera.resume() }
+            else { self.camera.start(self.videoOrientation()) }
+            self.go(.calm)
+            self.placePreview()
+        })
         a.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         a.addAction(UIAlertAction(title: "Save", style: .default) { _ in
             if let s = a.textFields?[0].text, !s.isEmpty { cfg.sector = s }
@@ -453,6 +509,18 @@ final class MonitorViewController: UIViewController {
             s.card = card?.image
             s.cardGroup = 1
             s.subject = "TEST"
+        case "wall", "wallrogue", "rollcall":
+            s.mode = .calm
+            s.wall = true
+            if card == nil, let st = stand {
+                card = IDCard.make(photo: MonitorViewController.crop(st, face: s.faces[0]), subject: 17, human: d != "wallrogue" && d != "rollcall")
+            }
+            s.slide = card?.image
+            s.slideLabel = d == "wall" ? "VERIFIED HUMAN #C016" : "COMPROMISED #C017"
+            s.wallRogue = d == "wallrogue"
+            s.wallCount = 42
+            s.rogueCount = 7
+            if d == "rollcall", let c = card?.image { s.rollCall = Array(repeating: c, count: 7) }
         case "intrusion": s.mode = .intrusion; s.t = 6
         case "cleared": s.mode = .cleared; s.t = 3
         case "beam": s.mode = .beam; s.t = 2.5
