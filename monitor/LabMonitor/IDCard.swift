@@ -31,9 +31,14 @@ enum IDCard {
     struct Result { let image: UIImage, human: Bool, label: String }
 
     /// A checkpoint card: subject "C017", taken at this sector.
-    static func make(photo: UIImage, subject n: Int) -> Result {
+    /// Is the next guest human? (How often not: compromisedPercent.)
+    static func rollHuman() -> Bool { Int.random(in: 0..<100) >= Config.shared.compromisedPercent }
+
+    /// For a group: which one of them is the AI, or -1.
+    static func rollGroupAI(_ count: Int) -> Int { rollHuman() ? -1 : Int.random(in: 0..<count) }
+
+    static func make(photo: UIImage, subject n: Int, human: Bool) -> Result {
         let cfg = Config.shared
-        let human = Int.random(in: 0..<100) >= cfg.compromisedPercent
         let exposure = human ? Int.random(in: 2...29) : Int.random(in: 61...97)
         let pool = (human ? humanFindings : aiFindings).shuffled()
         let id = String(format: "C%03d", n)
@@ -45,10 +50,9 @@ enum IDCard {
 
     /// A group card: everyone in the frame boxed and tagged; at most one of
     /// them turns out to be the AI (with the same odds as a single guest).
-    static func makeGroup(frame: UIImage, faces: [CGRect], subject n: Int) -> Result {
+    static func makeGroup(frame: UIImage, faces: [CGRect], subject n: Int, aiIndex ai: Int) -> Result {
         let cfg = Config.shared
         let id = String(format: "C%03d", n)
-        let ai = Int.random(in: 0..<100) < cfg.compromisedPercent ? Int.random(in: 0..<faces.count) : -1
         let image = renderGroup(frame: frame, faces: faces, id: id, aiIndex: ai, sector: cfg.sector, site: cfg.siteText)
         let label = "\(ai >= 0 ? "COMPROMISED" : "VERIFIED HUMANS") #\(id) x\(faces.count)"
         return Result(image: image, human: ai < 0, label: label)

@@ -255,10 +255,14 @@ final class MonitorViewController: UIViewController {
         let group = Array(camera.faces.filter { $0.width >= 0.05 }.prefix(8)).sorted { $0.midX < $1.midX }  // left to right
         let face = lastFace
         // The lab behind them and the card take a moment: off the main thread.
+        // The result first: it picks the scene (an AI lands in the AI's world).
+        let aiIndex = group.count >= 2 ? IDCard.rollGroupAI(group.count) : -1
+        let human = group.count >= 2 ? aiIndex < 0 : IDCard.rollHuman()
+        let scene = Scene.pick(human: human)
         DispatchQueue.global(qos: .userInitiated).async {
-            let scene = Backdrop.apply(frame)
-            let r = group.count >= 2 ? IDCard.makeGroup(frame: scene, faces: group, subject: n)
-                : IDCard.make(photo: MonitorViewController.crop(scene, face: face), subject: n)
+            let shot = Backdrop.apply(frame, scene: scene)
+            let r = group.count >= 2 ? IDCard.makeGroup(frame: shot, faces: group, subject: n, aiIndex: aiIndex)
+                : IDCard.make(photo: MonitorViewController.crop(shot, face: face), subject: n, human: human)
             DispatchQueue.main.async {
                 let id = Uploader.shared.add(r.image, label: r.label)
                 self.groupCount = group.count >= 2 ? group.count : 0
@@ -404,7 +408,7 @@ final class MonitorViewController: UIViewController {
         case "checkpoint", "group": s.mode = .checkpoint; s.t = 1.6
         case "groupcard":
             s.mode = .card
-            if card == nil, let st = stand { card = IDCard.makeGroup(frame: st, faces: s.faces, subject: 18) }
+            if card == nil, let st = stand { card = IDCard.makeGroup(frame: st, faces: s.faces, subject: 18, aiIndex: -1) }
             s.card = card?.image
             s.cardHuman = card?.human ?? true
             s.cardGroup = 3
@@ -413,7 +417,9 @@ final class MonitorViewController: UIViewController {
         case "countdown": s.mode = .checkpoint; s.t = 4.2
         case "card":
             s.mode = .card
-            if card == nil, let st = stand { card = IDCard.make(photo: MonitorViewController.crop(st, face: s.faces[0]), subject: 17) }
+            if card == nil, let st = stand {
+                card = IDCard.make(photo: MonitorViewController.crop(st, face: s.faces[0]), subject: 17, human: true)
+            }
             s.card = card?.image
             s.cardHuman = card?.human ?? true
             s.qr = MonitorViewController.qrCode("https://example.com/p/ipad0000-demo")
@@ -421,11 +427,13 @@ final class MonitorViewController: UIViewController {
             s.mode = .card
             if card == nil {
                 let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                if let bg = Backdrop.backdrop(CGSize(width: 1280, height: 720)) {  // for checking on a Mac
-                    try? UIImage(cgImage: bg).pngData()?.write(to: docs.appendingPathComponent("backdrop.png"))
+                for (i, sc) in Scene.allCases.enumerated() {  // for checking on a Mac
+                    if let bg = Backdrop.image(sc, CGSize(width: 1280, height: 720)) {
+                        try? UIImage(cgImage: bg).pngData()?.write(to: docs.appendingPathComponent("scene\(i).png"))
+                    }
                 }
                 if let img = UIImage(contentsOfFile: docs.appendingPathComponent("test.jpg").path) {
-                    card = IDCard.Result(image: Backdrop.apply(img), human: true, label: "")
+                    card = IDCard.Result(image: Backdrop.apply(img, scene: .eye), human: true, label: "")
                 }
             }
             s.card = card?.image
