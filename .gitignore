@@ -15,3 +15,6 @@ ios/build/
 # The iPad monitor: your photo service / site / room settings (see monitor/README.md)
 monitor/LabMonitor/Secrets.plist
 monitor/**/xcuserdata/
+
+# The researcher badge with a real name and photo (hardware/badge/README.md)
+hardware/badge/private/
