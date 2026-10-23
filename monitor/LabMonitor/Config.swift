@@ -48,8 +48,14 @@ final class Config {
     var clearDbm: Int { intrusionDbm - 10 }
     /// The longest a takeover lasts (s), and how long before it can happen again
     /// after that -- unless the costume leaves first (out of range for 10 s).
-    var intrusionMaxSeconds: Int { int("intrusionMaxSeconds", 25) }
-    var intrusionCooldownSeconds: Int { int("intrusionCooldownSeconds", 120) }
+    var intrusionMaxSeconds: Int {
+        get { int("intrusionMaxSeconds", 25) }
+        set { d.set(newValue, forKey: "intrusionMaxSeconds") }
+    }
+    var intrusionCooldownSeconds: Int {
+        get { int("intrusionCooldownSeconds", 120) }
+        set { d.set(newValue, forKey: "intrusionCooldownSeconds") }
+    }
 
     var serviceBase: String? {
         var b = serviceURL.trimmingCharacters(in: .whitespaces)

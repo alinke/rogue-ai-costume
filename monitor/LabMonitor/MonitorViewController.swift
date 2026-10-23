@@ -430,11 +430,14 @@ final class MonitorViewController: UIViewController {
         let cfg = Config.shared
         let a = UIAlertController(title: "LAB-7 Monitor",
                                   message: "Costume signal now: \(radio.ai.seen ? "\(radio.ai.rssi) dBm" : "not seen"). "
-                                      + "It counts as 'in this room' at the dBm below (closer to 0 = it must come closer). "
+                                      + "Fields: room name; 'in this room' dBm (closer to 0 = it must come closer); "
+                                      + "takeover length and cooldown, in seconds. "
                                       + "Upload: \(cfg.uploadConfigured ? "on, \(Uploader.shared.pending) waiting" : "off").",
                                   preferredStyle: .alert)
         a.addTextField { $0.text = cfg.sector; $0.placeholder = "Room name" }
         a.addTextField { $0.text = "\(cfg.intrusionDbm)"; $0.placeholder = "In-this-room dBm"; $0.keyboardType = .numbersAndPunctuation }
+        a.addTextField { $0.text = "\(cfg.intrusionMaxSeconds)"; $0.placeholder = "Takeover length (s)"; $0.keyboardType = .numberPad }
+        a.addTextField { $0.text = "\(cfg.intrusionCooldownSeconds)"; $0.placeholder = "Takeover cooldown (s)"; $0.keyboardType = .numberPad }
         a.addAction(UIAlertAction(title: cfg.isWall ? "Switch to: Checkpoint" : "Switch to: Evidence Wall", style: .default) { _ in
             cfg.isWall.toggle()
             if cfg.isWall { self.camera.stop() } else if self.camera.available { self.camera.resume() }
@@ -446,6 +449,8 @@ final class MonitorViewController: UIViewController {
         a.addAction(UIAlertAction(title: "Save", style: .default) { _ in
             if let s = a.textFields?[0].text, !s.isEmpty { cfg.sector = s }
             if let v = Int(a.textFields?[1].text ?? ""), v < 0 { cfg.intrusionDbm = v }
+            if let v = Int(a.textFields?[2].text ?? ""), v >= 5 { cfg.intrusionMaxSeconds = v }
+            if let v = Int(a.textFields?[3].text ?? ""), v >= 0 { cfg.intrusionCooldownSeconds = v }
         })
         present(a, animated: true)
     }
