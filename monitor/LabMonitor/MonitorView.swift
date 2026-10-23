@@ -34,6 +34,7 @@ struct Screen {
     var toast: String?
     var qr: UIImage?            // the guest's download link
     var processing = false      // photo taken, card being made
+    var clearedByCap = false    // the takeover ended on its own (the costume's still here)
     var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
 }
@@ -328,6 +329,12 @@ final class MonitorView: UIView {
 
     private func drawCleared(_ c: CGContext) {
         let W = MonitorView.W
+        if s.clearedByCap {
+            text("SIGNAL LOST", W / 2, 230, 64, MonitorView.ok, .heavy, align: .center)
+            text("LAB-7 SYSTEMS RESTORED IN \(s.sector)", W / 2, 330, 26, MonitorView.pale, .bold, align: .center)
+            if s.t > 1.5 { text("THE AI LOST INTEREST... FOR NOW.", W / 2, 420, 40, MonitorView.amber, .heavy, align: .center) }
+            return
+        }
         text("ANOMALY CLEARED", W / 2, 230, 64, MonitorView.ok, .heavy, align: .center)
         text("TARGET HAS LEFT \(s.sector)", W / 2, 330, 26, MonitorView.pale, .bold, align: .center)
         if s.t > 1.5 { text("IT'S STILL OUT THERE.", W / 2, 420, 40, MonitorView.amber, .heavy, align: .center) }

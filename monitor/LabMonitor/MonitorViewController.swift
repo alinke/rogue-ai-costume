@@ -42,6 +42,8 @@ final class MonitorViewController: UIViewController {
 
     // The costume.
     private var closeSince: Double?
+    private var intrusionArmedAt = 0.0
+    private var clearedByCap = false
     private var farSince: Double?
     private var prevActivity = -1
     private var nextGlitchSound = 0.0
@@ -182,13 +184,24 @@ final class MonitorViewController: UIViewController {
         let away = !ai.seen || ai.rssi < cfg.clearDbm
         closeSince = near ? (closeSince ?? now) : nil
         farSince = away ? (farSince ?? now) : nil
-        if [.calm, .checkpoint, .card, .cleared].contains(mode), let c = closeSince, now - c > 1.5 {
+        // After a capped takeover it waits out the cooldown -- or until the costume
+        // has really left (out of range for 10 s), so coming back triggers it fresh.
+        if let f = farSince, now - f > 10 { intrusionArmedAt = min(intrusionArmedAt, now) }
+        if [.calm, .checkpoint, .card, .cleared].contains(mode), let c = closeSince, now - c > 1.5,
+           now >= intrusionArmedAt {
             abortCheckpoint(); go(.intrusion); Sound.shared.play(.fail)
             nextGlitchSound = now + 2
+            clearedByCap = false
         }
         if mode == .intrusion {
             if let f = farSince, now - f > 4 {
                 go(.cleared); Sound.shared.play(.lock)
+                intrusionArmedAt = now + 10
+            } else if now - modeStart > Double(cfg.intrusionMaxSeconds) {
+                // Long enough: give the room (and the checkpoint) back.
+                clearedByCap = true
+                go(.cleared); Sound.shared.play(.lock)
+                intrusionArmedAt = now + Double(cfg.intrusionCooldownSeconds)
             } else if now > nextGlitchSound {
                 Sound.shared.play(Bool.random() ? .beep : .fail)
                 nextGlitchSound = now + Double.random(in: 1.5...4)
@@ -330,6 +343,7 @@ final class MonitorViewController: UIViewController {
         s.findings = findings
         s.flash = mode == .checkpoint && captured && now - capturedAt < 0.3
         s.processing = mode == .checkpoint && captured
+        s.clearedByCap = clearedByCap
         s.card = card?.image
         s.cardHuman = card?.human ?? true
         s.uploadConfigured = cfg.uploadConfigured
