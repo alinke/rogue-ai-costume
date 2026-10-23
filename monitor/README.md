@@ -35,7 +35,7 @@ name, how often guests come out COMPROMISED, and how strong the costume's
 signal must be to count as "in this room" (`intrusionDbm`, default -62).
 Without it the monitor runs with no evidence feed, and scans stay on the iPad.
 
-At the party: **hold the screen for 3 seconds** to switch the checkpoint's photos off or on
+At the party: **hold the screen for 3 seconds** to switch the signal takeover off or on (default on), the checkpoint's photos off or on
 (off: camera off, "CHECKPOINT CLOSED"), and to change the room name, the takeover length and cooldown, and the
 "in this room" signal strength (it shows the costume's signal right now --
 stand where the AI would be "in the room" and read it off).

@@ -198,11 +198,12 @@ final class MonitorViewController: UIViewController {
         // has really left (out of range for 10 s), so coming back triggers it fresh.
         if let f = farSince, now - f > 10 { intrusionArmedAt = min(intrusionArmedAt, now) }
         if [.calm, .checkpoint, .card, .cleared].contains(mode), let c = closeSince, now - c > 1.5,
-           now >= intrusionArmedAt {
+           now >= intrusionArmedAt, cfg.takeoverEnabled {
             abortCheckpoint(); go(.intrusion); Sound.shared.play(.fail)
             nextGlitchSound = now + 2
             clearedByCap = false
         }
+        if mode == .intrusion && !cfg.takeoverEnabled { go(.calm) }  // switched off mid-takeover
         if mode == .intrusion {
             if let f = farSince, now - f > 4 {
                 go(.cleared); Sound.shared.play(.lock)

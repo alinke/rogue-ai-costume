@@ -49,6 +49,11 @@ final class Config {
         get { d.object(forKey: "photos") != nil ? d.bool(forKey: "photos") : (secrets["photosEnabled"] as? Bool) ?? true }
         set { d.set(newValue, forKey: "photos") }
     }
+    /// The AI can take over the screen when the costume comes close (default on).
+    var takeoverEnabled: Bool {
+        get { d.object(forKey: "takeover") != nil ? d.bool(forKey: "takeover") : (secrets["takeoverEnabled"] as? Bool) ?? true }
+        set { d.set(newValue, forKey: "takeover") }
+    }
     /// How often a guest comes out COMPROMISED (%).
     var compromisedPercent: Int { int("compromisedPercent", 20) }
     /// The costume's signal this strong (dBm): it's in the room -- intrusion.

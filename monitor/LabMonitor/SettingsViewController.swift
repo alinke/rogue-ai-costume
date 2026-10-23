@@ -13,6 +13,7 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
     private let room = UITextField(), dbm = UITextField(), length = UITextField(), cooldown = UITextField()
     private let role = UISegmentedControl(items: ["Checkpoint", "Evidence Wall"])
     private let photos = UISwitch()
+    private let takeover = UISwitch()
     private let signal = UILabel()
     private var timer: Timer?
 
@@ -22,7 +23,7 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = bg
-        preferredContentSize = CGSize(width: 560, height: 640)
+        preferredContentSize = CGSize(width: 560, height: 700)
 
         let title = label("LAB-7 MONITOR SETTINGS", size: 22, weight: .heavy, color: white)
         signal.font = UIFont(name: "Menlo-Bold", size: 15) ?? .systemFont(ofSize: 15)
@@ -37,6 +38,8 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
         if #available(iOS 13.0, *) { role.selectedSegmentTintColor = pale }
         photos.isOn = cfg.photosEnabled
         photos.onTintColor = UIColor(hex: 0x2ECC71)
+        takeover.isOn = cfg.takeoverEnabled
+        takeover.onTintColor = UIColor(hex: 0x2ECC71)
 
         field(room, cfg.sector, "e.g. KITCHEN", caps: true)
         field(dbm, "\(cfg.intrusionDbm)", "-62", numbers: true)
@@ -48,6 +51,7 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
             signal,
             row("THIS IPAD IS", "The checkpoint (camera, ID cards) or the evidence wall (slideshow, tracker).", role),
             row("CHECKPOINT PHOTOS", "Off: camera off, the checkpoint shows as closed.", photos),
+            row("SIGNAL TAKEOVER", "The AI hijacks this screen when the costume comes close. Off: never.", takeover),
             row("ROOM NAME", "Shown on screen and on the cards.", room),
             row("IN-THIS-ROOM SIGNAL (dBm)", "The costume counts as in the room at this strength or stronger. Closer to 0 = it must come closer.", dbm),
             row("TAKEOVER LENGTH (s)", "How long the AI hijacks the screen. 5 or more.", length),
@@ -107,6 +111,7 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
     @objc private func saveTapped() {
         cfg.isWall = role.selectedSegmentIndex == 1
         cfg.photosEnabled = photos.isOn
+        cfg.takeoverEnabled = takeover.isOn
         if let s = room.text?.trimmingCharacters(in: .whitespaces), !s.isEmpty { cfg.sector = s }
         if let v = Int(dbm.text ?? ""), v < 0 { cfg.intrusionDbm = v }
         if let v = Int(length.text ?? ""), v >= 5 { cfg.intrusionMaxSeconds = v }
