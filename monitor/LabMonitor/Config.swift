@@ -9,6 +9,13 @@ final class Config {
     private let d = UserDefaults.standard
 
     private init() {
+        // The takeover's default went from 25 s to 5 s: an old saved 25 follows it, once.
+        if !UserDefaults.standard.bool(forKey: "migrated5s") {
+            if UserDefaults.standard.integer(forKey: "intrusionMaxSeconds") == 25 {
+                UserDefaults.standard.removeObject(forKey: "intrusionMaxSeconds")
+            }
+            UserDefaults.standard.set(true, forKey: "migrated5s")
+        }
         if let url = Bundle.main.url(forResource: "Secrets", withExtension: "plist"),
            let dict = NSDictionary(contentsOf: url) as? [String: Any] {
             secrets = dict
@@ -37,6 +44,11 @@ final class Config {
         get { str("role", "checkpoint") == "wall" }
         set { d.set(newValue ? "wall" : "checkpoint", forKey: "role") }
     }
+    /// The checkpoint takes pictures (off: camera off, checkpoint closed).
+    var photosEnabled: Bool {
+        get { d.object(forKey: "photos") != nil ? d.bool(forKey: "photos") : (secrets["photosEnabled"] as? Bool) ?? true }
+        set { d.set(newValue, forKey: "photos") }
+    }
     /// How often a guest comes out COMPROMISED (%).
     var compromisedPercent: Int { int("compromisedPercent", 20) }
     /// The costume's signal this strong (dBm): it's in the room -- intrusion.
@@ -49,7 +61,7 @@ final class Config {
     /// The longest a takeover lasts (s), and how long before it can happen again
     /// after that -- unless the costume leaves first (out of range for 10 s).
     var intrusionMaxSeconds: Int {
-        get { int("intrusionMaxSeconds", 25) }
+        get { int("intrusionMaxSeconds", 5) }
         set { d.set(newValue, forKey: "intrusionMaxSeconds") }
     }
     var intrusionCooldownSeconds: Int {

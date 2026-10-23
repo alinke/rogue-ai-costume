@@ -84,7 +84,7 @@ final class MonitorViewController: UIViewController {
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
         screen.addGestureRecognizer(tap)
         if demo == nil {
-            if !Config.shared.isWall { camera.start(videoOrientation()) }
+            if !Config.shared.isWall && Config.shared.photosEnabled { camera.start(videoOrientation()) }
             feed.start()
         }
         let l = CADisplayLink(target: self, selector: #selector(frame))
@@ -115,7 +115,7 @@ final class MonitorViewController: UIViewController {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         switch mode {
-        case _ where Config.shared.isWall:
+        case _ where Config.shared.isWall || !Config.shared.photosEnabled:
             camera.preview.isHidden = true
         case .calm:
             camera.preview.isHidden = false
@@ -222,7 +222,7 @@ final class MonitorViewController: UIViewController {
         // The checkpoint.
         switch mode {
         case .calm:
-            if close && now >= cooldownUntil && !waitFaceGone && camera.available && !cfg.isWall { faceHold += dt } else { faceHold = 0 }
+            if close && now >= cooldownUntil && !waitFaceGone && camera.available && !cfg.isWall && cfg.photosEnabled { faceHold += dt } else { faceHold = 0 }
             if faceHold > 0.8 { startCheckpoint() }
         case .checkpoint:
             let t = now - modeStart
@@ -347,7 +347,8 @@ final class MonitorViewController: UIViewController {
             s.slideLabel = p.label
             s.slideFromAI = p.fromAI
         }
-        s.cameraOn = camera.available
+        s.cameraOn = camera.available && cfg.photosEnabled
+        s.photosOff = !cfg.photosEnabled
         s.faces = faces
         s.subject = subject
         s.findings = findings
@@ -414,6 +415,7 @@ final class MonitorViewController: UIViewController {
             "CONTAINMENT ATTEMPTS: \(ai.seen ? "\(ai.contained)" : "--") // SUCCESSFUL: 0",
             "IF THE AI OFFERS YOU A GAME: DO NOT PLAY",
         ]
+        if !cfg.photosEnabled || cfg.isWall { items.removeAll { $0.contains("CHECKPOINT") } }
         if feed.online { items.insert("VERIFIED HUMANS: \(feed.verified) // ASSIMILATED: \(feed.assimilated)", at: 1) }
         if cfg.uploadConfigured { items.append("FIND YOUR SCAN AT \(cfg.siteText)") }
         return items.joined(separator: "   ///   ")
@@ -440,9 +442,19 @@ final class MonitorViewController: UIViewController {
         a.addTextField { $0.text = "\(cfg.intrusionCooldownSeconds)"; $0.placeholder = "Takeover cooldown (s)"; $0.keyboardType = .numberPad }
         a.addAction(UIAlertAction(title: cfg.isWall ? "Switch to: Checkpoint" : "Switch to: Evidence Wall", style: .default) { _ in
             cfg.isWall.toggle()
-            if cfg.isWall { self.camera.stop() } else if self.camera.available { self.camera.resume() }
+            if cfg.isWall || !cfg.photosEnabled { self.camera.stop() } else if self.camera.available { self.camera.resume() }
             else { self.camera.start(self.videoOrientation()) }
             self.go(.calm)
+            self.placePreview()
+        })
+        a.addAction(UIAlertAction(title: cfg.photosEnabled ? "Photos: ON -- turn off" : "Photos: OFF -- turn on", style: .default) { _ in
+            cfg.photosEnabled.toggle()
+            if !cfg.photosEnabled {
+                if self.mode == .checkpoint { self.go(.calm) }
+                self.camera.stop()
+            } else if !cfg.isWall {
+                if self.camera.available { self.camera.resume() } else { self.camera.start(self.videoOrientation()) }
+            }
             self.placePreview()
         })
         a.addAction(UIAlertAction(title: "Cancel", style: .cancel))

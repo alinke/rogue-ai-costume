@@ -34,6 +34,7 @@ struct Screen {
     var toast: String?
     var qr: UIImage?            // the guest's download link
     var processing = false      // photo taken, card being made
+    var photosOff = false       // the checkpoint is closed
     var clearedByCap = false    // the takeover ended on its own (the costume's still here)
     // evidence wall
     var wall = false
@@ -167,13 +168,15 @@ final class MonitorView: UIView {
         if let st = s.stand { drawImage(st, aspectFill: r, c) }
         if !s.cameraOn && s.stand == nil {
             MonitorView.panel.setFill(); c.fill(r)
-            text("CAMERA OFFLINE", r.midX, r.midY - 10, 16, MonitorView.pale, .bold, align: .center)
+            text(s.photosOff ? "CHECKPOINT CLOSED" : "CAMERA OFFLINE", r.midX, r.midY - 10, 16, MonitorView.pale, .bold,
+                 align: .center)
         }
         faceBoxes(c, in: r, label: nil)
         UIColor.black.withAlphaComponent(0.55).setFill()
         c.fill(CGRect(x: r.minX, y: r.maxY - 30, width: r.width, height: 30))
         let blink = Int(s.t * 2) % 2 == 0
-        text(s.faces.isEmpty ? "STEP UP: PROVE YOU'RE HUMAN" : s.faces.count > 1 ? "GROUPS: COME CLOSER" : "COME CLOSER",
+        text(s.photosOff ? "BY ORDER OF LAB-7" : s.faces.isEmpty ? "STEP UP: PROVE YOU'RE HUMAN"
+             : s.faces.count > 1 ? "GROUPS: COME CLOSER" : "COME CLOSER",
              r.midX, r.maxY - 25, 16,
              blink ? MonitorView.white : MonitorView.pale, .bold, align: .center)
         MonitorView.pale.setStroke(); c.setLineWidth(2); c.stroke(r)
