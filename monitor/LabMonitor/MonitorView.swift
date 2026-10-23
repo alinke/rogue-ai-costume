@@ -163,13 +163,30 @@ final class MonitorView: UIView {
         text("SUCCESSFUL: 0", x + 288, y + 30, 15, MonitorView.bad, .bold, align: .right)
 
         // Checkpoint camera.
-        text("HUMANITY CHECKPOINT: ARE YOU AN AI?", 24, 448, 14, MonitorView.pale, .bold)
+        text(s.photosOff ? "HUMANITY CHECKPOINT // CLOSED" : "HUMANITY CHECKPOINT: ARE YOU AN AI?", 24, 448, 14,
+             s.photosOff ? MonitorView.amber : MonitorView.pale, .bold)
         let r = MonitorView.thumb
         if let st = s.stand { drawImage(st, aspectFill: r, c) }
         if !s.cameraOn && s.stand == nil {
             MonitorView.panel.setFill(); c.fill(r)
-            text(s.photosOff ? "CHECKPOINT CLOSED" : "CAMERA OFFLINE", r.midX, r.midY - 10, 16, MonitorView.pale, .bold,
-                 align: .center)
+            if s.photosOff {
+                // A targeting reticle, centred and dimmed: the scanner is off.
+                let rc = CGRect(x: r.midX - 46, y: r.midY - 70, width: 92, height: 92)
+                MonitorView.ok.withAlphaComponent(0.45).setStroke()
+                c.setLineWidth(2)
+                let l: CGFloat = 22
+                for (x, y, sx, sy) in [(rc.minX, rc.minY, 1.0, 1.0), (rc.maxX, rc.minY, -1.0, 1.0),
+                                       (rc.minX, rc.maxY, 1.0, -1.0), (rc.maxX, rc.maxY, -1.0, -1.0)] {
+                    c.move(to: CGPoint(x: x + CGFloat(sx) * l, y: y)); c.addLine(to: CGPoint(x: x, y: y))
+                    c.addLine(to: CGPoint(x: x, y: y + CGFloat(sy) * l))
+                }
+                c.move(to: CGPoint(x: rc.midX - 12, y: rc.midY)); c.addLine(to: CGPoint(x: rc.midX + 12, y: rc.midY))
+                c.move(to: CGPoint(x: rc.midX, y: rc.midY - 12)); c.addLine(to: CGPoint(x: rc.midX, y: rc.midY + 12))
+                c.strokePath()
+                text("CHECKPOINT CLOSED", r.midX, rc.maxY + 14, 18, MonitorView.amber, .heavy, align: .center)
+            } else {
+                text("CAMERA OFFLINE", r.midX, r.midY - 10, 16, MonitorView.pale, .bold, align: .center)
+            }
         }
         faceBoxes(c, in: r, label: nil)
         UIColor.black.withAlphaComponent(0.55).setFill()
@@ -198,7 +215,7 @@ final class MonitorView: UIView {
                  .bold, align: .right)
         } else {
             let msg = !s.feedConfigured ? "EVIDENCE FEED NOT CONNECTED" : !s.feedOnline ? "EVIDENCE FEED OFFLINE -- RETRYING"
-                : "NO EVIDENCE YET. STEP UP TO THE CHECKPOINT."
+                : s.photosOff ? "NO EVIDENCE YET." : "NO EVIDENCE YET. STEP UP TO THE CHECKPOINT."
             text(msg, img.midX, img.midY - 10, 18, MonitorView.pale, .bold, align: .center)
         }
 

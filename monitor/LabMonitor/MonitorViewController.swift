@@ -349,7 +349,7 @@ final class MonitorViewController: UIViewController {
         }
         s.cameraOn = camera.available && cfg.photosEnabled
         s.photosOff = !cfg.photosEnabled
-        s.faces = faces
+        s.faces = cfg.photosEnabled && !cfg.isWall ? faces : []
         s.subject = subject
         s.findings = findings
         s.flash = mode == .checkpoint && captured && now - capturedAt < 0.3
@@ -429,42 +429,29 @@ final class MonitorViewController: UIViewController {
 
     @objc private func settings(_ g: UILongPressGestureRecognizer) {
         guard g.state == .began, presentedViewController == nil else { return }
+        let vc = SettingsViewController()
+        vc.modalPresentationStyle = .formSheet
+        vc.liveSignal = { [weak self] in
+            guard let ai = self?.radio.ai, ai.seen else { return "NOT SEEN" }
+            return "\(ai.rssi) dBm"
+        }
+        vc.onSave = { [weak self] in self?.applySettings() }
+        present(vc, animated: true)
+    }
+
+    /// After Save: the camera follows the role and the photos switch.
+    private func applySettings() {
         let cfg = Config.shared
-        let a = UIAlertController(title: "LAB-7 Monitor",
-                                  message: "Costume signal now: \(radio.ai.seen ? "\(radio.ai.rssi) dBm" : "not seen"). "
-                                      + "Fields: room name; 'in this room' dBm (closer to 0 = it must come closer); "
-                                      + "takeover length and cooldown, in seconds. "
-                                      + "Upload: \(cfg.uploadConfigured ? "on, \(Uploader.shared.pending) waiting" : "off").",
-                                  preferredStyle: .alert)
-        a.addTextField { $0.text = cfg.sector; $0.placeholder = "Room name" }
-        a.addTextField { $0.text = "\(cfg.intrusionDbm)"; $0.placeholder = "In-this-room dBm"; $0.keyboardType = .numbersAndPunctuation }
-        a.addTextField { $0.text = "\(cfg.intrusionMaxSeconds)"; $0.placeholder = "Takeover length (s)"; $0.keyboardType = .numberPad }
-        a.addTextField { $0.text = "\(cfg.intrusionCooldownSeconds)"; $0.placeholder = "Takeover cooldown (s)"; $0.keyboardType = .numberPad }
-        a.addAction(UIAlertAction(title: cfg.isWall ? "Switch to: Checkpoint" : "Switch to: Evidence Wall", style: .default) { _ in
-            cfg.isWall.toggle()
-            if cfg.isWall || !cfg.photosEnabled { self.camera.stop() } else if self.camera.available { self.camera.resume() }
-            else { self.camera.start(self.videoOrientation()) }
-            self.go(.calm)
-            self.placePreview()
-        })
-        a.addAction(UIAlertAction(title: cfg.photosEnabled ? "Photos: ON -- turn off" : "Photos: OFF -- turn on", style: .default) { _ in
-            cfg.photosEnabled.toggle()
-            if !cfg.photosEnabled {
-                if self.mode == .checkpoint { self.go(.calm) }
-                self.camera.stop()
-            } else if !cfg.isWall {
-                if self.camera.available { self.camera.resume() } else { self.camera.start(self.videoOrientation()) }
-            }
-            self.placePreview()
-        })
-        a.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        a.addAction(UIAlertAction(title: "Save", style: .default) { _ in
-            if let s = a.textFields?[0].text, !s.isEmpty { cfg.sector = s }
-            if let v = Int(a.textFields?[1].text ?? ""), v < 0 { cfg.intrusionDbm = v }
-            if let v = Int(a.textFields?[2].text ?? ""), v >= 5 { cfg.intrusionMaxSeconds = v }
-            if let v = Int(a.textFields?[3].text ?? ""), v >= 0 { cfg.intrusionCooldownSeconds = v }
-        })
-        present(a, animated: true)
+        if cfg.isWall || !cfg.photosEnabled {
+            if mode == .checkpoint { go(.calm) }
+            camera.stop()
+        } else if camera.available {
+            camera.resume()
+        } else {
+            camera.start(videoOrientation())
+        }
+        go(.calm)
+        placePreview()
     }
 
     // MARK: - Demo (simulator screenshots)
@@ -538,6 +525,20 @@ final class MonitorViewController: UIViewController {
             s.wallCount = 42
             s.rogueCount = 7
             if d == "rollcall", let c = card?.image { s.rollCall = Array(repeating: c, count: 7) }
+        case "closed":
+            s.mode = .calm
+            s.photosOff = true
+            s.cameraOn = false
+            s.stand = nil
+            s.faces = []
+        case "settings":
+            s.mode = .calm
+            if presentedViewController == nil {
+                let vc = SettingsViewController()
+                vc.modalPresentationStyle = .formSheet
+                vc.liveSignal = { "-71 dBm" }
+                present(vc, animated: false)
+            }
         case "intrusion": s.mode = .intrusion; s.t = 6
         case "cleared": s.mode = .cleared; s.t = 3
         case "beam": s.mode = .beam; s.t = 2.5
