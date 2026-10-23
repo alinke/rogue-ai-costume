@@ -33,6 +33,7 @@ struct Screen {
     var uploadConfigured = false
     var toast: String?
     var qr: UIImage?            // the guest's download link
+    var processing = false      // photo taken, card being made
     var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
 }
@@ -240,7 +241,13 @@ final class MonitorView: UIView {
         MonitorView.ok.setFill(); c.fill(CGRect(x: p.minX + 14, y: p.maxY - 30, width: (p.width - 28) * prog, height: 12))
         }
         // Countdown: make it obvious a photo is about to be taken.
-        if s.t >= 3 {
+        if s.processing {
+            MonitorView.bg.withAlphaComponent(0.85).setFill()
+            c.fill(CGRect(x: 0, y: H - 150, width: W, height: 150))
+            text("ANALYSING" + String(repeating: ".", count: Int(s.t * 3) % 4), W / 2, H - 140, 40, MonitorView.white, .heavy,
+                 align: .center)
+            text("FILING YOUR SCAN WITH LAB-7", W / 2, H - 82, 20, MonitorView.pale, .bold, align: .center)
+        } else if s.t >= 3 {
             let n = max(1, 3 - Int(s.t - 3))
             MonitorView.bg.withAlphaComponent(0.8).setFill()
             c.fill(CGRect(x: 0, y: H - 150, width: W, height: 150))

@@ -38,6 +38,7 @@ final class MonitorViewController: UIViewController {
     private var qr: UIImage?
     private var groupCount = 0
     private var dismissCard = false
+    private var capturedAt = 0.0
 
     // The costume.
     private var closeSince: Double?
@@ -247,25 +248,27 @@ final class MonitorViewController: UIViewController {
     /// The photo: the latest frame, cropped to the face, onto an ID card, into the upload queue.
     private func capture() {
         captured = true
+        capturedAt = CACurrentMediaTime()
         Sound.shared.play(.zap)
         guard let frame = camera.snapshot() else { return }
         let n = Int(subject.dropFirst()) ?? 0
-        let group = Array(camera.faces.filter { $0.width >= 0.05 }.prefix(8))
-        let r: IDCard.Result
-        if group.count >= 2 {
-            // Left to right, as people stand.
-            r = IDCard.makeGroup(frame: frame, faces: group.sorted { $0.midX < $1.midX }, subject: n)
-            groupCount = group.count
-        } else {
-            r = IDCard.make(photo: MonitorViewController.crop(frame, face: lastFace), subject: n)
-            groupCount = 0
+        let group = Array(camera.faces.filter { $0.width >= 0.05 }.prefix(8)).sorted { $0.midX < $1.midX }  // left to right
+        let face = lastFace
+        // The lab behind them and the card take a moment: off the main thread.
+        DispatchQueue.global(qos: .userInitiated).async {
+            let scene = Backdrop.apply(frame)
+            let r = group.count >= 2 ? IDCard.makeGroup(frame: scene, faces: group, subject: n)
+                : IDCard.make(photo: MonitorViewController.crop(scene, face: face), subject: n)
+            DispatchQueue.main.async {
+                let id = Uploader.shared.add(r.image, label: r.label)
+                self.groupCount = group.count >= 2 ? group.count : 0
+                self.qr = nil
+                if let id = id, let base = Config.shared.serviceBase, Config.shared.uploadConfigured {
+                    self.qr = MonitorViewController.qrCode(base + "/p/" + id)
+                }
+                self.card = r
+            }
         }
-        let id = Uploader.shared.add(r.image, label: r.label)
-        qr = nil
-        if let id = id, let base = Config.shared.serviceBase, Config.shared.uploadConfigured {
-            qr = MonitorViewController.qrCode(base + "/p/" + id)
-        }
-        card = r
     }
 
     /// A QR code, as a small image (draw it with interpolation off).
@@ -321,7 +324,8 @@ final class MonitorViewController: UIViewController {
         s.faces = faces
         s.subject = subject
         s.findings = findings
-        s.flash = mode == .checkpoint && captured
+        s.flash = mode == .checkpoint && captured && now - capturedAt < 0.3
+        s.processing = mode == .checkpoint && captured
         s.card = card?.image
         s.cardHuman = card?.human ?? true
         s.uploadConfigured = cfg.uploadConfigured
@@ -413,6 +417,20 @@ final class MonitorViewController: UIViewController {
             s.card = card?.image
             s.cardHuman = card?.human ?? true
             s.qr = MonitorViewController.qrCode("https://example.com/p/ipad0000-demo")
+        case "backdrop":  // Documents/test.jpg with the lab put behind the person (checks the cut-out)
+            s.mode = .card
+            if card == nil {
+                let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                if let bg = Backdrop.backdrop(CGSize(width: 1280, height: 720)) {  // for checking on a Mac
+                    try? UIImage(cgImage: bg).pngData()?.write(to: docs.appendingPathComponent("backdrop.png"))
+                }
+                if let img = UIImage(contentsOfFile: docs.appendingPathComponent("test.jpg").path) {
+                    card = IDCard.Result(image: Backdrop.apply(img), human: true, label: "")
+                }
+            }
+            s.card = card?.image
+            s.cardGroup = 1
+            s.subject = "TEST"
         case "intrusion": s.mode = .intrusion; s.t = 6
         case "cleared": s.mode = .cleared; s.t = 3
         case "beam": s.mode = .beam; s.t = 2.5

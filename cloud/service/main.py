@@ -255,12 +255,24 @@ def card(pid):
     for prefix in ("lab", "lab-hidden", "ai", "ai-hidden"):
         b = bucket.blob(f"{prefix}/{pid}.jpg")
         if b.exists():
-            url = f"https://storage.googleapis.com/{BUCKET}/{b.name}"
-            if request.args.get("dl"):  # the save button: same photo, as a download
+            if request.args.get("img"):  # the photo itself, same origin (for the share sheet)
+                return Response(b.download_as_bytes(), mimetype="image/jpeg",
+                                headers={"Cache-Control": "public, max-age=3600"})
+            if request.args.get("dl"):  # download (Android, desktop)
                 return Response(b.download_as_bytes(), mimetype="image/jpeg",
                                 headers={"Content-Disposition": f'attachment; filename="lab7-{pid}.jpg"'})
-            body = (f'<p>Your humanity screening result.</p><img src="{url}" alt="Your LAB-7 card">'
-                    f'<p>Tap and hold the picture to save it, or:</p><a class="b" href="?dl=1">SAVE PHOTO</a>')
+            # SAVE TO PHOTOS opens the phone's share sheet with the photo ("Save Image" puts it in
+            # Photos on an iPhone); where sharing files isn't supported it downloads it instead.
+            body = (f'<p>Your humanity screening result.</p><img src="?img=1" alt="Your LAB-7 card">'
+                    f'<a class="b" id="save" href="?dl=1">SAVE TO PHOTOS</a>'
+                    f'<p>iPhone: tap the button, then <b>Save Image</b>. Or tap and hold the picture.</p>'
+                    # The photo is fetched as the page loads: Safari opens the share sheet only
+                    # straight from the tap, not after waiting for a download.
+                    '<script>var file=null;fetch("?img=1").then(function(r){return r.blob()}).then(function(b){'
+                    f'file=new File([b],"lab7-{pid}.jpg",{{type:"image/jpeg"}})}});'
+                    'document.getElementById("save").onclick=function(e){'
+                    'if(file&&navigator.canShare&&navigator.canShare({files:[file]})){'
+                    'e.preventDefault();navigator.share({files:[file]}).catch(function(){})}};</script>')
             return Response(CARD_HTML.format(refresh="", body=body), headers={"Cache-Control": "no-store"})
     body = "<p>Your card is still uploading to the lab.</p><p>This page checks again every few seconds.</p>"
     return Response(CARD_HTML.format(refresh='<meta http-equiv="refresh" content="4">', body=body),
