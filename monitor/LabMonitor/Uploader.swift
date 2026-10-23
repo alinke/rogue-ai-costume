@@ -23,14 +23,18 @@ final class Uploader {
         Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in self?.kick() }
     }
 
-    func add(_ image: UIImage, label: String) {
-        guard let jpg = image.jpegData(compressionQuality: 0.85) else { return }
+    /// Queues the card; returns its id (the photo service keeps it under that
+    /// name, so /p/<id> finds it -- the QR code on the result screen).
+    @discardableResult
+    func add(_ image: UIImage, label: String) -> String? {
+        guard let jpg = image.jpegData(compressionQuality: 0.85) else { return nil }
         let id = String(format: "ipad%08x-%08x", UInt32(Date().timeIntervalSince1970), UInt32.random(in: 0...UInt32.max))
         try? jpg.write(to: keep.appendingPathComponent("\(id).jpg"))
         try? jpg.write(to: queue.appendingPathComponent("\(id).jpg"))
         try? label.write(to: queue.appendingPathComponent("\(id).txt"), atomically: true, encoding: .utf8)
         refreshCount()
         kick()
+        return id
     }
 
     private func files() -> [String] {

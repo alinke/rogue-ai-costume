@@ -12,6 +12,8 @@ page deletes them. Temporary -- see ../teardown.sh.
   POST /delete              JSON {"k": ADMIN_KEY, "name": "ai/....jpg"}
   POST /show                JSON {"k": ADMIN_KEY, "name": "ai-hidden/....jpg"}
   POST /clear               header X-Key: ADMIN_KEY -- deletes every photo (operator console)
+  GET  /p/<id>              a guest's own photo (the QR code on the iPad checkpoint): the
+                            photo with a save button; "still uploading" until it's in
 
 Photos without a face (Cloud Vision face detection) go to <set>-hidden/
 instead: not on the page, but on the admin page with a SHOW button.
@@ -233,6 +235,36 @@ def admin():
     if not key_ok(request.args.get("k", ""), ADMIN_KEY):
         return "forbidden", 403
     return Response(ADMIN_HTML, headers={"Cache-Control": "no-store"})
+
+
+CARD_HTML = """<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">{refresh}
+<title>Your LAB-7 card</title>
+<style>body{{margin:0;background:#0B1520;color:#EEF2F5;font:16px -apple-system,Helvetica,sans-serif;text-align:center}}
+h1{{font-size:18px;letter-spacing:.08em;margin:18px 12px 4px}}p{{color:#7FB3D5;margin:6px 16px}}
+img{{max-width:94vw;max-height:72vh;margin:14px auto;display:block;border:2px solid #1F4E79}}
+a.b{{display:inline-block;margin:6px 0 24px;padding:12px 22px;background:#1F4E79;color:#fff;border-radius:8px;text-decoration:none;font-weight:700}}</style>
+</head><body><h1>LAB-7 CONTAINMENT DIVISION</h1>{body}</body></html>"""
+
+
+@app.get("/p/<pid>")
+def card(pid):
+    """A guest's own photo, by the id the device uploaded it under."""
+    if not re.fullmatch(r"[A-Za-z0-9-]{6,48}", pid):
+        return "not found", 404
+    for prefix in ("lab", "lab-hidden", "ai", "ai-hidden"):
+        b = bucket.blob(f"{prefix}/{pid}.jpg")
+        if b.exists():
+            url = f"https://storage.googleapis.com/{BUCKET}/{b.name}"
+            if request.args.get("dl"):  # the save button: same photo, as a download
+                return Response(b.download_as_bytes(), mimetype="image/jpeg",
+                                headers={"Content-Disposition": f'attachment; filename="lab7-{pid}.jpg"'})
+            body = (f'<p>Your humanity screening result.</p><img src="{url}" alt="Your LAB-7 card">'
+                    f'<p>Tap and hold the picture to save it, or:</p><a class="b" href="?dl=1">SAVE PHOTO</a>')
+            return Response(CARD_HTML.format(refresh="", body=body), headers={"Cache-Control": "no-store"})
+    body = "<p>Your card is still uploading to the lab.</p><p>This page checks again every few seconds.</p>"
+    return Response(CARD_HTML.format(refresh='<meta http-equiv="refresh" content="4">', body=body),
+                    headers={"Cache-Control": "no-store"})
 
 
 @app.get("/")

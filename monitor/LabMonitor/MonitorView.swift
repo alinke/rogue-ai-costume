@@ -32,6 +32,8 @@ struct Screen {
     var cardHuman = true
     var uploadConfigured = false
     var toast: String?
+    var qr: UIImage?            // the guest's download link
+    var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
 }
 
@@ -152,7 +154,7 @@ final class MonitorView: UIView {
         text("SUCCESSFUL: 0", x + 288, y + 30, 15, MonitorView.bad, .bold, align: .right)
 
         // Checkpoint camera.
-        text("BIOMETRIC CHECKPOINT", 24, 448, 15, MonitorView.pale, .bold)
+        text("HUMANITY CHECKPOINT: ARE YOU AN AI?", 24, 448, 14, MonitorView.pale, .bold)
         let r = MonitorView.thumb
         if let st = s.stand { drawImage(st, aspectFill: r, c) }
         if !s.cameraOn && s.stand == nil {
@@ -163,7 +165,8 @@ final class MonitorView: UIView {
         UIColor.black.withAlphaComponent(0.55).setFill()
         c.fill(CGRect(x: r.minX, y: r.maxY - 30, width: r.width, height: 30))
         let blink = Int(s.t * 2) % 2 == 0
-        text(s.faces.isEmpty ? "STEP UP TO BE SCANNED" : "COME CLOSER", r.midX, r.maxY - 25, 16,
+        text(s.faces.isEmpty ? "STEP UP: PROVE YOU'RE HUMAN" : s.faces.count > 1 ? "GROUPS: COME CLOSER" : "COME CLOSER",
+             r.midX, r.maxY - 25, 16,
              blink ? MonitorView.white : MonitorView.pale, .bold, align: .center)
         MonitorView.pale.setStroke(); c.setLineWidth(2); c.stroke(r)
 
@@ -207,19 +210,23 @@ final class MonitorView: UIView {
             drawImage(st, aspectFill: bounds, c)
         }
         // Face box in view coordinates (the camera fills the whole view).
-        faceBoxes(c, in: bounds, label: "SUBJECT #\(s.subject)", scan: true)
+        faceBoxes(c, in: bounds, label: "#\(s.subject)", scan: true)
         c.saveGState()
         c.translateBy(x: f.dx, y: f.dy)
         c.scaleBy(x: f.scale, y: f.scale)
         let W = MonitorView.W, H = MonitorView.H
         MonitorView.bg.withAlphaComponent(0.8).setFill()
         c.fill(CGRect(x: 0, y: 0, width: W, height: 60))
-        text("LAB-7 BIOMETRIC CHECKPOINT // \(s.sector)", 24, 16, 24, MonitorView.white, .heavy)
-        text("SUBJECT #\(s.subject)", W - 24, 18, 22, MonitorView.pale, .bold, mono: true, align: .right)
+        text("LAB-7 HUMANITY CHECKPOINT // AI SCREENING", 24, 16, 24, MonitorView.white, .heavy)
+        text(s.faces.count > 1 ? "GROUP #\(s.subject) x\(min(s.faces.count, 8))" : "SUBJECT #\(s.subject)", W - 24, 18, 22,
+             MonitorView.pale, .bold, mono: true, align: .right)
         // Readouts.
         let rows = [("FACE GEOMETRY", "MAPPED"), ("IRIS PATTERN", "LOGGED")] + s.findings.map { ($0.label, "...") }
             + [("AI EXPOSURE", "ANALYSING")]
-        let p = CGRect(x: W - 300, y: 90, width: 276, height: CGFloat(rows.count) * 34 + 60)
+        // Readouts bottom-left, out of the way of faces (shoulders usually go there).
+        let ph = CGFloat(rows.count) * 34 + 60
+        let p = CGRect(x: 24, y: H - (s.t >= 3 ? 150 : 70) - 16 - ph, width: 276, height: ph)
+        if s.faces.count <= 1 {  // a group: the numbered face boxes say enough
         MonitorView.bg.withAlphaComponent(0.75).setFill(); c.fill(p)
         MonitorView.pale.setStroke(); c.setLineWidth(1.5); c.stroke(p)
         let shown = min(rows.count, Int(s.t / 0.5))
@@ -231,19 +238,22 @@ final class MonitorView: UIView {
         let prog = CGFloat(min(1, s.t / 3))
         MonitorView.steel.setFill(); c.fill(CGRect(x: p.minX + 14, y: p.maxY - 30, width: p.width - 28, height: 12))
         MonitorView.ok.setFill(); c.fill(CGRect(x: p.minX + 14, y: p.maxY - 30, width: (p.width - 28) * prog, height: 12))
+        }
         // Countdown: make it obvious a photo is about to be taken.
         if s.t >= 3 {
             let n = max(1, 3 - Int(s.t - 3))
             MonitorView.bg.withAlphaComponent(0.8).setFill()
             c.fill(CGRect(x: 0, y: H - 150, width: W, height: 150))
             text("HOLD STILL -- PHOTO IN \(n)", W / 2, H - 140, 40, MonitorView.white, .heavy, align: .center)
-            text(s.uploadConfigured ? "FOR YOUR LAB-7 ID CARD. FIND IT AT \(s.site)" : "FOR YOUR LAB-7 ID CARD",
+            text(s.uploadConfigured ? "FOR YOUR LAB-7 CARD -- SCAN THE QR CODE NEXT TO TAKE IT HOME" : "FOR YOUR LAB-7 CARD",
                  W / 2, H - 82, 20, MonitorView.pale, .bold, align: .center)
             text("\(n)", W / 2, 200, 160, MonitorView.white.withAlphaComponent(0.85), .heavy, mono: true, align: .center)
         } else {
             MonitorView.bg.withAlphaComponent(0.8).setFill()
             c.fill(CGRect(x: 0, y: H - 70, width: W, height: 70))
-            text("SCANNING... STAND STILL, LOOK AT THE SCREEN", W / 2, H - 52, 24, MonitorView.white, .heavy, align: .center)
+            text(s.faces.count > 1 ? "SCANNING THE GROUP FOR AI... EVERYONE LOOK AT THE SCREEN"
+                 : "SCANNING FOR AI... STAND STILL, LOOK AT THE SCREEN", W / 2, H - 52, 24, MonitorView.white, .heavy,
+                 align: .center)
         }
         c.restoreGState()
         if s.flash { UIColor.white.setFill(); c.fill(bounds) }
@@ -252,21 +262,36 @@ final class MonitorView: UIView {
     // MARK: - The card
 
     private func drawCard(_ c: CGContext) {
-        let W = MonitorView.W
-        if let card = s.card { drawImage(card, aspectFit: CGRect(x: 60, y: 30, width: 400, height: 708), c) }
-        let x: CGFloat = 520
+        // The card on the left (portrait, or a landscape group card), the result and the QR code on the right.
+        if let card = s.card {
+            drawImage(card, aspectFit: s.cardGroup > 0 ? CGRect(x: 30, y: 60, width: 560, height: 640)
+                                                         : CGRect(x: 60, y: 30, width: 400, height: 708), c)
+        }
+        let x: CGFloat = s.cardGroup > 0 ? 620 : 520
         let col = s.cardHuman ? MonitorView.ok : MonitorView.bad
-        text(s.cardHuman ? "VERIFIED" : "COMPROMISED", x, 150, 56, col, .heavy)
-        if s.cardHuman { text("HUMAN", x, 214, 56, col, .heavy) }
-        text("SUBJECT #\(s.subject)", x, 300, 28, MonitorView.white, .bold, mono: true)
-        text(s.cardHuman ? "ADDED TO THE SURVIVOR REGISTRY." : "FLAGGED: AI EXPOSURE. STAY CALM.", x, 350, 22,
-             MonitorView.pale, .bold)
-        if s.uploadConfigured {
+        if s.cardGroup > 0 {
+            text(s.cardHuman ? "ALL HUMAN" : "AI AMONG US", x, 70, 48, col, .heavy)
+            text("GROUP #\(s.subject) x\(s.cardGroup)", x, 132, 24, MonitorView.white, .bold, mono: true)
+            text(s.cardHuman ? "NO AI DETECTED. WELCOME, HUMANS." : "ONE OF YOU IS NOT WHAT YOU SEEM.", x, 170, 18,
+                 MonitorView.pale, .bold)
+        } else {
+            text(s.cardHuman ? "VERIFIED HUMAN" : "AI DETECTED", x, 70, 46, col, .heavy)
+            text("SUBJECT #\(s.subject)", x, 132, 24, MonitorView.white, .bold, mono: true)
+            text(s.cardHuman ? "NO AI DETECTED. ADDED TO THE SURVIVOR REGISTRY." : "COMPROMISED. STAY CALM. REMAIN HUMAN.",
+                 x, 170, 17, MonitorView.pale, .bold)
+        }
+        if let qr = s.qr {
+            let q = CGRect(x: x, y: 250, width: 300, height: 300)
+            UIColor.white.setFill(); c.fill(q.insetBy(dx: -14, dy: -14))
+            c.interpolationQuality = .none
+            qr.draw(in: q)
+            text("SCAN TO GET YOUR CARD", x, 580, 24, MonitorView.white, .heavy)
+            text("on your phone -- then save it", x, 614, 17, MonitorView.pale)
+        } else if s.uploadConfigured {
             text("FIND YOUR CARD AT", x, 430, 20, MonitorView.pale)
             text(s.site, x, 458, 28, MonitorView.white, .heavy)
         }
-        text("NEXT SUBJECT, STEP UP.", x, 640, 20, MonitorView.pale, .bold)
-        _ = W
+        text("TAP THE SCREEN FOR THE NEXT SCAN", x, 700, 15, MonitorView.pale, .bold)
     }
 
     // MARK: - The AI gets in
@@ -375,10 +400,11 @@ final class MonitorView: UIView {
         let k = max(r.width / a, r.height)  // the frame as 'a' x 1, scaled to fill
         let fw = a * k, fh = k
         let ox = r.minX + (r.width - fw) / 2, oy = r.minY + (r.height - fh) / 2
-        for (i, f) in s.faces.prefix(scan ? 1 : 4).enumerated() {
+        let many = s.faces.count > 1
+        for (i, f) in s.faces.prefix(8).enumerated() {
             let b = CGRect(x: ox + f.minX * fw, y: oy + f.minY * fh, width: f.width * fw, height: f.height * fh)
                 .insetBy(dx: -f.width * fw * 0.15, dy: -f.height * fh * 0.15)
-            let col = i == 0 ? MonitorView.ok : MonitorView.pale
+            let col = scan || i == 0 ? MonitorView.ok : MonitorView.pale
             col.setStroke()
             c.setLineWidth(scan ? 4 : 2)
             let l = min(b.width, b.height) * 0.25
@@ -395,7 +421,8 @@ final class MonitorView: UIView {
                 MonitorView.ok.withAlphaComponent(0.8).setFill()
                 c.fill(CGRect(x: b.minX, y: yy - 2, width: b.width, height: 4))
                 if let label = label {
-                    text(label + (s.t < 3 ? " -- SCANNING" : ""), b.minX, b.minY - 40, 22, MonitorView.ok, .heavy, mono: true)
+                    let tag = many ? "\(label)-\(i + 1)" : label + (s.t < 3 ? " -- SCANNING" : "")
+                    text(tag, b.minX, b.minY - (many ? 30 : 40), many ? 18 : 22, MonitorView.ok, .heavy, mono: true)
                 }
             }
         }

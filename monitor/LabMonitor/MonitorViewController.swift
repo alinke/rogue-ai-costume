@@ -35,6 +35,9 @@ final class MonitorViewController: UIViewController {
     private var captured = false
     private var card: IDCard.Result?
     private var lastCount = 0
+    private var qr: UIImage?
+    private var groupCount = 0
+    private var dismissCard = false
 
     // The costume.
     private var closeSince: Double?
@@ -51,7 +54,8 @@ final class MonitorViewController: UIViewController {
     // Demo: "-demo calm|checkpoint|countdown|card|intrusion|cleared|beam|failed|midnight" pins a screen
     // with made-up data (the simulator has no camera or Bluetooth).
     private let demo = UserDefaults.standard.string(forKey: "demo")
-    private lazy var stand: UIImage? = demo == nil ? nil : MonitorViewController.standIn()
+    private lazy var stand: UIImage? = demo == nil ? nil
+        : MonitorViewController.standIn(people: (demo ?? "").hasPrefix("group") ? 3 : 1)
 
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
@@ -66,6 +70,8 @@ final class MonitorViewController: UIViewController {
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(settings(_:)))
         hold.minimumPressDuration = 3
         screen.addGestureRecognizer(hold)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
+        screen.addGestureRecognizer(tap)
         if demo == nil {
             camera.start(videoOrientation())
             feed.start()
@@ -144,7 +150,9 @@ final class MonitorViewController: UIViewController {
         } else if now - lastFaceAt > 2 {
             waitFaceGone = false
         }
-        let close = faces.first.map { $0.width >= 0.14 && $0.midX > 0.15 && $0.midX < 0.85 } ?? false
+        // One guest close up, or a group (2+ faces) a step further back.
+        let single = faces.first.map { $0.width >= 0.14 && $0.midX > 0.15 && $0.midX < 0.85 } ?? false
+        let close = single || faces.filter { $0.width >= 0.07 }.count >= 2
 
         // Midnight: the costume's takeover, or the clock.
         let hm = Calendar.current.dateComponents([.hour, .minute], from: Date())
@@ -208,7 +216,8 @@ final class MonitorViewController: UIViewController {
                 Sound.shared.play(c.human ? .lock : .fail)
             }
         case .card:
-            if now - modeStart > 9 {
+            if now - modeStart > 25 || dismissCard {  // time to scan the QR code; a tap moves on
+                dismissCard = false
                 go(.calm)
                 cooldownUntil = now + 3
                 waitFaceGone = true
@@ -240,11 +249,33 @@ final class MonitorViewController: UIViewController {
         captured = true
         Sound.shared.play(.zap)
         guard let frame = camera.snapshot() else { return }
-        let photo = MonitorViewController.crop(frame, face: lastFace)
         let n = Int(subject.dropFirst()) ?? 0
-        let r = IDCard.make(photo: photo, subject: n)
-        Uploader.shared.add(r.image, label: r.label)
+        let group = Array(camera.faces.filter { $0.width >= 0.05 }.prefix(8))
+        let r: IDCard.Result
+        if group.count >= 2 {
+            // Left to right, as people stand.
+            r = IDCard.makeGroup(frame: frame, faces: group.sorted { $0.midX < $1.midX }, subject: n)
+            groupCount = group.count
+        } else {
+            r = IDCard.make(photo: MonitorViewController.crop(frame, face: lastFace), subject: n)
+            groupCount = 0
+        }
+        let id = Uploader.shared.add(r.image, label: r.label)
+        qr = nil
+        if let id = id, let base = Config.shared.serviceBase, Config.shared.uploadConfigured {
+            qr = MonitorViewController.qrCode(base + "/p/" + id)
+        }
         card = r
+    }
+
+    /// A QR code, as a small image (draw it with interpolation off).
+    static func qrCode(_ s: String) -> UIImage? {
+        guard let f = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        f.setValue(Data(s.utf8), forKey: "inputMessage")
+        f.setValue("M", forKey: "inputCorrectionLevel")
+        guard let out = f.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)),
+              let cg = CIContext().createCGImage(out, from: out.extent) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     /// Portrait crop (the card's photo window, 600x660) around the face.
@@ -294,6 +325,8 @@ final class MonitorViewController: UIViewController {
         s.card = card?.image
         s.cardHuman = card?.human ?? true
         s.uploadConfigured = cfg.uploadConfigured
+        s.qr = qr
+        s.cardGroup = groupCount
         if now < toastUntil { s.toast = toast }
         s.ticker = ticker(ai)
         screen.s = s
@@ -304,7 +337,8 @@ final class MonitorViewController: UIViewController {
         let cfg = Config.shared
         var items = [
             "LAB-7 ADVISORY: ROGUE.AI v6.6.6 IS LOOSE IN THIS HOUSE",
-            "REPORT TO THE BIOMETRIC CHECKPOINT FOR HUMANITY VERIFICATION",
+            "REPORT TO THE HUMANITY CHECKPOINT: PROVE YOU ARE NOT AN AI",
+            "GROUPS WELCOME AT THE CHECKPOINT. ONE OF YOU MAY BE AN AI",
             "DO NOT ENGAGE THE AI IN SMALL TALK",
             "CONTAINMENT ATTEMPTS: \(ai.seen ? "\(ai.contained)" : "--") // SUCCESSFUL: 0",
             "IF THE AI OFFERS YOU A GAME: DO NOT PLAY",
@@ -312,6 +346,10 @@ final class MonitorViewController: UIViewController {
         if feed.online { items.insert("VERIFIED HUMANS: \(feed.verified) // ASSIMILATED: \(feed.assimilated)", at: 1) }
         if cfg.uploadConfigured { items.append("FIND YOUR SCAN AT \(cfg.siteText)") }
         return items.joined(separator: "   ///   ")
+    }
+
+    @objc private func tapped() {
+        if mode == .card { dismissCard = true }
     }
 
     // MARK: - Settings (hold 3 s)
@@ -350,19 +388,31 @@ final class MonitorViewController: UIViewController {
         s.assimilated = 5
         s.stand = stand
         s.cameraOn = true
-        s.faces = [CGRect(x: 0.41, y: 0.2, width: 0.18, height: 0.34)]
+        let groupDemo = d.hasPrefix("group")
+        s.faces = groupDemo ? [CGRect(x: 0.155, y: 0.26, width: 0.13, height: 0.25), CGRect(x: 0.435, y: 0.2, width: 0.13, height: 0.25),
+                               CGRect(x: 0.715, y: 0.28, width: 0.13, height: 0.25)]
+            : [CGRect(x: 0.41, y: 0.2, width: 0.18, height: 0.34)]
         s.uploadConfigured = true
         s.subject = "C017"
         s.findings = Array(IDCard.humanFindings.prefix(3))
         s.ticker = ticker(s.ai)
         switch d {
-        case "checkpoint": s.mode = .checkpoint; s.t = 1.6
+        case "checkpoint", "group": s.mode = .checkpoint; s.t = 1.6
+        case "groupcard":
+            s.mode = .card
+            if card == nil, let st = stand { card = IDCard.makeGroup(frame: st, faces: s.faces, subject: 18) }
+            s.card = card?.image
+            s.cardHuman = card?.human ?? true
+            s.cardGroup = 3
+            s.subject = "C018"
+            s.qr = MonitorViewController.qrCode("https://example.com/p/ipad0000-demo")
         case "countdown": s.mode = .checkpoint; s.t = 4.2
         case "card":
             s.mode = .card
             if card == nil, let st = stand { card = IDCard.make(photo: MonitorViewController.crop(st, face: s.faces[0]), subject: 17) }
             s.card = card?.image
             s.cardHuman = card?.human ?? true
+            s.qr = MonitorViewController.qrCode("https://example.com/p/ipad0000-demo")
         case "intrusion": s.mode = .intrusion; s.t = 6
         case "cleared": s.mode = .cleared; s.t = 3
         case "beam": s.mode = .beam; s.t = 2.5
@@ -375,7 +425,7 @@ final class MonitorViewController: UIViewController {
     }
 
     /// A placeholder "camera picture": a figure against a wall.
-    static func standIn() -> UIImage {
+    static func standIn(people: Int = 1) -> UIImage {
         let size = CGSize(width: 1280, height: 720)
         let fmt = UIGraphicsImageRendererFormat()
         fmt.scale = 1
@@ -383,12 +433,18 @@ final class MonitorViewController: UIViewController {
             let c = r.cgContext
             UIColor(hex: 0x3A4250).setFill(); c.fill(CGRect(origin: .zero, size: size))
             UIColor(hex: 0x2A303A).setFill(); c.fill(CGRect(x: 0, y: 520, width: 1280, height: 200))
-            UIColor(hex: 0x1B1F26).setFill()
-            c.fillEllipse(in: CGRect(x: 470, y: 470, width: 340, height: 400))  // shoulders
-            UIColor(hex: 0xC9A27E).setFill()
-            c.fillEllipse(in: CGRect(x: 535, y: 150, width: 210, height: 260))  // face
-            UIColor(hex: 0x2B1D14).setFill()
-            c.fillEllipse(in: CGRect(x: 525, y: 120, width: 230, height: 110))  // hair
+            let xs: [CGFloat] = people == 1 ? [640] : [280, 640, 1000]
+            let s: CGFloat = people == 1 ? 1 : 0.72
+            let skins: [UInt32] = [0xC9A27E, 0x8D5B3C, 0xE8C3A0]
+            for (i, cx) in xs.enumerated() {
+                let dy: CGFloat = people == 1 ? 0 : [40, -10, 60][i]
+                UIColor(hex: 0x1B1F26).setFill()
+                c.fillEllipse(in: CGRect(x: cx - 170 * s, y: 470 + dy, width: 340 * s, height: 400 * s))  // shoulders
+                UIColor(hex: skins[i % 3]).setFill()
+                c.fillEllipse(in: CGRect(x: cx - 105 * s, y: 150 * s + dy + (people == 1 ? 0 : 60), width: 210 * s, height: 260 * s))
+                UIColor(hex: 0x2B1D14).setFill()
+                c.fillEllipse(in: CGRect(x: cx - 115 * s, y: 120 * s + dy + (people == 1 ? 0 : 60), width: 230 * s, height: 110 * s))
+            }
         }
     }
 }
