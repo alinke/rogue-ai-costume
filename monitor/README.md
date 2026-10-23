@@ -20,9 +20,10 @@ Each iPad runs one of two roles (hold the screen 3 s → **Switch to: Evidence W
 Checkpoint**; it remembers):
 
 - **Checkpoint** (above): the monitor with the camera and the humanity checkpoint.
-- **Evidence wall** (no camera): the header carries a small ROGUE.AI signal radar; the rest of the screen is a slideshow of every photo of the night, 7 s each;
-  a guest found to be AI gets a red **ROGUE AI IDENTIFIED** alert (with an alarm), and
-  every tenth slide a **ROGUE AI ROLL CALL** of everyone flagged so far. The scoreboard
+- **Evidence wall** (no camera): the header carries a small ROGUE.AI signal radar; the rest of the screen shows every photo of the night, 8 at a time (a new page every
+  8 s), rogue AIs framed in red; a **newly** caught AI gets a full-size **ROGUE AI
+  IDENTIFIED** alert with an alarm, and every fifth page a **ROGUE AI ROLL CALL** of
+  everyone flagged so far. The scoreboard
   and containment attempts run in the news crawl. The intrusion / beam / midnight screens happen here too.
 
 ## Settings

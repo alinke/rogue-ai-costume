@@ -53,8 +53,8 @@ final class MonitorViewController: UIViewController {
     private var wallAt = 0.0
     private var wallSlides = 0
     private var wallRollCall = false
-    private var wallShown: EvidencePhoto?
-    private var wallAlerted: URL?
+    private var knownRogue: URL?
+    private var wallAlertUntil = 0.0
 
     // Slideshow + toast.
     private var slide = 0
@@ -373,37 +373,43 @@ final class MonitorViewController: UIViewController {
     private func wall(_ now: Double, _ s: inout Screen) {
         s.wall = true
         let all = feed.all
-        if now - wallAt > (wallRollCall ? 10 : 7) {
-            wallAt = now
-            if wallRollCall {
-                wallRollCall = false
-                wallIndex += 1
-            } else {
-                wallSlides += 1
-                if wallSlides % 10 == 0 && !feed.rogues.isEmpty { wallRollCall = true } else { wallIndex += 1 }
+        let per = 8
+        let pages = max(1, (all.count + per - 1) / per)
+        // A new AI caught: its card full size with the alarm, once, as it happens.
+        if let newest = feed.rogues.first {
+            if knownRogue == nil { knownRogue = newest.url }          // what was already there at start
+            else if newest.url != knownRogue, feed.image(newest) != nil {
+                knownRogue = newest.url
+                wallAlertUntil = now + 8
+                if mode == .calm { Sound.shared.play(.fail) }
             }
         }
-        if !all.isEmpty {
-            // Load this one and the next few; show it once it's in (the last one until then).
-            for k in 0..<3 { _ = feed.image(all[(wallIndex + k) % all.count]) }
-            let p = all[wallIndex % all.count]
-            if feed.image(p) != nil { wallShown = p }
-        }
-        if let p = wallShown, let img = feed.image(p) {
+        if now < wallAlertUntil, let r = feed.rogues.first, let img = feed.image(r) {
             s.slide = img
-            s.slideLabel = p.label
-            s.slideFromAI = p.fromAI
-            s.wallRogue = p.rogue && !wallRollCall
-            if s.wallRogue && wallAlerted != p.url && mode == .calm {
-                wallAlerted = p.url
-                Sound.shared.play(.fail)
+            s.slideLabel = r.label
+            s.wallRogue = true
+        } else {
+            // Pages of 8, turning every 8 s; every fifth turn, the roll call of AIs.
+            if now - wallAt > (wallRollCall ? 10 : 8) {
+                wallAt = now
+                if wallRollCall {
+                    wallRollCall = false
+                } else {
+                    wallSlides += 1
+                    if wallSlides % 5 == 0 && !feed.rogues.isEmpty { wallRollCall = true } else { wallIndex = (wallIndex + 1) % pages }
+                }
+            }
+            if wallRollCall {
+                s.rollCall = feed.rogues.prefix(8).compactMap { feed.image($0) }
+            } else if !all.isEmpty {
+                let page = Array(all[min(wallIndex * per, all.count - 1)..<min(wallIndex * per + per, all.count)])
+                let next = Array(all[min(((wallIndex + 1) % pages) * per, all.count - 1)..<min(((wallIndex + 1) % pages) * per + per, all.count)])
+                for p in next { _ = feed.image(p) }  // load the next page early
+                s.tiles = page.map { p in (feed.image(p), p.label, p.fromAI, p.rogue) }
             }
         }
         s.wallCount = all.count
         s.rogueCount = feed.rogues.count
-        if wallRollCall {
-            s.rollCall = feed.rogues.prefix(8).compactMap { feed.image($0) }
-        }
     }
 
     private func ticker(_ ai: AiState) -> String {
@@ -523,6 +529,13 @@ final class MonitorViewController: UIViewController {
             s.slide = card?.image
             s.slideLabel = d == "wall" ? "VERIFIED HUMAN #C016" : "COMPROMISED #C017"
             s.wallRogue = d == "wallrogue"
+            if d == "wall", let c = card?.image, let st = stand {
+                let rogue = IDCard.make(photo: MonitorViewController.crop(st, face: s.faces[0]), subject: 21, human: false).image
+                s.tiles = [(c, "VERIFIED HUMAN #C016", false, false), (st, "", true, false), (rogue, "COMPROMISED #C021", false, true),
+                           (c, "VERIFIED HUMAN #C015", false, false), (c, "VERIFIED HUMAN #014", false, false),
+                           (st, "", true, false), (c, "VERIFIED HUMANS #C012 x3", false, false), (c, "VERIFIED HUMAN #C011", false, false)]
+                s.slide = nil
+            }
             s.wallCount = 42
             s.rogueCount = 7
             if d == "rollcall", let c = card?.image { s.rollCall = Array(repeating: c, count: 7) }

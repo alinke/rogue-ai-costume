@@ -42,6 +42,7 @@ struct Screen {
     var wallCount = 0
     var rogueCount = 0
     var rollCall: [UIImage] = []
+    var tiles: [(UIImage?, String, Bool, Bool)] = []   // the wall's page: image, label, from the AI, a rogue AI
     var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
 }
@@ -213,6 +214,8 @@ final class MonitorView: UIView {
         let sp = CGRect(x: 24, y: 88, width: W - 48, height: 626)
         if !s.rollCall.isEmpty {
             drawRollCall(c, sp)
+        } else if !s.tiles.isEmpty && !s.wallRogue {
+            drawTiles(c, sp)
         } else {
             let alert = s.wallRogue
             let blink = Int(s.t * 3) % 2 == 0
@@ -254,6 +257,33 @@ final class MonitorView: UIView {
         c.clip(to: CGRect(x: 0, y: 726, width: W, height: 42))
         text(crawl, W - off, 736, 18, MonitorView.white, .bold, mono: true)
         c.restoreGState()
+    }
+
+    /// A page of the evidence: 4 x 2 tiles, each photo fitted in, its label under it.
+    private func drawTiles(_ c: CGContext, _ r: CGRect) {
+        MonitorView.panel.setFill(); c.fill(r)
+        MonitorView.steel.setStroke(); c.setLineWidth(2); c.stroke(r)
+        text("EVIDENCE // \(s.wallCount) FILED TONIGHT", r.minX + 16, r.minY + 8, 15, MonitorView.pale, .bold)
+        let cols = 4, rows = 2
+        let gw = (r.width - 24) / CGFloat(cols), gh = (r.height - 40) / CGFloat(rows)
+        let blink = Int(s.t * 3) % 2 == 0
+        for (i, t) in s.tiles.prefix(cols * rows).enumerated() {
+            let cell = CGRect(x: r.minX + 12 + CGFloat(i % cols) * gw, y: r.minY + 32 + CGFloat(i / cols) * gh, width: gw, height: gh)
+                .insetBy(dx: 6, dy: 6)
+            let pic = CGRect(x: cell.minX, y: cell.minY, width: cell.width, height: cell.height - 24)
+            if t.3 {  // a rogue AI: red frame and tag
+                UIColor(hex: 0x2A0508).setFill(); c.fill(cell)
+                (blink ? MonitorView.red : MonitorView.bad).setStroke(); c.setLineWidth(4); c.stroke(cell.insetBy(dx: 2, dy: 2))
+            }
+            if let img = t.0 {
+                drawImage(img, aspectFit: pic.insetBy(dx: 4, dy: 4), c)
+            } else {
+                text("LOADING...", pic.midX, pic.midY - 8, 13, MonitorView.pale, .bold, align: .center)
+            }
+            let lab = t.3 ? "ROGUE AI // " + (t.1.components(separatedBy: "#").last.map { "#" + $0 } ?? "")
+                : t.2 ? "ASSIMILATED BY ROGUE.AI" : (t.1.isEmpty ? "LAB-7 FIELD SCAN" : t.1)
+            text(lab, cell.midX, cell.maxY - 20, 13, t.3 || t.2 ? MonitorView.bad : MonitorView.ok, .heavy, align: .center)
+        }
     }
 
     /// Everyone found to be AI so far, in a grid.
