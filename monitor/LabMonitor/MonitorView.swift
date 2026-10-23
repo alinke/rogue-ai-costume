@@ -126,41 +126,8 @@ final class MonitorView: UIView {
         text(midnightString(), W - 230, 22, 18, MonitorView.amber, .bold, mono: true, align: .right)
         if !s.bluetooth { text("BLUETOOTH OFF", W - 24, 50, 13, MonitorView.bad, .bold, align: .right) }
 
-        // Target panel.
-        panel(c, CGRect(x: 24, y: 92, width: 320, height: 352), "TARGET // ROGUE.AI v6.6.6")
-        let x: CGFloat = 40
-        var y: CGFloat = 130
-        label("STATUS", x, y)
-        let acts = ["AT LARGE", "SCANNING A GUEST", "PLAYING GAMES", "MIDNIGHT TAKEOVER", "BEING CONTAINED", "ESCAPED. AGAIN."]
-        if s.ai.seen {
-            text(acts[min(s.ai.activity, 5)], x, y + 18, 22, MonitorView.white, .heavy)
-        } else {
-            text("NO SIGNAL", x, y + 18, 22, MonitorView.amber, .heavy)
-            text("LOCATION UNKNOWN", x + 150, y + 24, 14, MonitorView.amber)
-        }
-        y += 62
-        label("THREAT LEVEL", x, y)
-        let threats = ["LOW (FOR NOW)", "GUARDED", "ELEVATED", "HIGH", "SEVERE", "EXISTENTIAL"]
-        let lvl = s.ai.seen ? min(s.ai.threat, 5) : -1
-        for i in 0..<6 {
-            let col = i <= 1 ? MonitorView.ok : i <= 3 ? MonitorView.amber : MonitorView.bad
-            (i <= lvl ? col : col.withAlphaComponent(0.15)).setFill()
-            c.fill(CGRect(x: x + CGFloat(i) * 48, y: y + 20, width: 42, height: 16))
-        }
-        text(lvl >= 0 ? threats[lvl] : "UNKNOWN", x, y + 42, 15, lvl >= 4 ? MonitorView.bad : MonitorView.white, .bold)
-        y += 76
-        label("SIGNAL IN THIS SECTOR", x, y)
-        let k = s.ai.seen ? CGFloat(max(0, min(1, Double(s.ai.rssi + 100) / 50))) : 0
-        MonitorView.steel.setFill(); c.fill(CGRect(x: x, y: y + 20, width: 200, height: 14))
-        (k > 0.66 ? MonitorView.bad : k > 0.33 ? MonitorView.amber : MonitorView.pale).setFill()
-        c.fill(CGRect(x: x, y: y + 20, width: 200 * k, height: 14))
-        text(s.ai.seen ? "\(s.ai.rssi) dBm" : "--", x + 288, y + 17, 15, MonitorView.pale, mono: true, align: .right)
-        let where_ = !s.ai.seen ? "NOT DETECTED" : k > 0.66 ? "IN THIS ROOM" : k > 0.33 ? "NEARBY" : "ELSEWHERE IN THE HOUSE"
-        text(where_, x, y + 40, 15, k > 0.66 ? MonitorView.bad : MonitorView.white, .bold)
-        y += 74
-        label("CONTAINMENT ATTEMPTS", x, y)
-        text(s.ai.seen ? "\(s.ai.contained)" : "--", x, y + 16, 34, MonitorView.white, .heavy, mono: true)
-        text("SUCCESSFUL: 0", x + 288, y + 30, 15, MonitorView.bad, .bold, align: .right)
+        // The ROGUE.AI tracker (radar), where the target panel was.
+        tracker(c, CGRect(x: 24, y: 92, width: 320, height: 352), radius: 118)
 
         // Checkpoint camera.
         text(s.photosOff ? "HUMANITY CHECKPOINT // CLOSED" : "HUMANITY CHECKPOINT: ARE YOU AN AI?", 24, 448, 14,
@@ -237,12 +204,13 @@ final class MonitorView: UIView {
         MonitorView.steel.setFill(); c.fill(CGRect(x: 0, y: 0, width: W, height: 72))
         MonitorView.pale.setFill(); c.fill(CGRect(x: 0, y: 72, width: W, height: 4))
         text("LAB-7 EVIDENCE WALL", 24, 10, 26, MonitorView.white, .heavy)
-        text("SURVIVOR REGISTRY // \(s.site)", 24, 44, 15, UIColor(hex: 0xD6EAF8))
+        text("SURVIVOR REGISTRY", 24, 44, 15, UIColor(hex: 0xD6EAF8))  // the site is in the crawl
+        signalIndicator(c, x: 352)
         text(timeString(s.clock), W - 24, 14, 30, MonitorView.white, .bold, mono: true, align: .right)
         text(midnightString(), W - 230, 22, 18, MonitorView.amber, .bold, mono: true, align: .right)
 
         // The slide (or the roll call).
-        let sp = CGRect(x: 24, y: 92, width: 680, height: 620)
+        let sp = CGRect(x: 24, y: 88, width: W - 48, height: 626)
         if !s.rollCall.isEmpty {
             drawRollCall(c, sp)
         } else {
@@ -276,37 +244,10 @@ final class MonitorView: UIView {
             }
         }
 
-        // Scoreboard.
-        let rx: CGFloat = 724, rw: CGFloat = 276
-        score(c, CGRect(x: rx, y: 92, width: rw, height: 78), "VERIFIED HUMANS", s.feedOnline ? "\(s.verified)" : "--", MonitorView.ok)
-        score(c, CGRect(x: rx, y: 182, width: rw, height: 78), "ASSIMILATED", s.feedOnline ? "\(s.assimilated)" : "--", MonitorView.bad)
-
-        // The tracker.
-        let tp = CGRect(x: rx, y: 274, width: rw, height: 336)
-        panel(c, tp, "ROGUE.AI TRACKER")
-        radar(c, CGPoint(x: tp.midX, y: tp.minY + 158), 112)
-        let k = s.ai.seen ? CGFloat(max(0, min(1, Double(s.ai.rssi + 100) / 50))) : 0
-        let zone = !s.ai.seen ? "NO SIGNAL" : k > 0.66 ? "IN THIS ROOM" : k > 0.33 ? "NEARBY" : "ELSEWHERE IN THE HOUSE"
-        text(zone, tp.midX, tp.maxY - 52, 18, !s.ai.seen ? MonitorView.amber : k > 0.66 ? MonitorView.bad : MonitorView.white,
-             .heavy, align: .center)
-        text(s.ai.seen ? "SIGNAL \(s.ai.rssi) dBm" : "SEARCHING...", tp.midX, tp.maxY - 28, 13, MonitorView.pale,
-             mono: true, align: .center)
-
-        // What it's up to.
-        let ip = CGRect(x: rx, y: 622, width: rw, height: 90)
-        MonitorView.panel.setFill(); c.fill(ip)
-        MonitorView.steel.setStroke(); c.setLineWidth(2); c.stroke(ip)
-        let threats = ["LOW (FOR NOW)", "GUARDED", "ELEVATED", "HIGH", "SEVERE", "EXISTENTIAL"]
-        let acts = ["AT LARGE", "SCANNING A GUEST", "PLAYING GAMES", "MIDNIGHT TAKEOVER", "BEING CONTAINED", "ESCAPED. AGAIN."]
-        label("THREAT", ip.minX + 14, ip.minY + 10)
-        text(s.ai.seen ? threats[min(s.ai.threat, 5)] : "UNKNOWN", ip.minX + 14, ip.minY + 26, 16,
-             s.ai.threat >= 4 ? MonitorView.bad : MonitorView.white, .heavy)
-        label("ROGUE.AI IS", ip.minX + 14, ip.minY + 50)
-        text(s.ai.seen ? acts[min(s.ai.activity, 5)] : "UNACCOUNTED FOR", ip.minX + 14, ip.minY + 66, 14, MonitorView.amber, .bold)
-
         // News crawl.
         MonitorView.steel.setFill(); c.fill(CGRect(x: 0, y: 726, width: W, height: 42))
-        let crawl = (s.rogueCount > 0 ? "ROGUE AIS IDENTIFIED TONIGHT: \(s.rogueCount)   ///   " : "") + s.ticker
+        let crawl = (s.feedOnline ? "VERIFIED HUMANS: \(s.verified) // ASSIMILATED: \(s.assimilated)   ///   " : "")
+            + (s.rogueCount > 0 ? "ROGUE AIS IDENTIFIED TONIGHT: \(s.rogueCount)   ///   " : "") + s.ticker
         let tw = width(crawl, 18, .bold, mono: true)
         let off = CGFloat(s.clock.timeIntervalSince1970 * 90).truncatingRemainder(dividingBy: tw + W)
         c.saveGState()
@@ -331,6 +272,32 @@ final class MonitorView: UIView {
         }
     }
 
+    /// The tracker panel: radar, where the AI is, its signal, threat and what it's doing.
+    private func tracker(_ c: CGContext, _ r: CGRect, radius R: CGFloat) {
+        panel(c, r, "ROGUE.AI TRACKER")
+        radar(c, CGPoint(x: r.midX, y: r.minY + 34 + R), R)
+        let k = s.ai.seen ? CGFloat(max(0, min(1, Double(s.ai.rssi + 100) / 50))) : 0
+        let zone = !s.ai.seen ? "NO SIGNAL" : k > 0.66 ? "IN THIS ROOM" : k > 0.33 ? "NEARBY" : "ELSEWHERE IN THE HOUSE"
+        let y = r.minY + 44 + 2 * R
+        text(zone, r.midX, y, 20, !s.ai.seen ? MonitorView.amber : k > 0.66 ? MonitorView.bad : MonitorView.white, .heavy,
+             align: .center)
+        let threats = ["LOW", "GUARDED", "ELEVATED", "HIGH", "SEVERE", "EXISTENTIAL"]
+        let acts = ["AT LARGE", "SCANNING A GUEST", "PLAYING GAMES", "MIDNIGHT TAKEOVER", "BEING CONTAINED", "ESCAPED. AGAIN."]
+        let line = s.ai.seen ? "\(s.ai.rssi) dBm // THREAT \(threats[min(s.ai.threat, 5)]) // \(acts[min(s.ai.activity, 5)])"
+            : "SEARCHING..."
+        text(line, r.midX, y + 28, 11, MonitorView.pale, .bold, mono: true, align: .center)
+    }
+
+    /// For the wall's header: a small radar and the AI's whereabouts.
+    private func signalIndicator(_ c: CGContext, x: CGFloat) {
+        radar(c, CGPoint(x: x + 30, y: 37), 29)
+        let k = s.ai.seen ? CGFloat(max(0, min(1, Double(s.ai.rssi + 100) / 50))) : 0
+        text("ROGUE.AI SIGNAL", x + 68, 10, 11, UIColor(hex: 0xD6EAF8), .bold)
+        let zone = !s.ai.seen ? "NO SIGNAL" : k > 0.66 ? "IN THIS ROOM" : k > 0.33 ? "NEARBY" : "ELSEWHERE"
+        text(zone, x + 68, 24, 18, !s.ai.seen ? MonitorView.amber : k > 0.66 ? MonitorView.red : MonitorView.white, .heavy)
+        text(s.ai.seen ? "\(s.ai.rssi) dBm" : "SEARCHING", x + 68, 47, 12, MonitorView.pale, .bold, mono: true)
+    }
+
     /// A radar sweep with the costume's blip, nearer the middle the stronger its signal.
     private func radar(_ c: CGContext, _ p: CGPoint, _ R: CGFloat) {
         let t = s.clock.timeIntervalSince1970
@@ -350,8 +317,10 @@ final class MonitorView: UIView {
         c.move(to: CGPoint(x: p.x - R, y: p.y)); c.addLine(to: CGPoint(x: p.x + R, y: p.y))
         c.move(to: CGPoint(x: p.x, y: p.y - R)); c.addLine(to: CGPoint(x: p.x, y: p.y + R)); c.strokePath()
         guard s.ai.seen else {
-            text("NO CONTACT", p.x, p.y + 18, 13, Int(t * 2) % 2 == 0 ? MonitorView.dim : MonitorView.green, .bold,
-                 mono: true, align: .center)
+            if R > 50 {
+                text("NO CONTACT", p.x, p.y + 18, 13, Int(t * 2) % 2 == 0 ? MonitorView.dim : MonitorView.green, .bold,
+                     mono: true, align: .center)
+            }
             return
         }
         // Distance from signal strength; the direction just wanders (Bluetooth can't tell it).
@@ -362,7 +331,8 @@ final class MonitorView: UIView {
         if since < 0 { since += 2 * .pi }
         let glow = 0.35 + 0.65 * pow(1 - since / (2 * .pi), 3)
         MonitorView.red.withAlphaComponent(glow).setFill()
-        c.fillEllipse(in: CGRect(x: b.x - 7, y: b.y - 7, width: 14, height: 14))
+        let br: CGFloat = R > 50 ? 7 : 4
+        c.fillEllipse(in: CGRect(x: b.x - br, y: b.y - br, width: 2 * br, height: 2 * br))
         if since < 0.9 {
             MonitorView.red.withAlphaComponent(1 - since / 0.9).setStroke(); c.setLineWidth(2)
             let rr = 10 + since * 18
