@@ -149,25 +149,26 @@ def front_engrave(a):
 
 # ---- Back: lanyard slot, small print, photo pocket -----------------------------------
 def back_outer_engrave(a):
+    """The badge's back. The LED base's coin-cell holder covers the bottom ~36 mm
+    behind the badge, so everything sits above that."""
     e = []
     d, _ = text_path("LAB-7", "head", 6.0, W / 2, 14.0, "center"); e.append(d)
     d, _ = text_path("CONTAINMENT DIVISION", "cond", 2.6, W / 2, 22.0, "center"); e.append(d)
-    e.append(rect(8, 27.5, W - 16, 0.4))
+    d, _ = text_path(f"{a.id}  //  {a.clearance}", "mono", 2.0, W / 2, 26.6, "center", max_w=W - 12); e.append(d)
+    e.append(rect(8, 30.6, W - 16, 0.4))
     lines = [
-        ("PROPERTY OF LAB-7.", 3.2), ("IF FOUND, DO NOT", 3.2), ("RETURN TO THE AI.", 3.2), ("", 2.0),
-        ("THE BEARER IS AUTHORISED TO", 2.4), ("CONTAIN ROGUE AIs, CONFISCATE", 2.4), ("CANDY AND ASK FOLLOW-UP", 2.4),
-        ("QUESTIONS.", 2.4), ("", 2.0),
-        ("IN CASE OF SINGULARITY,", 2.8), ("BREAK GLASS.", 2.8), ("", 2.0),
-        ("NOT VALID FOR TOASTERS.", 2.4), ("DO NOT FEED THE AI AFTER MIDNIGHT.", 2.4),
+        ("PROPERTY OF LAB-7.", 2.9), ("IF FOUND, DO NOT", 2.9), ("RETURN TO THE AI.", 2.9), ("", 1.6),
+        ("THE BEARER IS AUTHORISED TO", 2.2), ("CONTAIN ROGUE AIs, CONFISCATE", 2.2), ("CANDY AND ASK FOLLOW-UP", 2.2),
+        ("QUESTIONS.", 2.2), ("", 1.6),
+        ("IN CASE OF SINGULARITY,", 2.6), ("BREAK GLASS.", 2.6), ("", 1.6),
+        ("NOT VALID FOR TOASTERS.", 2.2), ("DO NOT FEED THE AI AFTER MIDNIGHT.", 2.2),
     ]
-    y = 33.0
-    for s, cap in lines:
-        if s:
-            d, _ = text_path(s, "cond", cap, W / 2, y, "center", max_w=W - 12)
+    y = 34.5
+    for s_, cap in lines:
+        if s_:
+            d, _ = text_path(s_, "cond", cap, W / 2, y, "center", max_w=W - 12)
             e.append(d)
-        y += cap * 1.75
-    d, _ = text_path(f"{a.id}  //  {a.clearance}", "mono", 2.2, W / 2, H - GRIP - 9.0, "center", max_w=W - 12)
-    e.append(d)
+        y += cap * 1.55
     return e
 
 
