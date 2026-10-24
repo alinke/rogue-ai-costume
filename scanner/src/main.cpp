@@ -121,13 +121,13 @@ static constexpr int PHX = W, PHY = 0, PHW = 0, PHH = 0;  // no camera, no EVIDE
 
 static const char* const THREAT[] = {"LOW (FOR NOW)", "GUARDED", "ELEVATED", "HIGH", "SEVERE", "EXISTENTIAL"};
 static const char* const ACTIVITY[] = {"IDLE", "SCANNING A HUMAN", "PLAYING A GAME", "MIDNIGHT TAKEOVER",
-                                       "BEING CONTAINED", "ESCAPED"};
+                                       "BEING CONTAINED", "ESCAPED", "CONTAINED (FOR NOW)"};
 
 enum Zone { LOST, DETECTED, NEAR, CLOSE };
 static Zone s_zone = LOST;
 
 // CONTAIN sequence, as seen from the scanner.
-enum Contain { READY, FIRED, CONTAINING, FAILED };
+enum Contain { READY, FIRED, CONTAINING, FAILED, SQUAD };  // SQUAD: 3+ scanners at once got it (the costume's activity 6)
 static Contain s_contain = READY;
 static uint32_t s_containAt = 0, s_cooldownUntil = 0;
 
@@ -207,6 +207,7 @@ static void drawStatus(const radio::AiState& a, uint32_t now) {
       break;
     }
     case FAILED: line = "CONTAINMENT FAILED"; c = C_RED; blink = true; break;
+    case SQUAD: line = "CONTAINED!"; c = C_GREEN; blink = true; break;
     case READY:
       switch (s_zone) {
         case LOST: line = "NO SIGNAL"; c = C_DIM; break;
@@ -226,6 +227,14 @@ static void drawStatus(const radio::AiState& a, uint32_t now) {
     g.setTextColor(C_WHITE);
     g.drawString("THE AI ESCAPED.", TXT_X, TY1);
     g.drawString("IT ALWAYS DOES.", TXT_X, TY1 + TSTEP);
+    g.setTextColor(C_AMBER);
+    g.drawString("TIP: FIRE WITH 2 MORE SCANNERS", TXT_X, TY1 + 2 * TSTEP);
+    return;
+  }
+  if (s_contain == SQUAD) {
+    g.setTextColor(C_WHITE);
+    g.drawString("A SQUAD OF SCANNERS GOT IT.", TXT_X, TY1);
+    g.drawString("IT'S OFFLINE. FOR NOW.", TXT_X, TY1 + TSTEP);
     return;
   }
   if (!a.seen) {
@@ -237,7 +246,7 @@ static void drawStatus(const radio::AiState& a, uint32_t now) {
   g.setTextColor(C_WHITE);
   snprintf(buf, sizeof(buf), "THREAT: %s", THREAT[min<int>(a.threat, 5)]);
   g.drawString(buf, TXT_X, TY1);
-  snprintf(buf, sizeof(buf), "AI: %s", ACTIVITY[min<int>(a.activity, 5)]);
+  snprintf(buf, sizeof(buf), "AI: %s", ACTIVITY[min<int>(a.activity, 6)]);
   g.drawString(buf, TXT_X, TY1 + TSTEP);
   g.setTextColor(C_GREEN);
   snprintf(buf, sizeof(buf), "SCANNED %u  CONTAINED %u", a.scanned, a.contained);
@@ -787,8 +796,16 @@ void loop() {
   s_btnWas = btn;
 #endif
 
-  // Follow the costume's side of the fight (it always wins).
-  if (s_contain == FIRED && a.activity == 4) {
+  // Follow the costume's side of the fight (it always wins -- unless a squad fires together).
+  if (a.seen && a.activity == 6 && s_contain != SQUAD) {
+    s_contain = SQUAD;
+    s_containAt = now;
+    if (s_clicksOn) sound::play(sound::LOCK);
+  } else if (s_contain == SQUAD && (!a.seen || a.activity != 6)) {
+    s_contain = FAILED;  // ...it had a backup
+    s_containAt = now;
+    if (s_clicksOn) sound::play(sound::FAIL);
+  } else if (s_contain == FIRED && a.activity == 4) {
     s_contain = CONTAINING;
     s_containAt = now;
   } else if (s_contain == CONTAINING && a.activity != 4) {
