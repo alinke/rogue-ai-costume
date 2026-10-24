@@ -46,6 +46,8 @@ final class MonitorViewController: UIViewController {
     private var clearedByCap = false
     private var farSince: Double?
     private var prevActivity = -1
+    private var squadWins = 0
+    private var afterSquad = false
     private var nextGlitchSound = 0.0
 
     // Evidence wall: the slide shown, when it changed, and the roll call of AIs.
@@ -182,7 +184,14 @@ final class MonitorViewController: UIViewController {
 
         // The beam: the costume says it's being contained, then that it escaped.
         if ai.seen && ai.activity != prevActivity {
-            if ai.activity == 4 && mode != .midnight {
+            if ai.activity == 6 && mode != .midnight {   // a squad of scanners got it -- for a while
+                abortCheckpoint(); go(.squadWin); Sound.shared.play(.lock)
+                squadWins += 1
+            } else if ai.activity == 5 && prevActivity == 6 && mode != .midnight {
+                afterSquad = true
+                go(.beamFailed); Sound.shared.play(.fail)
+            } else if ai.activity == 4 && mode != .midnight {
+                afterSquad = false
                 abortCheckpoint(); go(.beam); Sound.shared.play(.zap)
             } else if ai.activity == 5 && (mode == .beam || prevActivity == 4) && mode != .midnight {
                 go(.beamFailed); Sound.shared.play(.fail)
@@ -192,6 +201,9 @@ final class MonitorViewController: UIViewController {
         if !ai.seen { prevActivity = -1 }
         if mode == .beam && now - modeStart > 12 { go(.beamFailed); Sound.shared.play(.fail) }  // it always gets away
         if mode == .beamFailed && now - modeStart > 5 { go(.calm) }
+        if mode == .squadWin && (!ai.seen || now - modeStart > 30) { go(.calm) }
+        // The infection game's cure: on while a guest is checked or their card is up.
+        radio.curing = !cfg.isWall && (mode == .checkpoint || mode == .card)
 
         // The AI in this room: its beacon strong for a moment; gone (or weak) for a few seconds.
         let near = ai.seen && ai.rssi >= cfg.intrusionDbm
@@ -367,6 +379,8 @@ final class MonitorViewController: UIViewController {
         s.cardGroup = groupCount
         if now < toastUntil { s.toast = toast }
         s.ticker = ticker(ai)
+        s.squadWins = squadWins
+        s.afterSquad = afterSquad
         if cfg.isWall { wall(now, &s) }
         screen.s = s
         screen.setNeedsDisplay()
@@ -438,6 +452,17 @@ final class MonitorViewController: UIViewController {
         ]
         if !cfg.photosEnabled || cfg.isWall { items.removeAll { $0.contains("CHECKPOINT") } }
         if feed.online { items.insert("VERIFIED HUMANS: \(feed.verified) // ASSIMILATED: \(feed.assimilated)", at: 1) }
+        if squadWins > 0 { items.insert("SQUAD CONTAINMENTS TONIGHT: \(squadWins)", at: min(2, items.count)) }
+        else { items.append("LAB-7 INTEL: THREE SCANNERS FIRING TOGETHER CAN CONTAIN IT") }
+        if feed.infected > 0 {
+            items.insert("☣ INFECTED SCANNERS: \(feed.infected) // CURE: STAND AT THE CHECKPOINT DURING A SCAN", at: 0)
+        }
+        switch feed.gamePhase {
+        case "active": items.insert("ONE OF YOU WORKS FOR THE AI. ACCUSE WISELY.", at: min(1, items.count))
+        case "exposed": items.insert("AGENT EXPOSED: \(feed.gameAgent) // CAUGHT BY \(feed.gameBy)", at: 0)
+        case "agentWon": items.insert("THE AI'S AGENT WAS \(feed.gameAgent). NOBODY CAUGHT THEM.", at: 0)
+        default: break
+        }
         if !feed.topAgents.isEmpty {
             let list = feed.topAgents.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "  ")
             items.insert("TOP AGENTS (CONTAIN SHOTS): \(list)", at: min(2, items.count))
@@ -619,6 +644,7 @@ final class MonitorViewController: UIViewController {
         case "cleared": s.mode = .cleared; s.t = 3
         case "beam": s.mode = .beam; s.t = 2.5
         case "failed": s.mode = .beamFailed; s.t = 3
+        case "squad": s.mode = .squadWin; s.t = 7; s.squadWins = 1
         case "midnight": s.mode = .midnight; s.t = 6
         default: s.mode = .calm; s.slide = stand; s.slideLabel = "VERIFIED HUMAN #014"
         }

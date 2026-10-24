@@ -8,15 +8,22 @@ struct AiState {
     var seen = false
     var rssi = -100
     var threat = 0
-    var activity = 0    // 0 idle, 1 scanning a human, 2 game, 3 takeover, 4 being contained, 5 escaped
+    var activity = 0    // 0 idle, 1 scanning a human, 2 game, 3 takeover, 4 being contained, 5 escaped,
+                        // 6 contained by a squad of scanners (for a while)
     var scanned = 0
     var contained = 0
 }
 
-final class Radio: NSObject, CBCentralManagerDelegate {
+final class Radio: NSObject, CBCentralManagerDelegate, CBPeripheralManagerDelegate {
     private(set) var ai = AiState()
     private(set) var bluetoothOn = false
     private var central: CBCentralManager!
+    private var peripheral: CBPeripheralManager!
+    /// The checkpoint's cure beacon (the guest app's infection game): on while a
+    /// guest is being checked, so an infected phone held right here gets cured.
+    var curing = false {
+        didSet { if curing != oldValue { advertiseCure() } }
+    }
     private var lastSeen = Date.distantPast
     private var rssiAvg = -100.0
     static let lostAfter: TimeInterval = 6
@@ -24,7 +31,19 @@ final class Radio: NSObject, CBCentralManagerDelegate {
     override init() {
         super.init()
         central = CBCentralManager(delegate: self, queue: nil)
+        peripheral = CBPeripheralManager(delegate: self, queue: nil)
     }
+
+    private func advertiseCure() {
+        guard peripheral.state == .poweredOn else { return }
+        peripheral.stopAdvertising()
+        if curing {
+            peripheral.startAdvertising([CBAdvertisementDataServiceUUIDsKey:
+                                            [CBUUID(string: "4C414237-4355-5245-0000-000000000000")]])  // "LAB7" "CURE"
+        }
+    }
+
+    func peripheralManagerDidUpdateState(_ p: CBPeripheralManager) { advertiseCure() }
 
     /// From the display loop: "lost" needs a clock.
     func tick() {

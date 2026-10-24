@@ -20,6 +20,10 @@ final class Feed {
     private(set) var online = false
     /// The guest app's agent leaderboard (GET /leaders): "NAME (CONTAIN SHOTS)", best first.
     private(set) var topAgents: [String] = []
+    private(set) var infected = 0            // guest phones infected right now
+    private(set) var gamePhase = "waiting"   // the traitor game
+    private(set) var gameAgent = ""
+    private(set) var gameBy = ""
     private var images: [URL: UIImage] = [:]
     private var lru: [URL] = []          // most recently used last
     private let cacheSize = 30
@@ -38,11 +42,19 @@ final class Feed {
                 guard let data = data, (resp as? HTTPURLResponse)?.statusCode == 200,
                       let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
                       let agents = json["agents"] as? [[String: Any]] else { return }
+                let inf = json["infected"] as? Int ?? 0
+                let g = json["game"] as? [String: Any] ?? [:]
                 let top = agents.prefix(3).compactMap { a -> String? in
                     guard let n = a["name"] as? String else { return nil }
                     return "\(n) (\(a["contains"] as? Int ?? 0))"
                 }
-                DispatchQueue.main.async { self?.topAgents = top }
+                DispatchQueue.main.async {
+                    self?.topAgents = top
+                    self?.infected = inf
+                    self?.gamePhase = g["phase"] as? String ?? "waiting"
+                    self?.gameAgent = g["agentName"] as? String ?? ""
+                    self?.gameBy = g["byName"] as? String ?? ""
+                }
             }.resume()
         }
         URLSession.shared.dataTask(with: url) { [weak self] data, resp, _ in

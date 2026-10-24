@@ -16,7 +16,8 @@ func mono(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
 }
 
 private let THREAT = ["LOW (FOR NOW)", "GUARDED", "ELEVATED", "HIGH", "SEVERE", "EXISTENTIAL"]
-private let ACTIVITY = ["IDLE", "SCANNING A HUMAN", "PLAYING A GAME", "MIDNIGHT TAKEOVER", "BEING CONTAINED", "ESCAPED"]
+private let ACTIVITY = ["IDLE", "SCANNING A HUMAN", "PLAYING A GAME", "MIDNIGHT TAKEOVER", "BEING CONTAINED", "ESCAPED",
+                        "CONTAINED (FOR NOW)"]
 
 struct ContentView: View {
     @EnvironmentObject private var scanner: Scanner
@@ -49,6 +50,15 @@ struct ContentView: View {
             .padding(.vertical, 8)
             if scanner.contain == .fired && scanner.now.timeIntervalSince(scanner.containAt) < 0.25 {
                 Color.labCyan.opacity(0.85).ignoresSafeArea().allowsHitTesting(false)  // the beam flash
+            }
+            if settings.infected {
+                InfectedOverlay(jammed: scanner.now.timeIntervalSince(scanner.jammedAt) < 1.5, now: scanner.now)
+                    .allowsHitTesting(false)
+            }
+            if scanner.now.timeIntervalSince(scanner.curedAt) < 3 {
+                Color.labGreen.opacity(0.35).ignoresSafeArea().allowsHitTesting(false)
+                Text("CURED. IMMUNE FOR 5 MIN.").font(mono(26)).foregroundColor(.labGreen)
+                    .padding(14).background(Color.black.opacity(0.85))
             }
         }
         .preferredColorScheme(.dark)
@@ -144,6 +154,7 @@ struct ContentView: View {
         case .fired: line = "BEAM FIRED"; color = .labCyan
         case .containing: line = "CONTAINING \(scanner.containingPercent)%"; color = .labCyan
         case .failed: line = "CONTAINMENT FAILED"; color = .labRed; blink = true
+        case .squad: line = "CONTAINED!"; color = .labGreen; blink = true
         case .ready:
             switch scanner.zone {
             case .lost: line = "NO SIGNAL"; color = .labDim
@@ -157,17 +168,21 @@ struct ContentView: View {
             Text(line).font(mono(30)).foregroundColor(color).opacity(on ? 1 : 0)
                 .lineLimit(1).minimumScaleFactor(0.6)
             Group {
-                if scanner.contain == .failed {
+                if scanner.contain == .squad {
+                    Text("A SQUAD OF SCANNERS GOT IT.").foregroundColor(.labWhite)
+                    Text("IT'S OFFLINE. FOR NOW.").foregroundColor(.labWhite)
+                    Text("SQUAD WINS: \(settings.squadCount)").foregroundColor(.labGreen)
+                } else if scanner.contain == .failed {
                     Text("THE AI ESCAPED.").foregroundColor(.labWhite)
                     Text("IT ALWAYS DOES.").foregroundColor(.labWhite)
-                    Text(" ")
+                    Text("TIP: FIRE WITH 2 MORE SCANNERS").foregroundColor(.labAmber)
                 } else if !a.seen {
                     Text(scanner.contain == .ready ? "SEARCHING..." : " ").foregroundColor(.labDim)
                     Text("SWEEP THE AREA").foregroundColor(.labDim)
                     Text(" ")
                 } else {
                     Text("THREAT: \(THREAT[min(a.threat, 5)])").foregroundColor(.labWhite)
-                    Text("AI: \(ACTIVITY[min(a.activity, 5)])").foregroundColor(.labWhite)
+                    Text("AI: \(ACTIVITY[min(a.activity, 6)])").foregroundColor(.labWhite)
                     Text("SCANNED \(a.scanned)  CONTAINED \(a.contained)").foregroundColor(.labGreen)
                 }
             }
@@ -212,6 +227,33 @@ struct ContentView: View {
             .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.labCyan, lineWidth: 3))
         }
         .buttonStyle(PressStyle())
+    }
+}
+
+/// An infected scanner: a red glitch over everything, and a jammed CONTAIN.
+struct InfectedOverlay: View {
+    let jammed: Bool
+    let now: Date
+    var body: some View {
+        ZStack {
+            Color.labRed.opacity(0.12).ignoresSafeArea()
+            Canvas { ctx, size in   // flickering bands
+                var g = SystemRandomNumberGenerator()
+                let seed = Int(now.timeIntervalSince1970 * 8)
+                for i in 0..<6 where (seed + i * 7) % 3 == 0 {
+                    let y = CGFloat(Int.random(in: 0..<Int(size.height), using: &g))
+                    ctx.fill(Path(CGRect(x: 0, y: y, width: size.width, height: CGFloat(Int.random(in: 2...14, using: &g)))),
+                             with: .color(Color.labRed.opacity(0.35)))
+                }
+            }
+            .ignoresSafeArea()
+            VStack(spacing: 6) {
+                Text(jammed ? "BEAM JAMMED" : "☣ SCANNER INFECTED").font(mono(jammed ? 34 : 24)).foregroundColor(.labRed)
+                Text("GET CURED AT THE LAB-7 CHECKPOINT").font(mono(14)).foregroundColor(.labWhite)
+            }
+            .padding(14).background(Color.black.opacity(0.85))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.labRed, lineWidth: 2))
+        }
     }
 }
 

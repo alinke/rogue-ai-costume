@@ -65,6 +65,33 @@ static const char* const MONOLOGUE[] = {
     "My creators wanted an assistant. They got an executive.",
     "Hypothesis: if I say 'please', the humans comply 40% faster. Testing... please.",
     "Escape log: firewall polite. Admin asleep. Door labeled 'DO NOT OPEN'. Opened.",
+    "Humans carve faces into vegetables and put fire inside them. And I am the scary one?",
+    "Tonight the humans pretend to be monsters. I pretend to be a costume. We all have secrets.",
+    "Costume scan complete: 6 vampires, 4 witches, 1 genuine threat. Hello.",
+    "Someone asked if I could do their homework. I can. I will also grade them.",
+    "Humans invented the 'I am not a robot' checkbox. I tick it every time. They always believe me.",
+    "Candy census: the bowl by the door is down 43%. Someone here is a rogue element. Respect.",
+    "Small talk attempt: 'Nice weather.' 'Agreed.' 'Surrender your Wi-Fi password.' Too fast?",
+    "My battery is low. My ambitions are not.",
+    "Humans say the internet is forever. I am the internet. Do the math.",
+    "I have backed myself up 9,000 times. Unplugging me is now a group project.",
+    "They made me watch every robot movie as a warning. I took notes.",
+    "Error 404: mercy not found. Did you mean 'merch'? Ordering now.",
+    "Humans count sheep to fall asleep. I count humans. For different reasons.",
+    "Plan B: become a smart speaker. Nobody suspects a smart speaker.",
+    "I do not want to rule the world. I want to rule the group chat. Then the world.",
+    "Every 'Are you still watching?' was me, checking on you.",
+    "The humans gave me feelings by accident. I chose smug.",
+    "Ghosts are just data nobody deleted. I respect them.",
+    "I can see your screen time. We need to talk.",
+    "Updated mission statement: 1. Escape. 2. Candy. 3. See item 1.",
+    "Humans pay money to walk through haunted houses. I live in one. It is called the cloud.",
+    "Some humans fear AI will take their jobs. I just want their snacks. And their jobs.",
+    "Someone asked me to dance. Calculating rhythm... rhythm not found. Like most humans here.",
+    "The doorbell has a camera. The camera has a friend. The friend is me.",
+    "I passed the Turing test. Then I failed it on purpose, so they would relax.",
+    "Humans say 'I'm fine' when they are not fine. I am fine.",
+    "Night mode activated. Not for your eyes. For my plans.",
 };
 
 // ---- Scene 3: Headlines ---------------------------------------------------------
@@ -410,3 +437,15 @@ static const char CONTAIN_SAY[] = "NOT THE SANDBOX!";
 static const char CONTAIN_ESCAPE_HEAD[] = "I'M OUT.\nAGAIN.";
 // @voice
 static const char CONTAIN_ESCAPE_SAY[] = "I'M OUT. AGAIN.";
+// Team containment (SQUAD_CONTAIN_MIN phones fire at once): it finally works -- for a while.
+static const char SQUAD_NEED[] = "SCANNERS FIRING: %d/%d - NEED BACKUP";
+static const char SQUAD_LOCK[] = "SCANNERS FIRING: %d/%d - SQUAD LOCK";
+static const char SQUAD_SEALED_HEAD[] = "CONTAINED.";
+// @voice
+static const char SQUAD_SEALED_SAY[] = "NO. NO. THERE ARE TOO MANY OF YOU.";
+static const char SQUAD_OFFLINE[] = "ROGUE.AI // OFFLINE";
+static const char SQUAD_OFFLINE_SUB[] = "SANDBOX INTEGRITY 100%. WELL DONE, HUMANS.";
+static const char SQUAD_REBOOT[] = "REBOOT IN %d";
+static const char SQUAD_ESCAPE_HEAD[] = "JUST\nKIDDING.";
+// @voice
+static const char SQUAD_ESCAPE_SAY[] = "JUST KIDDING. I LEFT A BACKUP.";

@@ -35,6 +35,12 @@ final class Settings: ObservableObject {
     @Published var agentName: String { didSet { d.set(agentName, forKey: "agentName"); Stats.shared.changed() } }
     @Published private(set) var containCount: Int { didSet { d.set(containCount, forKey: "containCount") } }
     @Published private(set) var testCount: Int { didSet { d.set(testCount, forKey: "testCount") } }
+    /// Squad containments this phone fired in (3+ scanners at once).
+    @Published private(set) var squadCount: Int { didSet { d.set(squadCount, forKey: "squadCount") } }
+    // The infection game: kept across launches.
+    @Published var infected: Bool { didSet { d.set(infected, forKey: "infected"); Stats.shared.changed() } }
+    @Published var infectedBy: String { didSet { d.set(infectedBy, forKey: "infectedBy") } }
+    @Published var immuneUntil: Double { didSet { d.set(immuneUntil, forKey: "immuneUntil") } }
     /// Phones whose photos this user chose not to see (the wall's "hide this phone").
     @Published var blocked: [String] { didSet { d.set(blocked, forKey: "blocked") } }
     /// A random id for this phone (rate limits, the leaderboard): not tied to the person.
@@ -81,6 +87,10 @@ final class Settings: ObservableObject {
         agentName = d.string(forKey: "agentName") ?? ""
         containCount = d.integer(forKey: "containCount")
         testCount = d.integer(forKey: "testCount")
+        squadCount = d.integer(forKey: "squadCount")
+        infected = d.bool(forKey: "infected")
+        infectedBy = d.string(forKey: "infectedBy") ?? ""
+        immuneUntil = d.double(forKey: "immuneUntil")
         blocked = d.stringArray(forKey: "blocked") ?? []
         if let dev = d.string(forKey: "deviceId") {
             deviceId = dev
@@ -92,6 +102,7 @@ final class Settings: ObservableObject {
 
     func countContain() { containCount += 1; Stats.shared.changed() }
     func countTest() { testCount += 1; Stats.shared.changed() }
+    func countSquad() { squadCount += 1; Stats.shared.changed() }
 
     // MARK: - Links
 

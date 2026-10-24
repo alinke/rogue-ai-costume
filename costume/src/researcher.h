@@ -12,12 +12,23 @@ namespace researcher {
 enum Zone : uint8_t { NONE, DETECTED, NEAR, CLOSE };
 
 // What the AI is doing, broadcast so the scanner can show it.
-enum Activity : uint8_t { IDLE, SCANNING_HUMAN, PLAYING_GAME, TAKEOVER, BEING_CONTAINED, ESCAPED };
+enum Activity : uint8_t { IDLE, SCANNING_HUMAN, PLAYING_GAME, TAKEOVER, BEING_CONTAINED, ESCAPED,
+                          SQUAD_CONTAINED };  // a squad of scanners actually got it (for a while)
+
+// Team containment: this many different scanners (phones) firing CONTAIN within
+// SQUAD_WINDOW_MS of each other finally contain the AI -- for a while.
+#ifndef SQUAD_CONTAIN_MIN
+#define SQUAD_CONTAIN_MIN 3
+#endif
+#ifndef SQUAD_WINDOW_MS
+#define SQUAD_WINDOW_MS 6000
+#endif
 
 struct Events {
   bool zoneChanged = false;
   Zone zone = NONE, previous = NONE;
   bool contain = false;  // she pressed CONTAIN
+  int squad = 0;         // different scanners that fired CONTAIN in the last SQUAD_WINDOW_MS
 };
 
 void begin();                         // starts the radio in the background

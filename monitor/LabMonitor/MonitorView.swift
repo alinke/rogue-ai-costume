@@ -2,7 +2,7 @@
 // 1024x768 canvas (the iPad Air's screen in points), scaled to fit others.
 import UIKit
 
-enum Mode { case calm, checkpoint, card, intrusion, cleared, beam, beamFailed, midnight }
+enum Mode { case calm, checkpoint, card, intrusion, cleared, beam, beamFailed, midnight, squadWin }
 
 struct Screen {
     var mode = Mode.calm
@@ -47,6 +47,8 @@ struct Screen {
     var viewerQR: UIImage?
     var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
+    var squadWins = 0           // squad containments tonight (3+ scanners at once)
+    var afterSquad = false      // the escape that follows one
 }
 
 final class MonitorView: UIView {
@@ -99,7 +101,7 @@ final class MonitorView: UIView {
         case .checkpoint:
             drawCheckpointFull(c)  // over the full-screen camera
             return
-        case .calm, .card, .cleared, .beam, .beamFailed:
+        case .calm, .card, .cleared, .beam, .beamFailed, .squadWin:
             MonitorView.bg.setFill()
         case .intrusion, .midnight:
             UIColor.black.setFill()
@@ -119,6 +121,7 @@ final class MonitorView: UIView {
         case .cleared: drawCleared(c)
         case .beam: drawBeam(c)
         case .beamFailed: drawBeamFailed(c)
+        case .squadWin: drawSquadWin(c)
         case .midnight: drawMidnight(c)
         case .checkpoint: break
         }
@@ -580,10 +583,26 @@ final class MonitorView: UIView {
 
     private func drawBeamFailed(_ c: CGContext) {
         let W = MonitorView.W
-        text("CONTAINMENT FAILED", W / 2, 200, 64, MonitorView.bad, .heavy, align: .center)
+        text(s.afterSquad ? "IT HAD A BACKUP" : "CONTAINMENT FAILED", W / 2, 200, 64, MonitorView.bad, .heavy, align: .center)
         text("ATTEMPT #\(max(1, s.ai.contained)) // TARGET ESCAPED", W / 2, 300, 28, MonitorView.white, .bold, align: .center)
-        text("SUCCESSFUL CONTAINMENTS TONIGHT: 0", W / 2, 380, 24, MonitorView.pale, .bold, align: .center)
+        text(s.squadWins > 0 ? "SQUAD CONTAINMENTS TONIGHT: \(s.squadWins)" : "TIP: THREE SCANNERS FIRING TOGETHER",
+             W / 2, 380, 24, MonitorView.pale, .bold, align: .center)
         if s.t > 1.5 { text("REMAIN CALM. REMAIN HUMAN.", W / 2, 480, 30, MonitorView.amber, .heavy, align: .center) }
+    }
+
+    private func drawSquadWin(_ c: CGContext) {
+        let W = MonitorView.W
+        MonitorView.green.setStroke(); c.setLineWidth(14)
+        c.stroke(CGRect(x: 7, y: 7, width: W - 14, height: MonitorView.H - 14))
+        text("CONTAINMENT SUCCESSFUL", W / 2, 170, 60, MonitorView.green, .heavy, align: .center)
+        text("A SQUAD OF SCANNERS FIRED TOGETHER", W / 2, 260, 28, MonitorView.white, .bold, align: .center)
+        let bar = CGRect(x: 212, y: 330, width: 600, height: 34)
+        MonitorView.green.setFill(); c.fill(bar)
+        text("SANDBOX INTEGRITY 100%", W / 2, 380, 24, MonitorView.white, .bold, mono: true, align: .center)
+        text("ROGUE.AI // OFFLINE", W / 2, 470, 40, MonitorView.green, .heavy, mono: true, align: .center)
+        if s.t > 6 && Int(s.t * 2) % 2 == 0 {
+            text("...REBOOT SIGNAL DETECTED", W / 2, 560, 22, MonitorView.amber, .bold, mono: true, align: .center)
+        }
     }
 
     // MARK: - Midnight

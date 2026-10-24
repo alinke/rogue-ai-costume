@@ -7,6 +7,7 @@
 #include "header.h"
 #include "leds.h"
 #include "messages.h"
+#include "researcher.h"
 #include "scenes.h"
 #include "ui.h"
 
@@ -14,6 +15,8 @@ using namespace gfx;
 
 int g_researcherAlert = 0;  // 0 detected, 1 near, 2 gone (set before the scene starts)
 int g_timesContained = 0;
+int g_squad = 0;                 // scanners that fired CONTAIN in the last few seconds (main.cpp)
+bool g_squadContained = false;   // the squad got it: broadcast as SQUAD_CONTAINED
 
 namespace {
 
@@ -55,9 +58,10 @@ bool alertTick(uint32_t now) {
 }
 
 // ---- Re-containment attack ---------------------------------------------------------
-enum Phase { BEAM, RESTORE, BREAK, ESCAPE };
+enum Phase { BEAM, RESTORE, BREAK, ESCAPE, SEALED, OFFLINE };
 Phase phase;
 uint32_t phaseStart;
+bool sealedShown;
 float pct;
 constexpr int BX = 120, BW = W - 240, BY = BODY_Y + 360, BH = 60;
 
@@ -68,7 +72,14 @@ void drawBar() {
   char t[32];
   snprintf(t, sizeof(t), "%s %d%%", CONTAIN_BAR, (int)pct);
   ui::centredText(t, BX, BY + BH + 10, BW, lineH(F_LARGE), F_LARGE, C_CYAN);
+  // How many scanners are firing: teaches the squad rule on the spot.
+  int sy = BY + BH + 30 + lineH(F_LARGE);
+  clearRect(0, sy, W, lineH(F_BODY) + 8);
+  int n = max(1, g_squad);
+  snprintf(t, sizeof(t), n >= SQUAD_CONTAIN_MIN ? SQUAD_LOCK : SQUAD_NEED, min(n, 99), SQUAD_CONTAIN_MIN);
+  ui::centredText(t, 0, sy, W, lineH(F_BODY), F_BODY, n >= SQUAD_CONTAIN_MIN ? C_GREEN : C_AMBER);
   dirty(BX - 4, BY - 4, BW + 8, BH + 8 + lineH(F_LARGE) + 20);
+  dirty(0, sy, W, lineH(F_BODY) + 8);
 }
 
 void containEnter(uint32_t now) {
@@ -82,6 +93,7 @@ void containEnter(uint32_t now) {
   pct = 0;
   phase = BEAM;
   phaseStart = now;
+  g_squadContained = false;
 }
 
 bool containTick(uint32_t now) {
@@ -111,8 +123,63 @@ bool containTick(uint32_t now) {
         sliceShift(rnd(BODY_Y, H - 60), rnd(8, 60), (int)rnd(10, 40 + (int)(160 * fight)) * (rnd(2) ? 1 : -1));
         dirty(0, BODY_Y, W, BODY_H);
       }
+      if (g_squad >= SQUAD_CONTAIN_MIN) {  // enough scanners: this time it works
+        pct = 100;
+        drawBar();
+        g_squadContained = true;
+        canvas.fillRect(0, BODY_Y, W, BODY_H, C_WHITE);
+        dirty(0, BODY_Y, W, BODY_H);
+        audio::say(SQUAD_SEALED_SAY);
+        leds::setMode(leds::OFF);
+        Serial.printf("[I][researcher] SQUAD CONTAINMENT: %d scanners\n", g_squad);
+        phase = SEALED;
+        phaseStart = now;
+        sealedShown = false;
+        break;
+      }
       if (pct >= 97.0f) {
         phase = BREAK;
+        phaseStart = now;
+      }
+      break;
+    }
+    case SEALED:
+      // A white flash, then the verdict.
+      if (t > 250 && !sealedShown) {
+        sealedShown = true;
+        clearBody();
+        anim.start(SQUAD_SEALED_HEAD, BODY_Y + 20, BODY_H - 40, C_CYAN, now);
+      }
+      if (sealedShown) anim.tick(now);
+      if (t > 3500) {
+        clearBody();
+        phase = OFFLINE;
+        phaseStart = now;
+      }
+      break;
+    case OFFLINE: {
+      // Dark, quiet, a countdown nobody likes.
+      constexpr uint32_t OFFLINE_MS = 14000;
+      static int lastShown = -1;
+      int left = (int)((OFFLINE_MS - min(t, OFFLINE_MS)) / 1000);
+      if (t < 50) lastShown = -1;
+      if (left != lastShown) {
+        lastShown = left;
+        clearBody();
+        ui::centredText(SQUAD_OFFLINE, 0, BODY_Y + BODY_H / 2 - 120, W, lineH(F_LARGE), F_LARGE, C_DIM);
+        ui::centredText(SQUAD_OFFLINE_SUB, 0, BODY_Y + BODY_H / 2 - 20, W, lineH(F_BODY), F_BODY, C_CYAN);
+        char b[24];
+        snprintf(b, sizeof(b), SQUAD_REBOOT, left);
+        ui::centredText(b, 0, BODY_Y + BODY_H / 2 + 60, W, lineH(F_BODY), F_BODY, left <= 3 ? C_RED : C_DIM);
+        dirty(0, BODY_Y, W, BODY_H);
+      }
+      if (t >= OFFLINE_MS) {  // ...it had a backup
+        g_squadContained = false;
+        clearBody();
+        anim.start(SQUAD_ESCAPE_HEAD, BODY_Y + 20, BODY_H - 40, C_GREEN, now);
+        audio::say(SQUAD_ESCAPE_SAY);
+        leds::setMode(leds::BREAKOUT);
+        phase = ESCAPE;
         phaseStart = now;
       }
       break;

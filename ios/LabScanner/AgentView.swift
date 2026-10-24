@@ -21,6 +21,7 @@ struct AgentView: View {
                         Text("AGENT DOSSIER").font(mono(24)).foregroundColor(.labGreen)
                         Text("LAB-7 // DOUBLE AGENT PROGRAM").font(mono(11, .regular)).foregroundColor(.labDim)
                     }
+                    if settings.joined { InvestigationPanel() }
                     dossier
                     leaderboardName
                     if settings.joined, let m = settings.midnightDate { countdown(m) }
@@ -79,6 +80,7 @@ struct AgentView: View {
             HStack(spacing: 24) {
                 stat("\(settings.containCount)", "CONTAIN SHOTS")
                 stat("\(settings.testCount)", "HUMANITY TESTS")
+                stat("\(settings.squadCount)", "SQUAD WINS")
             }
             Text(settings.joined ? "Shown on the event's TOP AGENTS board. Leave it empty to use your codename."
                                  : "Join an event to get on its TOP AGENTS board.")
@@ -135,7 +137,8 @@ struct AgentView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("FIELD MANUAL").font(mono(11)).foregroundColor(.labDim)
             ForEach(["SCANNER tab: the meter climbs (and the phone buzzes faster) as the entity gets closer.",
-                     "When it says SIGNAL STRONG, press CONTAIN. It will escape. It always does. Keep trying.",
+                     "When it says SIGNAL STRONG, press CONTAIN. Alone, it always escapes. Three scanners firing together can actually contain it.",
+                     "INFECTION: stay close to an infected scanner (or the entity) and yours gets infected: CONTAIN jams. Stand at the LAB-7 checkpoint iPad during a humanity check to be cured.",
                      "HUMANITY TEST: photograph a guest. LAB-7 decides if they are human.",
                      "EVIDENCE tab: every card, every specimen, and the top agents."], id: \.self) { s in
                 HStack(alignment: .top, spacing: 8) {

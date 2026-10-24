@@ -29,11 +29,19 @@ struct LabScannerApp: App {
 struct RootView: View {
     @EnvironmentObject private var scanner: Scanner
     @ObservedObject private var settings = Settings.shared
+    @ObservedObject private var game = Game.shared
     @State private var tab = 0
     @State private var invite: Settings.Invite?
 
     /// Off the scanner tab and the AI comes close: say so (tap to go hunt it).
     @ViewBuilder private var nearBanner: some View {
+        if settings.infected {
+            Button { tab = 0 } label: {
+                Text("☣ SCANNER INFECTED: GET CURED AT THE CHECKPOINT")
+                    .font(mono(12)).foregroundColor(.black)
+                    .frame(maxWidth: .infinity).padding(.vertical, 8).background(Color.labRed)
+            }
+        }
         if scanner.zone >= .near {
             Button { tab = 0 } label: {
                 Text(scanner.zone == .close ? "⚠ THE ENTITY IS RIGHT HERE" : "⚠ THE ENTITY IS NEAR")
@@ -77,6 +85,8 @@ struct RootView: View {
                 invite = inv         // a guest: show what joining means first
             }
         }
+        .task { game.start() }
+        .fullScreenCover(isPresented: $game.showOrders) { SealedOrdersView() }
         .sheet(item: $invite) { inv in
             JoinView(invite: inv) { tab = 1 }
         }

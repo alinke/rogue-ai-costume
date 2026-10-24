@@ -9,6 +9,8 @@ struct WallView: View {
     @State private var ai: [WallPhoto] = []
     @State private var leaders: [LeaderEntry] = []
     @State private var agentsTotal = 0
+    @State private var infected = 0
+    @State private var game: GamePublic?
     @State private var filter = 0          // 0 all, 1 humans, 2 specimens, 3 mine
     @State private var status = ""
     @State private var open: WallPhoto?
@@ -60,6 +62,7 @@ struct WallView: View {
                     Text(settings.joined ? settings.eventName.uppercased() : "DEMO MODE: SAMPLE EVIDENCE")
                         .font(mono(12, .regular)).foregroundColor(settings.joined ? .labDim : .labAmber)
                 }
+                nightStatus
                 board
                 Picker("", selection: $filter) {
                     Text("ALL \(lab.count + ai.count)").tag(0)
@@ -129,15 +132,35 @@ struct WallView: View {
                     Text("\(i + 1).").frame(width: 26, alignment: .leading)
                     Text(a.name).lineLimit(1)
                     Spacer()
-                    Text("\(a.contains) ⚡  \(a.tests) ◉")
+                    Text("\((a.squads ?? 0) > 0 ? "\(a.squads ?? 0) ★  " : "")\(a.contains) ⚡  \(a.tests) ◉")
                 }
                 .font(mono(13, me ? .heavy : .regular))
                 .foregroundColor(me ? .labGreen : .labWhite)
             }
-            Text("⚡ CONTAIN SHOTS   ◉ HUMANITY TESTS").font(mono(9, .regular)).foregroundColor(.labDim)
+            Text("★ SQUAD WINS   ⚡ CONTAIN SHOTS   ◉ HUMANITY TESTS").font(mono(9, .regular)).foregroundColor(.labDim)
         }
         .padding(12)
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.labAmber.opacity(0.6)))
+    }
+
+    /// The night's state: infected scanners, the traitor game.
+    @ViewBuilder private var nightStatus: some View {
+        let lines: [(String, Color)] = {
+            var l: [(String, Color)] = []
+            if infected > 0 { l.append(("☣ INFECTED SCANNERS: \(infected)", .labRed)) }
+            switch game?.phase {
+            case "active": l.append(("ONE OF YOU WORKS FOR THE AI", .labAmber))
+            case "exposed": l.append(("AGENT EXPOSED: \(game?.agentName ?? "") (BY \(game?.byName ?? ""))", .labGreen))
+            case "agentWon": l.append(("THE AI'S AGENT WON: \(game?.agentName ?? "")", .labRed))
+            default: break
+            }
+            return l
+        }()
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(lines, id: \.0) { Text($0.0).font(mono(13)).foregroundColor($0.1) }
+            }
+        }
     }
 
     private var notJoined: some View {
@@ -191,7 +214,7 @@ struct WallView: View {
             await MainActor.run {
                 lab = f.lab
                 ai = f.ai
-                if let l { leaders = l.agents; agentsTotal = l.total }
+                if let l { leaders = l.agents; agentsTotal = l.total; infected = l.infected; game = l.game }
                 status = ""
             }
         } catch {

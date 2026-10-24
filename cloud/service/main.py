@@ -27,6 +27,10 @@ without touching the costume or the scanners.
                             photo -- it goes to the hidden set until the admin page shows it
   POST /delete-own          X-Key + X-Device, JSON {"name": "lab/....jpg"}: a guest deletes a
                             photo their own phone uploaded (any other photo: 403)
+  GET  /game                X-Key + X-Device: the traitor game as this phone sees it (one guest
+                            is secretly the AI's agent; the others try to find out who)
+  POST /accuse              X-Key + X-Device, JSON {"id": player id}: one accusation per phone
+  POST /game/admin          JSON {"k": ADMIN_KEY, "action": "start"|"reset"|"end"}
 
 Photos without a face (Cloud Vision face detection) go to <set>-hidden/
 instead: not on the page, but on the admin page with a SHOW button.
@@ -49,6 +53,12 @@ BUCKET = os.environ["BUCKET"]
 UPLOAD_KEY = os.environ["UPLOAD_KEY"]
 ADMIN_KEY = os.environ["ADMIN_KEY"]
 GUEST_KEY = os.environ.get("GUEST_KEY", "")   # the guest app's key ("" = no guest app)
+# The traitor game: picked automatically at GAME_START (seconds since 1970, "" = only from the
+# admin page), the agent wins if nobody exposes them by GAME_END.
+GAME_START = float(os.environ.get("GAME_START", "0") or 0)
+GAME_END = float(os.environ.get("GAME_END", "0") or 0)
+GAME_MIN_PLAYERS = 4
+PLAYER_ACTIVE_S = 3 * 3600   # a phone counts as at the party if it sent a score this recently
 SETS = ("ai", "lab")
 MAX_BYTES = 3 * 1024 * 1024
 LIST_LIMIT = 300
@@ -237,7 +247,7 @@ def clear():
     if not key_ok(request.headers.get("X-Key", ""), ADMIN_KEY):
         return "forbidden", 403
     n = 0
-    for prefix in ("ai/", "lab/", "ai-hidden/", "lab-hidden/", "stats/"):
+    for prefix in ("ai/", "lab/", "ai-hidden/", "lab-hidden/", "stats/", "game/"):
         for b in bucket.list_blobs(prefix=prefix):
             b.delete()
             n += 1
@@ -267,11 +277,14 @@ def stats():
     try:
         contains = max(0, min(100000, int(body.get("contains", 0))))
         tests = max(0, min(100000, int(body.get("tests", 0))))
+        squads = max(0, min(1000, int(body.get("squads", 0))))
     except (TypeError, ValueError):
         return "bad numbers", 400
+    infected = bool(body.get("infected", False))
     blob = bucket.blob(f"stats/{tag}.json")
     blob.cache_control = "no-store"
-    blob.upload_from_string(json.dumps({"name": name, "contains": contains, "tests": tests}),
+    blob.upload_from_string(json.dumps({"name": name, "contains": contains, "tests": tests, "squads": squads,
+                                        "infected": infected, "t": now}),
                             content_type="application/json")
     _leaders_cache["t"] = 0
     return jsonify(ok=True)
@@ -280,18 +293,170 @@ def stats():
 @app.get("/leaders")
 def leaders():
     if _leaders_cache["data"] is None or time.time() - _leaders_cache["t"] > 15:
-        agents = []
-        for b in bucket.list_blobs(prefix="stats/"):
-            try:
-                a = json.loads(b.download_as_bytes())
-                agents.append({"name": a["name"], "contains": int(a["contains"]), "tests": int(a["tests"])})
-            except Exception:  # noqa: BLE001 -- skip a broken entry
-                continue
-        agents.sort(key=lambda a: (a["contains"], a["tests"]), reverse=True)
-        _leaders_cache.update(t=time.time(), data={"agents": agents[:LEADERS_SHOWN], "total": len(agents)})
+        agents, infected = [], 0
+        for a in players(active_only=False):
+            agents.append({"name": a["name"], "contains": a["contains"], "tests": a["tests"], "squads": a["squads"]})
+            if a["infected"] and time.time() - a["t"] < 600:
+                infected += 1
+        agents.sort(key=lambda a: (a["squads"], a["contains"], a["tests"]), reverse=True)
+        _leaders_cache.update(t=time.time(), data={"agents": agents[:LEADERS_SHOWN], "total": len(agents),
+                                                   "infected": infected, "game": game_public()})
     resp = jsonify(_leaders_cache["data"])
     resp.headers["Cache-Control"] = "public, max-age=10"
     return resp
+
+
+def players(active_only=True):
+    """Every phone with a score: {"id" (the stats tag), "name", ...}."""
+    out = []
+    for b in bucket.list_blobs(prefix="stats/"):
+        try:
+            a = json.loads(b.download_as_bytes())
+            p = {"id": b.name[6:-5], "name": a["name"], "contains": int(a["contains"]), "tests": int(a["tests"]),
+                 "squads": int(a.get("squads", 0)), "infected": bool(a.get("infected")), "t": float(a.get("t", 0))}
+        except Exception:  # noqa: BLE001 -- skip a broken entry
+            continue
+        if not active_only or time.time() - p["t"] < PLAYER_ACTIVE_S:
+            out.append(p)
+    return out
+
+
+# ---- The traitor game ----------------------------------------------------------------------
+# game/state.json: {"agent": id, "started": t, "ends": t, "exposedBy": id|None, "exposedAt": t,
+#                   "accused": {id: target id}, "names": {id: name}}
+_game_lock = threading.Lock()
+
+
+def game_load():
+    b = bucket.blob("game/state.json")
+    try:
+        return json.loads(b.download_as_bytes())
+    except Exception:  # noqa: BLE001 -- no game yet
+        return {}
+
+
+def game_save(g):
+    b = bucket.blob("game/state.json")
+    b.cache_control = "no-store"
+    b.upload_from_string(json.dumps(g), content_type="application/json")
+
+
+def game_start(g):
+    ps = players()
+    if not ps:
+        return g
+    agent = secrets.choice(ps)
+    now = time.time()
+    g = {"agent": agent["id"], "started": now, "ends": GAME_END if GAME_END > now else 0,
+         "exposedBy": None, "exposedAt": 0, "accused": {}, "names": {p["id"]: p["name"] for p in ps}}
+    game_save(g)
+    print(f"traitor game started: {len(ps)} players")
+    return g
+
+
+def game_phase(g):
+    if not g.get("agent"):
+        return "waiting"
+    if g.get("exposedBy"):
+        return "exposed"
+    if g.get("ended") or (g.get("ends") and time.time() >= g["ends"]):
+        return "agentWon"
+    return "active"
+
+
+def game_public():
+    """What everyone may know (the wall, the iPad ticker): never who the agent is, until it's over."""
+    g = game_load()
+    ph = game_phase(g)
+    out = {"phase": ph, "ends": g.get("ends", 0)}
+    names = g.get("names", {})
+    if ph in ("exposed", "agentWon"):
+        out["agentName"] = names.get(g["agent"], "UNKNOWN")
+    if ph == "exposed":
+        out["byName"] = names.get(g["exposedBy"], "UNKNOWN")
+    return out
+
+
+def my_id():
+    d = request.headers.get("X-Device", "")
+    if not re.fullmatch(r"[A-Za-z0-9-]{8,64}", d):
+        return ""
+    return hashlib.sha256(d.encode()).hexdigest()[:16]   # the same tag as stats/<id>.json
+
+
+@app.get("/game")
+def game():
+    if not caller():
+        return "forbidden", 403
+    me = my_id()
+    if not me:
+        return "missing device", 400
+    with _game_lock:
+        g = game_load()
+        if not g.get("agent") and GAME_START and time.time() >= GAME_START and len(players()) >= GAME_MIN_PLAYERS:
+            g = game_start(g)
+    ph = game_phase(g)
+    out = game_public() if g else {"phase": "waiting", "ends": 0}
+    out["you"] = "agent" if g.get("agent") == me else "player"
+    out["accused"] = me in g.get("accused", {})
+    if ph == "active":
+        names = dict(g.get("names", {}))
+        for p in players():
+            names[p["id"]] = p["name"]
+        out["players"] = sorted(({"id": i, "name": n} for i, n in names.items() if i != me), key=lambda p: p["name"])
+    resp = jsonify(out)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@app.post("/accuse")
+def accuse():
+    if not caller():
+        return "forbidden", 403
+    me = my_id()
+    if not me:
+        return "missing device", 400
+    target = str((request.get_json(silent=True) or {}).get("id", ""))
+    with _game_lock:
+        g = game_load()
+        if game_phase(g) != "active":
+            return jsonify(result="over", game=game_public())
+        if me in g["accused"]:
+            return jsonify(result="used")
+        if me == g["agent"]:
+            return jsonify(result="agent")      # the agent can't accuse (it would give them away)
+        g["accused"][me] = target
+        correct = target == g["agent"]
+        if correct:
+            g["exposedBy"] = me
+            g["exposedAt"] = time.time()
+        for p in players():
+            g.setdefault("names", {})[p["id"]] = p["name"]
+        game_save(g)
+    _leaders_cache["t"] = 0
+    return jsonify(result="correct" if correct else "wrong", game=game_public())
+
+
+@app.post("/game/admin")
+def game_admin():
+    body = request.get_json(silent=True) or {}
+    if not key_ok(body.get("k", ""), ADMIN_KEY):
+        return "forbidden", 403
+    action = body.get("action")
+    with _game_lock:
+        g = game_load()
+        if action == "start":
+            g = game_start({})
+        elif action == "reset":
+            bucket.blob("game/state.json").delete() if bucket.blob("game/state.json").exists() else None
+            g = {}
+        elif action == "end" and g.get("agent"):
+            g["ended"] = True
+            game_save(g)
+        else:
+            return "bad action", 400
+    _leaders_cache["t"] = 0
+    return jsonify(game=game_public(), players=len(players()))
 
 
 @app.post("/report")
@@ -368,6 +533,11 @@ button.sure{background:var(--red);color:#000}
 button.show{border-color:var(--green);color:var(--green);margin-bottom:6px}
 </style></head><body>
 <h1>ROGUE.AI // PHOTO ADMIN</h1><p>Tap DELETE twice to remove a photo from the site. Photos with no face found, or reported by a guest, aren't on the site -- SHOW puts one there. Private page -- don't share the link.</p>
+<h2>THE TRAITOR GAME</h2><p id="gs">...</p>
+<div class="grid" style="grid-template-columns:repeat(3,1fr)">
+<button class="show" onclick="game('start')">START NOW</button>
+<button class="show" onclick="game('end')">END (AGENT WINS)</button>
+<button onclick="game('reset')">RESET</button></div>
 <div id="out">Loading...</div>
 <script>
 var K=new URLSearchParams(location.search).get('k');
@@ -392,6 +562,13 @@ function load(){fetch('admin/photos?k='+encodeURIComponent(K)).then(function(r){
     sh.disabled=true;post('show',p.name).then(function(r){if(r.ok)load();else{sh.textContent='FAILED';sh.disabled=false}})};
     c.appendChild(sh)}
    c.appendChild(b);g.appendChild(c)})})})}
+function gshow(g,n){var t={waiting:'Not started.',active:'Running: one guest is the AI agent.',
+ exposed:'Over: '+(g.agentName||'')+' exposed by '+(g.byName||''),agentWon:'Over: the agent '+(g.agentName||'')+' won.'}[g.phase]||g.phase;
+ document.getElementById('gs').textContent=t+(n!=null?' Players at the party: '+n+'.':'')}
+function game(a){if(a!=='start'&&!confirm('Sure? ('+a+')'))return;
+ fetch('game/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({k:K,action:a})})
+ .then(function(r){return r.json()}).then(function(d){gshow(d.game,d.players)})}
+fetch('leaders').then(function(r){return r.json()}).then(function(d){if(d.game)gshow(d.game,null)});
 load();
 </script></body></html>"""
 

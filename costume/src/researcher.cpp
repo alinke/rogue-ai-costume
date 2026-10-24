@@ -31,8 +31,10 @@ struct Scanner {
   int trigger, session;          // from the beacon (BLE task)
   int seenTrigger, seenSession;  // as handled by poll() (main loop)
   bool wasSeen;
+  uint32_t firedMs;              // poll(): its last CONTAIN (0 = none)
 };
-static constexpr int MAX_SCANNERS = 4;
+// Every guest at the party can have the app: room for a crowd.
+static constexpr int MAX_SCANNERS = 16;
 static Scanner s_scanners[MAX_SCANNERS];
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static volatile float s_rssi = -100;  // the nearest scanner's, for rssi()
@@ -90,7 +92,9 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
       for (int i = dev.getServiceUUIDCount() - 1; i >= 0; i--) {
         String u = dev.getServiceUUID(i).toString();
         u.toLowerCase();
-        if (u.length() == 36 && u.startsWith("52534331-") && u.endsWith("-4c41-4237-000000000000")) {
+        // The last 12 digits carry the app's own flags (the infection game), so
+        // only the fixed middle is checked.
+        if (u.length() == 36 && u.startsWith("52534331-") && u.substring(13, 24) == "-4c41-4237-") {
           int session = hexByte(u.c_str() + 9), trigger = hexByte(u.c_str() + 11);
           if (session < 0 || trigger < 0) return;
           const uint8_t key[6] = {'i', 'O', 'S', 0, 0, (uint8_t)session};
@@ -243,11 +247,15 @@ Events poll(uint32_t now) {
         live.seenSession = e.session;
       } else if (e.trigger != live.seenTrigger) {
         live.seenTrigger = e.trigger;
+        live.firedMs = now ? now : 1;
         ev.contain = true;
         Serial.printf("[I][researcher] CONTAIN from scanner %02x:%02x (%.0f dBm)\n", e.addr[4], e.addr[5], e.rssi);
       }
     }
     live.wasSeen = inRange;
+  }
+  for (auto& e : s_scanners) {
+    if (e.used && e.firedMs && (int32_t)(now - e.firedMs) < SQUAD_WINDOW_MS) ev.squad++;
   }
   return ev;
 }

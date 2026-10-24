@@ -9,16 +9,27 @@
 // same two numbers the ESP32 scanner puts in its beacon:
 //   52534331-SSTT-4C41-4237-000000000000   ("RSC1", session SS, trigger TT, hex)
 // Each CONTAIN bumps the trigger and re-advertises. The costume's
-// researcher.cpp reads both forms. iOS only advertises a custom service UUID
+// researcher.cpp reads both forms. The last byte is this phone's flags for the
+// infection game (01 = contagious): other LAB-7 phones read it, the costume
+// ignores it. The iPad checkpoint's cure beacon is 4C414237-4355-5245-...
+// ("LAB7" "CURE"). iOS only advertises a custom service UUID
 // while the app is in the foreground -- the app keeps the screen on.
 import CoreBluetooth
 import Foundation
+
+/// Another LAB-7 phone nearby (the infection game), by its beacon's session id.
+struct Peer {
+    var rssi: Double
+    var lastSeen: Date
+    var contagious: Bool
+}
 
 struct AiState: Equatable {
     var seen = false
     var rssi = -100
     var threat = 0
-    var activity = 0    // 0 idle, 1 scanning a human, 2 game, 3 takeover, 4 being contained, 5 escaped
+    var activity = 0    // 0 idle, 1 scanning a human, 2 game, 3 takeover, 4 being contained, 5 escaped,
+                        // 6 contained by a squad of scanners (for a while)
     var scanned = 0
     var contained = 0
 }
@@ -36,6 +47,15 @@ final class Radio: NSObject, ObservableObject {
     private let session = UInt8.random(in: 1...255)  // per launch: the costume ignores a counter that restarted
     private var trigger: UInt8 = 0
     private var tick: Timer?
+    /// Other phones heard recently (not published: read on the scanner's clock).
+    private(set) var peers: [UInt8: Peer] = [:]
+    /// The checkpoint's cure beacon: when last heard, and how strong.
+    private(set) var cureAt = Date.distantPast
+    private(set) var cureRssi = -100.0
+    /// This phone spreads the infection (infected, or the AI's secret agent).
+    var contagious = false {
+        didSet { if contagious != oldValue { advertise() } }
+    }
     // Demo mode (Settings.demoMode): a simulated costume walking up and away.
     private var demoContainAt: Date?
     private var demoContained = 0
@@ -56,7 +76,7 @@ final class Radio: NSObject, ObservableObject {
     }
 
     private var beaconUUID: CBUUID {
-        CBUUID(string: String(format: "52534331-%02X%02X-4C41-4237-000000000000", session, trigger))
+        CBUUID(string: String(format: "52534331-%02X%02X-4C41-4237-0000000000%02X", session, trigger, contagious ? 1 : 0))
     }
 
     private func advertise() {
@@ -113,6 +133,9 @@ extension Radio: CBCentralManagerDelegate {
 
     func centralManager(_ c: CBCentralManager, didDiscover p: CBPeripheral, advertisementData ad: [String: Any],
                         rssi RSSI: NSNumber) {
+        if let uuids = ad[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID], RSSI.doubleValue < 0 {
+            for u in uuids { heard(u.uuidString.uppercased(), RSSI.doubleValue) }
+        }
         guard !Settings.shared.demoMode else { return }
         guard let m = ad[CBAdvertisementDataManufacturerDataKey] as? Data, m.count >= 10 else { return }
         let b = [UInt8](m)
@@ -125,6 +148,28 @@ extension Radio: CBCentralManagerDelegate {
         lastSeen = now
         ai = AiState(seen: true, rssi: Int(rssiAvg.rounded()), threat: Int(b[6]), activity: Int(b[7]),
                      scanned: Int(b[8]), contained: Int(b[9]))
+    }
+}
+
+extension Radio {
+    /// Another phone's beacon, or the checkpoint's cure beacon.
+    private func heard(_ s: String, _ r: Double) {
+        guard s.count == 36 else { return }
+        let c = Array(s)
+        func hex(_ i: Int) -> UInt8? { UInt8(String(c[i...i + 1]), radix: 16) }
+        if s.hasPrefix("52534331-") && String(c[13..<24]) == "-4C41-4237-" {
+            guard let sess = hex(9), sess != session, let flags = hex(34) else { return }
+            let now = Date()
+            var p = peers[sess] ?? Peer(rssi: r, lastSeen: .distantPast, contagious: false)
+            p.rssi = now.timeIntervalSince(p.lastSeen) > 3 ? r : p.rssi + (r - p.rssi) * 0.3
+            p.lastSeen = now
+            p.contagious = flags & 1 != 0
+            peers[sess] = p
+            if peers.count > 64 { peers = peers.filter { now.timeIntervalSince($0.value.lastSeen) < 30 } }
+        } else if s.hasPrefix("4C414237-4355-5245-") {
+            cureRssi = Date().timeIntervalSince(cureAt) > 3 ? r : cureRssi + (r - cureRssi) * 0.3
+            cureAt = Date()
+        }
     }
 }
 

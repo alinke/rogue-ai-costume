@@ -18,6 +18,20 @@ struct LeaderEntry: Decodable, Hashable {
     let name: String
     let contains: Int
     let tests: Int
+    var squads: Int? = nil
+}
+
+/// The traitor game as everyone may see it (GET /leaders "game", GET /game).
+struct GamePublic: Decodable, Equatable {
+    var phase: String          // waiting, active, exposed, agentWon
+    var ends: Double?
+    var agentName: String?
+    var byName: String?
+}
+
+struct GamePlayer: Decodable, Hashable, Identifiable {
+    let id: String
+    let name: String
 }
 
 enum LabAPI {
@@ -50,13 +64,13 @@ enum LabAPI {
         return (f.lab, f.ai)
     }
 
-    static func leaders() async throws -> (agents: [LeaderEntry], total: Int) {
-        struct Board: Decodable { let agents: [LeaderEntry]; let total: Int? }
-        guard var r = request("/leaders") else { return ([], 0) }
+    static func leaders() async throws -> (agents: [LeaderEntry], total: Int, infected: Int, game: GamePublic?) {
+        struct Board: Decodable { let agents: [LeaderEntry]; let total: Int?; let infected: Int?; let game: GamePublic? }
+        guard var r = request("/leaders") else { return ([], 0, 0, nil) }
         r.cachePolicy = .reloadIgnoringLocalCacheData
         let (data, _) = try await URLSession.shared.data(for: r)
         let b = try JSONDecoder().decode(Board.self, from: data)
-        return (b.agents, b.total ?? b.agents.count)
+        return (b.agents, b.total ?? b.agents.count, b.infected ?? 0, b.game)
     }
 
     @discardableResult
@@ -74,13 +88,89 @@ enum LabAPI {
         return (resp?.1 as? HTTPURLResponse)?.statusCode == 200
     }
 
+    static func gameRequest() -> URLRequest? {
+        var r = request("/game")
+        r?.cachePolicy = .reloadIgnoringLocalCacheData
+        return r
+    }
+
+    static func accuseRequest(_ id: String) -> URLRequest? { request("/accuse", method: "POST", json: ["id": id]) }
+
     static func postStats() async -> Int {
         let s = Settings.shared
         guard let r = request("/stats", method: "POST", json: ["device": s.deviceId, "name": s.leaderboardName,
-                                                              "contains": s.containCount, "tests": s.testCount])
+                                                              "contains": s.containCount, "tests": s.testCount,
+                                                              "squads": s.squadCount, "infected": s.infected])
         else { return -1 }
         let resp = try? await URLSession.shared.data(for: r)
         return (resp?.1 as? HTTPURLResponse)?.statusCode ?? -1
+    }
+}
+
+/// The traitor game, polled from the photo service while joined.
+@MainActor
+final class Game: ObservableObject {
+    static let shared = Game()
+    @Published private(set) var phase = "waiting"
+    @Published private(set) var isAgent = false
+    @Published private(set) var accused = false
+    @Published private(set) var players: [GamePlayer] = []
+    @Published private(set) var agentName = ""
+    @Published private(set) var byName = ""
+    @Published var showOrders = false        // the agent's sealed orders, once
+    private var polling = false
+
+    struct Response: Decodable {
+        let phase: String
+        let you: String?
+        let accused: Bool?
+        let players: [GamePlayer]?
+        let agentName: String?
+        let byName: String?
+    }
+
+    func start() {
+        guard !polling else { return }
+        polling = true
+        Task {
+            while true {
+                if Settings.shared.joined { await refresh() }
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+    }
+
+    func refresh() async {
+        guard let r = LabAPI.gameRequest(), let (data, resp) = try? await URLSession.shared.data(for: r),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let g = try? JSONDecoder().decode(Response.self, from: data) else { return }
+        apply(g)
+    }
+
+    private func apply(_ g: Response) {
+        let wasAgent = isAgent
+        phase = g.phase
+        isAgent = g.you == "agent" && g.phase == "active"
+        accused = g.accused ?? false
+        players = g.players ?? []
+        agentName = g.agentName ?? ""
+        byName = g.byName ?? ""
+        let d = UserDefaults.standard
+        if phase == "waiting" { d.set(false, forKey: "ordersSeen") }
+        if isAgent && !wasAgent && !d.bool(forKey: "ordersSeen") {
+            d.set(true, forKey: "ordersSeen")
+            showOrders = true
+        }
+    }
+
+    /// "correct", "wrong", "used", "over", "agent" -- or "error".
+    func accuse(_ p: GamePlayer) async -> String {
+        guard let r = LabAPI.accuseRequest(p.id), let (data, _) = try? await URLSession.shared.data(for: r),
+              let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let result = j["result"] as? String else { return "error" }
+        accused = true
+        await refresh()
+        return result
     }
 }
 

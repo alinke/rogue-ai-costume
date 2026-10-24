@@ -27,6 +27,12 @@ fi
 if [ -z "${GUEST_KEY:-}" ] || [ "${ROTATE_GUEST:-}" = 1 ]; then
   GUEST_KEY=$(openssl rand -hex 12)
 fi
+# The traitor game (cloud/service/main.py /game): picked automatically at GAME_START,
+# the agent wins at GAME_END -- your local time, "YYYY-MM-DD HH:MM". Empty = start it
+# from the admin page, no automatic end.
+GAME_START=${GAME_START-"2026-10-30 21:00"}
+GAME_END=${GAME_END-"2026-10-31 00:00"}
+epoch() { [ -n "$1" ] && date -j -f "%Y-%m-%d %H:%M:%S" "$1:00" +%s || echo 0; }
 cat > .keys <<KEYS
 PROJECT=$PROJECT
 REGION=$REGION
@@ -35,6 +41,8 @@ SERVICE=$SERVICE
 UPLOAD_KEY=$UPLOAD_KEY
 ADMIN_KEY=$ADMIN_KEY
 GUEST_KEY=$GUEST_KEY
+GAME_START="$GAME_START"
+GAME_END="$GAME_END"
 KEYS
 
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
@@ -53,7 +61,7 @@ gcloud storage buckets add-iam-policy-binding gs://$BUCKET \
 
 gcloud run deploy $SERVICE --project $PROJECT --region $REGION --source service \
   --allow-unauthenticated --memory 512Mi --max-instances 3 \
-  --set-env-vars "BUCKET=$BUCKET,UPLOAD_KEY=$UPLOAD_KEY,ADMIN_KEY=$ADMIN_KEY,GUEST_KEY=$GUEST_KEY" --quiet
+  --set-env-vars "BUCKET=$BUCKET,UPLOAD_KEY=$UPLOAD_KEY,ADMIN_KEY=$ADMIN_KEY,GUEST_KEY=$GUEST_KEY,GAME_START=$(epoch "$GAME_START"),GAME_END=$(epoch "$GAME_END")" --quiet
 
 URL=$(gcloud run services describe $SERVICE --project $PROJECT --region $REGION --format='value(status.url)')
 echo
