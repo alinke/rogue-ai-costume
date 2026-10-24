@@ -1,6 +1,7 @@
 // Everything the ESP32 scanner keeps in secrets.h / config.h, as in-app settings
 // (stored on the phone, never in the repo), plus the guest side: the event this
 // phone joined, the agent identity and the leaderboard score.
+import CryptoKit
 import Foundation
 
 final class Settings: ObservableObject {
@@ -41,6 +42,12 @@ final class Settings: ObservableObject {
 
     static let hysteresisDb = 4
     static let containCooldown: TimeInterval = 12
+
+    /// The short tag the photo service stores with this phone's uploads (sha256 of the device id):
+    /// how the wall knows which photos are yours.
+    var deviceTag: String {
+        SHA256.hash(data: Data(deviceId.utf8)).map { String(format: "%02x", $0) }.joined().prefix(12).description
+    }
 
     var uploadConfigured: Bool { !serviceURL.isEmpty && !uploadKey.isEmpty }
     var joined: Bool { uploadConfigured }

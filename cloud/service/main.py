@@ -25,6 +25,8 @@ without touching the costume or the scanners.
   GET  /leaders             {"agents": [{"name", "contains", "tests"}, ...]}, best first
   POST /report              X-Key + X-Device, JSON {"name": "lab/....jpg"}: a guest reports a
                             photo -- it goes to the hidden set until the admin page shows it
+  POST /delete-own          X-Key + X-Device, JSON {"name": "lab/....jpg"}: a guest deletes a
+                            photo their own phone uploaded (any other photo: 403)
 
 Photos without a face (Cloud Vision face detection) go to <set>-hidden/
 instead: not on the page, but on the admin page with a SHOW button.
@@ -314,6 +316,31 @@ def report():
     src.delete()
     print(f"reported {name} by {dev}")
     return jsonify(hidden=dest)
+
+
+@app.post("/delete-own")
+def delete_own():
+    """A guest deletes their own photo: only the phone that uploaded it (same X-Device)."""
+    if not caller():
+        return "forbidden", 403
+    dev = device_tag()
+    if not dev:
+        return "missing device", 400
+    name = (request.get_json(silent=True) or {}).get("name", "")
+    if not re.fullmatch(NAME_RE, name):
+        return "bad name", 400
+    s, rest = name.split("/", 1)
+    base = s.replace("-hidden", "")
+    for cand in (f"{base}/{rest}", f"{base}-hidden/{rest}"):   # it may have been reported (hidden) since
+        b = bucket.get_blob(cand)
+        if b is None:
+            continue
+        if (b.metadata or {}).get("dev", "") != dev:
+            return "not yours", 403
+        b.delete()
+        print(f"deleted own {cand} by {dev}")
+        return jsonify(deleted=cand)
+    return jsonify(deleted=name)   # already gone
 
 
 @app.get("/admin/photos")

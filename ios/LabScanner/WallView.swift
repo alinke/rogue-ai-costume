@@ -9,14 +9,17 @@ struct WallView: View {
     @State private var ai: [WallPhoto] = []
     @State private var leaders: [LeaderEntry] = []
     @State private var agentsTotal = 0
-    @State private var filter = 0          // 0 all, 1 humans, 2 specimens
+    @State private var filter = 0          // 0 all, 1 humans, 2 specimens, 3 mine
     @State private var status = ""
     @State private var open: WallPhoto?
     @State private var showJoin = false
     @State private var demoImages: [String: UIImage] = [:]   // demo mode: the sample cards
 
+    private func mine(_ p: WallPhoto) -> Bool { p.dev == settings.deviceTag }
+
     private var shown: [WallPhoto] {
-        let all = filter == 1 ? lab : filter == 2 ? ai : (lab + ai).sorted { $0.t > $1.t }
+        let all = filter == 1 ? lab : filter == 2 ? ai : filter == 3 ? lab.filter(mine)
+            : (lab + ai).sorted { $0.t > $1.t }
         return all.filter { p in !(p.dev.map { !$0.isEmpty && settings.blocked.contains($0) } ?? false) }
     }
 
@@ -62,10 +65,12 @@ struct WallView: View {
                     Text("ALL \(lab.count + ai.count)").tag(0)
                     Text("HUMANS \(lab.count)").tag(1)
                     Text("SPECIMENS \(ai.count)").tag(2)
+                    Text("MINE \(lab.filter(mine).count)").tag(3)
                 }
                 .pickerStyle(.segmented)
                 if shown.isEmpty {
-                    Text(status.isEmpty ? "NO EVIDENCE YET. RUN A HUMANITY TEST." : status)
+                    Text(!status.isEmpty ? status : filter == 3 ? "NOTHING FROM YOU YET. RUN A HUMANITY TEST."
+                         : "NO EVIDENCE YET. RUN A HUMANITY TEST.")
                         .font(mono(13, .regular)).foregroundColor(.labDim).padding(.vertical, 30)
                         .frame(maxWidth: .infinity)
                 }
@@ -87,6 +92,12 @@ struct WallView: View {
                                     }
                                 }
                                 .clipped()
+                            .overlay(alignment: .topTrailing) {
+                                if mine(p) {
+                                    Text("YOURS").font(mono(8)).foregroundColor(.black)
+                                        .padding(.horizontal, 4).padding(.vertical, 2).background(Color.labCyan)
+                                }
+                            }
                             .overlay(alignment: .bottomLeading) {
                                 let rogue = p.label.hasPrefix("COMPROMISED")
                                 Text(p.isAI ? "SPECIMEN" : rogue ? "COMPROMISED" : "HUMAN").font(mono(8)).foregroundColor(.black)
@@ -199,6 +210,8 @@ struct PhotoViewer: View {
     @State private var image: UIImage?
     @State private var askReport = false
     @State private var askHide = false
+    @State private var askDelete = false
+    private var isMine: Bool { photo.dev == settings.deviceTag }
 
     var body: some View {
         ZStack {
@@ -229,11 +242,15 @@ struct PhotoViewer: View {
                             action("SHARE", "square.and.arrow.up", .labGreen)
                         }
                     }
-                    if localImage == nil {
-                        Button { askReport = true } label: { action("REPORT", "flag", .labAmber) }
-                    }
-                    if let d = photo.dev, !d.isEmpty {
-                        Button { askHide = true } label: { action("HIDE PHONE", "eye.slash", .labRed) }
+                    if isMine {
+                        Button { askDelete = true } label: { action("DELETE", "trash", .labRed) }
+                    } else {
+                        if localImage == nil {
+                            Button { askReport = true } label: { action("REPORT", "flag", .labAmber) }
+                        }
+                        if let d = photo.dev, !d.isEmpty {
+                            Button { askHide = true } label: { action("HIDE PHONE", "eye.slash", .labRed) }
+                        }
                     }
                 }
             }
@@ -256,6 +273,18 @@ struct PhotoViewer: View {
             }
         } message: {
             Text("It disappears from the evidence wall for everyone right away, and the host reviews it.")
+        }
+        .confirmationDialog("Delete your photo?", isPresented: $askDelete, titleVisibility: .visible) {
+            Button("Delete from the wall", role: .destructive) {
+                Task {
+                    if await LabAPI.deleteOwn(photo) {
+                        removed(photo)
+                        dismiss()
+                    }
+                }
+            }
+        } message: {
+            Text("It's removed from the evidence wall for everyone. Your copy stays on this phone (Files › LAB-7 › photos).")
         }
         .confirmationDialog("Hide every photo from the phone that took this?", isPresented: $askHide,
                             titleVisibility: .visible) {

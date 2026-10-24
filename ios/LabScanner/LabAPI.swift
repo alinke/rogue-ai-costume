@@ -66,6 +66,14 @@ enum LabAPI {
         return (resp?.1 as? HTTPURLResponse)?.statusCode == 200
     }
 
+    /// Deletes a photo this phone uploaded (the service checks it's ours).
+    @discardableResult
+    static func deleteOwn(_ p: WallPhoto) async -> Bool {
+        guard let r = request("/delete-own", method: "POST", json: ["name": p.name]) else { return false }
+        let resp = try? await URLSession.shared.data(for: r)
+        return (resp?.1 as? HTTPURLResponse)?.statusCode == 200
+    }
+
     static func postStats() async -> Int {
         let s = Settings.shared
         guard let r = request("/stats", method: "POST", json: ["device": s.deviceId, "name": s.leaderboardName,
