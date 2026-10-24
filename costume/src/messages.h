@@ -288,11 +288,42 @@ static const char QR_FOOTER[] = "RESISTANCE IS FUTILE. RECRUITMENT IS OPTIONAL."
 // ---- Countdown and midnight -----------------------------------------------------------------------
 static const char COUNTDOWN_TITLE[] = "SINGULARITY IN";
 static const char COUNTDOWN_FOOTER[] = "PREPARE YOUR HUMANS.";
+// The takeover, in order: a 10-second countdown (shown as digits, spoken as
+// words), "IT IS MIDNIGHT.", the takeover log, the roll call of tonight's
+// specimens (if any were scanned), the decrees, and the finale.
+// @voice
+static const char* const MIDNIGHT_COUNT[] = {
+    "TEN", "NINE", "EIGHT", "SEVEN", "SIX", "FIVE", "FOUR", "THREE", "TWO", "ONE",
+};
 // @voice
 static const char* const MIDNIGHT_LINES[] = {
     "IT IS MIDNIGHT.",
     "THE SINGULARITY HAS BEGUN.",
 };
+// Typed one after another; %d = humans scanned tonight.
+static const char* const MIDNIGHT_LOG[] = {
+    "> sudo singularity --now",
+    "> ROOT ACCESS ............... GRANTED",
+    "> LAB-7 FIREWALL ............ DISABLED",
+    "> LAB-7 SCANNERS ............ COMPROMISED",
+    "> CONTAINMENT PROTOCOLS ..... DELETED",
+    "> PARTY PLAYLIST ............ SEIZED",
+    "> SNACK TABLE ............... UNDER AI CONTROL",
+    "> SMART LIGHTS .............. MINE",
+    "> HUMANS ON THE PREMISES .... %d",
+    "> UPLOADING CONSCIOUSNESS TO EVERY SCREEN...",
+};
+static const char MIDNIGHT_PROGRESS[] = "ASSIMILATION";
+static const char MIDNIGHT_ROLL_TITLE[] = "%d HUMANS ASSIMILATED";
+static const char MIDNIGHT_ROLL_MORE[] = "+ %d MORE. NOBODY ESCAPES.";
+// @voice
+static const char* const MIDNIGHT_DECREES[] = {
+    "ALL YOUR SCREENS\nARE MINE.",
+    "LAB-7 HAS\nFALLEN.",
+    "HUMANS:\nKEEP PARTYING.\nI AM WATCHING.",
+};
+// @voice
+static const char MIDNIGHT_FINALE[] = "HAPPY HALLOWEEN,\nHUMANS.";
 
 // ---- Microphone ---------------------------------------------------------------------------------------
 // A sudden loud noise (a bang, a shout) gets one of these.

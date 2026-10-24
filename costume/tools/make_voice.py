@@ -28,6 +28,7 @@ SAY_AS = {
     "sudo rm -rf": "sudo, remove, recursive, force,",
     "404:": "four oh four.",
     "1997": "nineteen ninety seven",
+    "LAB-7": "lab seven",
 }
 
 FILTER = ("silenceremove=start_periods=1:start_threshold=-45dB,"
