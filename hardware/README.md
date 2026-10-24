@@ -31,6 +31,28 @@ back stays reachable (USB ports, SD card, the UART/LED connector).
 | `saddle_clip.stl` | Saddle clip for crossing a seam. |
 | `badge_led_base.stl` | The researcher badge's LED base: clips onto the badge's bottom edge, two 3 mm LEDs light the clear layer's edge, a cradle for a 1 x CR2032 holder with switch (23.9 x 34.1 mm). See [badge/](badge/README.md). |
 
+### Harness for the 10" mount (worn in landscape on the chest)
+
+![The harness: each strap from a top slot over the shoulder, crossed on the back, round the side to a buckle at the bottom slot](../docs/images/harness.png)
+
+![Printed harness parts: side-release buckle with adjuster, and the cross clip](../docs/images/harness-parts.png)
+
+Two straps, 25 mm (1") webbing or elastic, about 1.5 m each. Each strap runs
+from a top slot, over the shoulder on the same side, crosses the other strap
+on the back (through the cross clip), comes round the other side and clips
+into the buckle at that bottom slot. The buckles' adjuster tails set the
+length.
+
+| File | Print | What |
+|---|---|---|
+| `harness_buckle_socket.stl` | 2, PETG | Side-release buckle, female half. Loop a short strap through its slot and through the mount's bottom slot, stitch or Velcro it closed. |
+| `harness_buckle_plug.stl` | 2, PETG | Male half, with a ladder-lock adjuster tail: the long strap goes up through one slot and down through the other; pull its end to tighten. Squeeze the hooks in the socket's side windows to open. |
+| `harness_cross_clip.stl` | 1, either | Keeps the straps crossed between the shoulder blades: each strap goes down through one slot and back up through the opposite one. |
+| `harness_parts.py` | | The source (Python + `manifold3d`): strap width/thickness and the crossing angle at the top; `python3 harness_parts.py` rewrites the STLs. |
+
+**Print:** flat as they come, no supports, 0.2 mm, 3+ walls. The buckle hooks
+are springs: PETG holds up; PLA works but can snap after a while.
+
 ### ARM-7 armband mount (2.4" CYD + 2000 mAh battery, forearm)
 
 ![Armband mount renders: matte black bezel and battery pod, green circuit-trace inlay, clear hex status jewel over the LED, ARM-7 engraved on the side](../docs/images/armband-mount.png)
