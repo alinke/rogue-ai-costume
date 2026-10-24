@@ -24,7 +24,7 @@ Everything App Store Connect asks for, ready to paste. Bundle id
 | Age rating | 9+ (Infrequent/Mild Cartoon or Fantasy Violence: "containment beam"); everything else None. User-generated content: Yes. |
 | Price | Free |
 | Privacy policy URL | https://pixelcade.org/lab7-privacy/ |
-| Support URL | https://pixelcade.org/lab7-join |
+| Support URL | https://pixelcade.org/lab7-help (public help page, no event link; `web/lab7-help.html`) |
 | Copyright | 2026 Pixelcade |
 
 **Promotional text (170)**
