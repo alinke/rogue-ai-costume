@@ -27,12 +27,12 @@ rewrites just the base). Fonts are macOS's DIN and Menlo (`FONTS` in the script)
 | `badge_back_blue_outer.svg` | 1/8" **coloured** acrylic (blue). Engrave face up: that's the badge's back (the small print). |
 | `badge_back_blue_inner_pocket.svg` | The same blue piece, flipped: a shallow engraved pocket (~0.3 mm, a couple of passes) for the photo, so the layers glue flat. |
 | `badge_photo_print_at_100.pdf` | The photo, 46 mm square: print at 100 % (no scaling), cut on the marks. |
-| `badge_led_base.stl` | 3D print: clips onto the bottom 6 mm; two 5 mm LEDs from below (`--led` body,rim,height mm if yours differ); a cradle for a 1 x CR2032 holder with switch. |
+| `badge_led_base.stl` | 3D print: clips onto the bottom 6 mm; two 3 mm LEDs from below (`--led` body,rim,height mm if yours differ); a cradle for a 1 x CR2032 holder with switch. |
 | `badge_preview.svg` | What it looks like lit. |
 
 ## Assemble
 
 1. Laser: cut and engrave the clear piece; engrave the blue piece's back, flip it, engrave the pocket, cut it.
 2. Photo into the pocket (a dab of glue stick), clear piece on top, engraved side down. Acrylic glue along the outer edges only (keep it off the photo window), clamp lightly.
-3. LEDs (cyan, 5 mm) into the base's holes from below, rims in the recesses on the underside; legs bent along the grooves; both LEDs in parallel to the holder's leads (long leg = red). One CR2032, no resistor needed for cyan/blue/white LEDs.
+3. LEDs (3 mm, the same as the visor's) into the base's holes from below, rims in the recesses on the underside; legs bent along the grooves; both LEDs in parallel to the holder's leads (long leg = red). One CR2032, no resistor needed for 2-3 V LEDs (red, yellow-green, cyan; flicker LEDs work too).
 4. Holder into the cradle (switch down, through the slot), base onto the badge's bottom edge -- a drop of glue if it's loose.

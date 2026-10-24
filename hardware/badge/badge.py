@@ -6,7 +6,7 @@
   photo  printed on paper, sits in a shallow pocket behind the clear window
   back   1/8" coloured acrylic (blue): lanyard slot, the small print engraved
          on its outer face, the photo pocket engraved on its inner face
-  base   3D-printed clip on the bottom edge: two 5 mm LEDs shining up into
+  base   3D-printed clip on the bottom edge: two 3 mm LEDs shining up into
          the clear layer, a 1x CR2032 holder with switch behind
 
 Writes everything to ./private/ (gitignored: it has a real name and photo):
@@ -213,7 +213,7 @@ def photo_pdf(img, path):
 
 
 # ---- LED base (3D print) --------------------------------------------------------------
-def base_stl(path, holder=(24.0, 31.5, 9.0), led=(4.84, 5.5, 8.6), acrylic=ACRYLIC):
+def base_stl(path, holder=(24.0, 31.5, 9.0), led=(3.0, 3.8, 5.3), acrylic=ACRYLIC):
     from manifold3d import Manifold
 
     def box(x0, x1, y0, y1, z0, z1):
@@ -229,7 +229,7 @@ def base_stl(path, holder=(24.0, 31.5, 9.0), led=(4.84, 5.5, 8.6), acrylic=ACRYL
     grip, wall = GRIP, 1.6
     hw, hh, hd = holder                   # holder width, height, thickness (measure yours)
     ld, lr, lh = led                      # LED body diameter, rim diameter, height rim-to-tip (measure yours)
-    rim_t = 1.1                           # rim recess depth (a 5 mm LED's rim is ~1 mm)
+    rim_t = 1.0                           # rim recess depth (a 3 mm LED's rim is ~1 mm)
     # The LED sits in the floor, rim in a recess on the underside, tip just below the badge.
     floor = max(4.6, lh + 0.3)
     front = max(wall, ld / 2 + 1.6)       # thicker front wall so the LED hole doesn't break through
@@ -291,7 +291,7 @@ def main():
     p.add_argument("--acrylic", type=float, default=ACRYLIC, help="measured thickness of ONE acrylic sheet, mm")
     p.add_argument("--base-only", action="store_true", help="only write the LED base STL")
     p.add_argument("--holder", default="23.9,34.1,9", help="CR2032 holder w,h,thickness mm")
-    p.add_argument("--led", default="4.84,5.5,8.6", help="LED body diameter, rim diameter, height rim-to-tip mm")
+    p.add_argument("--led", default="3.0,3.8,5.3", help="LED body diameter, rim diameter, height rim-to-tip mm")
     p.add_argument("--out", default=None, help="output folder (default ./private, gitignored)")
     a = p.parse_args()
     out = a.out or os.path.join(os.path.dirname(os.path.abspath(__file__)), "private")
