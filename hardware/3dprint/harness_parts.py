@@ -27,7 +27,7 @@ import numpy as np
 from manifold3d import CrossSection, JoinType, Manifold
 
 # ---- Your settings ----------------------------------------------------------------
-STRAP_WIDTH = 25.0     # mm, webbing / elastic width (the mount's slots are 27 x 5)
+STRAP_WIDTH = 24.0     # mm, webbing / elastic width (the mount's slots are 27 x 5)
 STRAP_THICK = 3.0      # mm, its thickness (up to ~4 fits)
 CROSS_ANGLE = 60.0     # degrees between the two straps where they cross on the back
 

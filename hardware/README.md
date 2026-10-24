@@ -37,7 +37,7 @@ back stays reachable (USB ports, SD card, the UART/LED connector).
 
 ![Printed harness parts: side-release buckle with adjuster, and the cross clip](../docs/images/harness-parts.png)
 
-Two straps, 25 mm (1") webbing or elastic, about 1.5 m each. Each strap runs
+Two straps, 24-25 mm (1") webbing or elastic, about 1.5 m each. Each strap runs
 from a top slot, over the shoulder on the same side, crosses the other strap
 on the back (through the cross clip), comes round the other side and clips
 into the buckle at that bottom slot. The buckles' adjuster tails set the
