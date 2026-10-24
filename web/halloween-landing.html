@@ -230,6 +230,17 @@
     <button type="button" class="rai-btn rai-more" id="rai-labc-m" hidden>Show more</button>
     </div>
 
+    <h2>Fight back: join the LAB-7 hunt</h2>
+    <div id="rai-join" hidden>
+    <p class="white">Intercepted transmission: LAB-7 is arming the guests. Their iPhone app tracks my signal,
+      fires a containment beam at me, and keeps score. Three of them firing together can actually stop me.
+      For a while.</p>
+    <a class="rai-btn" id="rai-store" href="#">1. Get the LAB-7 app</a><br>
+    <a class="rai-btn" id="rai-joinbtn" href="#">2. Join the party's event</a>
+    <p class="dim">Tap 2 on the same iPhone after installing. On a computer? Scan this with your iPhone camera:</p>
+    <div id="rai-qr" style="background:#fff;padding:10px;display:inline-block;margin:4px 0 8px"></div>
+    </div>
+
     <h2>Your assignment</h2>
     <p>Every recruit gets a robot identity and a secret 4-digit <b class="white">agent code</b>.</p>
     <button type="button" class="rai-btn" id="rai-gen">Generate my robot identity</button>
@@ -304,6 +315,7 @@
     </div>
   </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 (function () {
   // ---- CONFIG: set these for your own setup (see web/README.md) -------------
@@ -313,7 +325,16 @@
     feed: "",
     // The researcher with the scanner, as the registry text names them.
     researcher: "A LAB-7 researcher",      // "Dr. Smith of the LAB-7 containment team"
-    researcherShort: "the researcher"     // "Dr. Smith"
+    researcherShort: "the researcher"     // "Dr. Smith",
+    // The LAB-7 iPhone app's event (cloud/deploy.sh: the service URL and GUEST_KEY). Empty key:
+    // the "join the LAB-7 hunt" section stays hidden.
+    join: {
+      service: "",
+      key: "",
+      event: "HALLOWEEN 2026",
+      mid: "2026-10-31T00:00",
+      appStore: "https://apps.apple.com/app/id0000000000"   // the App Store link once the app is live
+    }
   };
   // ---------------------------------------------------------------------------
   var root = document.getElementById("rogue-ai");
@@ -377,6 +398,22 @@
 
   function pickOne(a) { return a[Math.floor(Math.random() * a.length)]; }
   function $(id) { return document.getElementById(id); }
+
+  // ---- Join the LAB-7 app's event (shown when CONFIG.join has a key) --------
+  var J = CONFIG.join;
+  if (J && J.service && J.key) {
+    var q = "service=" + encodeURIComponent(J.service) + "&key=" + encodeURIComponent(J.key) +
+            "&event=" + encodeURIComponent(J.event || "LAB-7 EVENT") + (J.mid ? "&mid=" + encodeURIComponent(J.mid) : "");
+    $("rai-join").hidden = false;
+    $("rai-joinbtn").href = "lab7://join?" + q;
+    $("rai-store").href = J.appStore || "#";
+    if (window.QRCode) {
+      try { new QRCode($("rai-qr"), { text: location.href.split("#")[0], width: 180, height: 180 }); } catch (e) {}
+    }
+  } else {
+    var jh = $("rai-join");
+    if (jh && jh.previousElementSibling) jh.previousElementSibling.hidden = true;  // no heading either
+  }
 
   // ---- Scan yourself: front camera -> green scan-lines, then a verdict.
   var CLASS = ["HOMO SAPIENS (PARTY VARIANT)", "HUMAN, COSTUMED", "CARBON-BASED UNIT", "MEATBAG, STANDARD ISSUE",
