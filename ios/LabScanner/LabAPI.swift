@@ -140,6 +140,7 @@ final class Game: ObservableObject {
         let players: [GamePlayer]?
         let agentName: String?
         let byName: String?
+        let order: String?      // from the admin page: "infect" or "cure"
     }
 
     func start() {
@@ -178,6 +179,18 @@ final class Game: ObservableObject {
     }
 
     private func apply(_ g: Response) {
+        // The host's orders: patient zero (skips chance, cap and immunity), or a cure.
+        let s = Settings.shared
+        if g.order == "infect" && !s.infected && !isAgent {
+            s.infectedBy = "THE ENTITY"
+            s.infectedSince = Date().timeIntervalSince1970
+            s.infected = true
+            Sound.shared.play(.fail)
+        } else if g.order == "cure" && s.infected {
+            s.infected = false
+            s.immuneUntil = Date().addingTimeInterval(Outbreak.immuneSeconds).timeIntervalSince1970
+            Sound.shared.play(.lock)
+        }
         let wasAgent = isAgent
         phase = g.phase
         isAgent = g.you == "agent" && g.phase == "active"

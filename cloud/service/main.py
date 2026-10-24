@@ -32,7 +32,9 @@ without touching the costume or the scanners.
   GET  /game                X-Key + X-Device: the traitor game as this phone sees it (one guest
                             is secretly the AI's agent; the others try to find out who)
   POST /accuse              X-Key + X-Device, JSON {"id": player id}: one accusation per phone
-  POST /game/admin          JSON {"k": ADMIN_KEY, "action": "start"|"reset"|"end"}
+  POST /game/admin          JSON {"k": ADMIN_KEY, "action": "start"|"reset"|"end"|"infect"|"cureall", "id"}:
+                            "infect" orders that phone (or a random one) infected, "cureall" cures all
+  GET  /game/players?k=ADMIN_KEY   every phone at the party: id, name, infected (the admin page)
 
 Photos without a face (Cloud Vision face detection) go to <set>-hidden/
 instead: not on the page, but on the admin page with a SHOW button.
@@ -443,6 +445,9 @@ def game():
     ph = game_phase(g)
     out = game_public() if g else {"phase": "waiting", "ends": 0}
     out["you"] = "agent" if g.get("agent") == me else "player"
+    order = take_order(me)          # the admin page's infect / cure, delivered once
+    if order:
+        out["order"] = order
     out["accused"] = me in g.get("accused", {})
     if ph == "active":
         names = dict(g.get("names", {}))
@@ -482,6 +487,40 @@ def accuse():
     return jsonify(result="correct" if correct else "wrong", game=game_public())
 
 
+# ---- Orders from the admin page (infect / cure), picked up by the phone's next GET /game ----
+def orders_load():
+    try:
+        return json.loads(bucket.blob("game/orders.json").download_as_bytes())
+    except Exception:  # noqa: BLE001 -- none yet
+        return {}
+
+
+def orders_save(o):
+    b = bucket.blob("game/orders.json")
+    b.cache_control = "no-store"
+    b.upload_from_string(json.dumps(o), content_type="application/json")
+
+
+def take_order(me):
+    with _game_lock:
+        o = orders_load()
+        order = o.pop(me, None)
+        if order:
+            orders_save(o)
+    return order
+
+
+@app.get("/game/players")
+def game_players():
+    if not key_ok(request.args.get("k", ""), ADMIN_KEY):
+        return "forbidden", 403
+    ps = [{"id": p["id"], "name": p["name"], "infected": p["infected"] and time.time() - p["t"] < 600}
+          for p in players()]
+    resp = jsonify(players=sorted(ps, key=lambda p: p["name"]))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 @app.post("/game/admin")
 def game_admin():
     body = request.get_json(silent=True) or {}
@@ -498,6 +537,24 @@ def game_admin():
         elif action == "end" and g.get("agent"):
             g["ended"] = True
             game_save(g)
+        elif action in ("infect", "cureall"):
+            ps = players()
+            o = orders_load()
+            if action == "infect":
+                target = str(body.get("id", ""))
+                if not target:   # a random guest who isn't infected yet
+                    healthy = [p["id"] for p in ps if not p["infected"]] or [p["id"] for p in ps]
+                    if not healthy:
+                        return "no players", 400
+                    target = secrets.choice(healthy)
+                o[target] = "infect"
+            else:
+                for p in ps:
+                    o[p["id"]] = "cure"
+            orders_save(o)
+            names = {p["id"]: p["name"] for p in ps}
+            return jsonify(ok=True, target=names.get(body.get("id") or (target if action == "infect" else ""), ""),
+                           game=game_public(), players=len(ps))
         else:
             return "bad action", 400
     _leaders_cache["t"] = 0
@@ -583,6 +640,11 @@ button.show{border-color:var(--green);color:var(--green);margin-bottom:6px}
 <button class="show" onclick="game('start')">START NOW</button>
 <button class="show" onclick="game('end')">END (AGENT WINS)</button>
 <button onclick="game('reset')">RESET</button></div>
+<h2>THE INFECTION</h2><p>Infect a guest's scanner (their phone gets it within about 30 s), or cure everyone.</p>
+<div class="grid" style="grid-template-columns:repeat(2,1fr)">
+<button class="show" onclick="inf('')">INFECT A RANDOM GUEST</button>
+<button class="show" onclick="cureall()">CURE EVERYONE</button></div>
+<div id="pl" style="margin-top:10px"></div>
 <div id="out">Loading...</div>
 <script>
 var K=new URLSearchParams(location.search).get('k');
@@ -614,6 +676,20 @@ function game(a){if(a!=='start'&&!confirm('Sure? ('+a+')'))return;
  fetch('game/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({k:K,action:a})})
  .then(function(r){return r.json()}).then(function(d){gshow(d.game,d.players)})}
 fetch('leaders').then(function(r){return r.json()}).then(function(d){if(d.game)gshow(d.game,null)});
+function gadmin(body){body.k=K;return fetch('game/admin',{method:'POST',headers:{'Content-Type':'application/json'},
+ body:JSON.stringify(body)}).then(function(r){return r.json()})}
+function inf(id){gadmin({action:'infect',id:id}).then(function(d){
+ document.getElementById('pl').firstChild&&0;alert0('Infection ordered'+(d.target?': '+d.target:'')+'. Their phone gets it within ~30 s.');players()})}
+function cureall(){gadmin({action:'cureall'}).then(function(){alert0('Cure ordered for everyone.');players()})}
+function alert0(t){var e=document.getElementById('pmsg');if(e)e.textContent=t}
+function players(){fetch('game/players?k='+encodeURIComponent(K)).then(function(r){return r.json()}).then(function(d){
+ var pl=document.getElementById('pl');pl.textContent='';var m=el('p','',' ');m.id='pmsg';pl.appendChild(m);
+ if(!d.players.length){pl.appendChild(el('p','','No guests with the app yet.'));return}
+ d.players.forEach(function(p){var row=el('div','');row.style.cssText='display:flex;gap:8px;align-items:center;margin:4px 0';
+  var n=el('span','',(p.infected?'\u2623 ':'')+p.name);n.style.cssText='flex:1;color:'+(p.infected?'#ff1e28':'#ebfff0');
+  var b=el('button','show','INFECT');b.style.width='auto';b.style.padding='6px 12px';b.onclick=function(){inf(p.id)};
+  row.appendChild(n);row.appendChild(b);pl.appendChild(row)})})}
+players();
 load();
 </script></body></html>"""
 
