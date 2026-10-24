@@ -163,6 +163,9 @@ void touch(int, int, uint32_t now) {
 
 }  // namespace
 
-const Scene SCENE_BOOTH = {"photo booth", enter, tick, touch, nullptr, nullptr};
+// Needs the camera (the Elecrow 7" backup has none: the booth never comes up).
+static bool boothAvailable() { return camera::available(); }
+
+const Scene SCENE_BOOTH = {"photo booth", enter, tick, touch, boothAvailable, nullptr};
 
 bool boothTriggered() { return triggered; }
