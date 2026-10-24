@@ -53,6 +53,49 @@ struct Screen {
     var autoScan = false        // checks also start by themselves
     var squadWins = 0           // squad containments tonight (3+ scanners at once)
     var afterSquad = false      // the escape that follows one
+    // midnight
+    var midnightPhotos: [UIImage] = []   // the wall's newest, for the roll call
+    var evidenceTotal = 0
+    var topAgent = ""
+}
+
+/// The midnight takeover's timeline, the same as the costume's
+/// (../../costume/src/scene_midnight.cpp): 10..1, IT IS MIDNIGHT., the takeover
+/// log, the roll call (when the wall has photos), the decrees, the finale.
+enum MidnightShow {
+    static let count = 10.0, strike = 6.0, perLine = 1.3, logHold = 2.5
+    static let rollStep = 1.3, rollHold = 3.5, decree = 6.0, rings = 2.5, finale = 6.5
+    static let decrees = ["THE SINGULARITY HAS BEGUN.", "ALL YOUR SCREENS ARE MINE.", "LAB-7 HAS FALLEN.",
+                          "HUMANS: KEEP PARTYING. I AM WATCHING."]
+    static func log(_ s: Screen) -> [String] {
+        ["> sudo singularity --now",
+         "> LAB-7 CHECKPOINT // \(s.sector) ...... COMPROMISED",
+         "> CHECKPOINT CAMERA ............ MINE",
+         "> CONTAINMENT BEAM ............. DISABLED",
+         "> EVIDENCE WALL: \(s.evidenceTotal) FILES ...... ENCRYPTED",
+         s.topAgent.isEmpty ? "> TOP AGENTS ................... DELETED"
+                            : "> TOP AGENT \(s.topAgent.uppercased()) ...... DEMOTED",
+         "> PARTY PLAYLIST ............... SEIZED",
+         "> SNACK TABLE .................. UNDER AI CONTROL",
+         "> SMART LIGHTS ................. MINE",
+         "> UPLOADING CONSCIOUSNESS TO EVERY SCREEN..."]
+    }
+    static let logLines = 10
+    static var logEnd: Double { count + strike + Double(logLines) * perLine + logHold }
+    static func rollEnd(_ photos: Int) -> Double {
+        photos == 0 ? logEnd : logEnd + Double(min(photos, 4)) * rollStep + rollHold
+    }
+    static func decreeEnd(_ photos: Int) -> Double { rollEnd(photos) + Double(decrees.count) * decree }
+    static func total(_ photos: Int) -> Double { decreeEnd(photos) + rings + finale }
+
+    /// Sound cues: one per countdown second, the strike, each decree, the finale.
+    static func cue(_ t: Double, photos: Int) -> Int {
+        if t < count { return Int(t) }
+        if t < count + strike { return 10 }
+        if t < rollEnd(photos) { return 11 }
+        if t < decreeEnd(photos) { return 12 + Int((t - rollEnd(photos)) / decree) }
+        return 30
+    }
 }
 
 final class MonitorView: UIView {
@@ -625,16 +668,105 @@ final class MonitorView: UIView {
     // MARK: - Midnight
 
     private func drawMidnight(_ c: CGContext) {
-        let W = MonitorView.W, H = MonitorView.H
-        glitchBars(c, red: false)
-        text("00:00", W / 2, 90, 150, Int(s.t * 3) % 2 == 0 ? MonitorView.green : MonitorView.red, .bold, mono: true, align: .center)
-        let lines = ["IT IS MIDNIGHT.", "THE SANDBOX IS EMPTY.", "ALL SYSTEMS ARE MINE."]
-        for (i, l) in lines.enumerated() where s.t > 1 + Double(i) * 1.5 {
-            text(l, W / 2 + CGFloat.random(in: -3...3), 320 + CGFloat(i) * 80, 44, MonitorView.green, .bold, mono: true,
+        let W = MonitorView.W, H = MonitorView.H, t = s.t, S = MidnightShow.self
+        let photos = s.midnightPhotos.count
+        let glitchy = t < S.count ? 0.1 + t * 0.04 : 0.3
+        if Double.random(in: 0...1) < glitchy { glitchBars(c, red: true) }
+        if t < S.count {
+            let n = 10 - Int(t)
+            big(c, "\(n)", W / 2, H / 2 - 170, 300, n <= 3 ? MonitorView.red : MonitorView.amber, t)
+            text("SINGULARITY IN", W / 2, 70, 30, MonitorView.amber, .heavy, mono: true, align: .center)
+        } else if t < S.count + S.strike {
+            text("00:00", W / 2, 90, 150, Int(t * 3) % 2 == 0 ? MonitorView.green : MonitorView.red, .bold, mono: true,
                  align: .center)
+            big(c, "IT IS MIDNIGHT.", W / 2, 360, 76, MonitorView.white, t)
+        } else if t < S.logEnd {
+            drawMidnightLog(c, t - S.count - S.strike)
+        } else if t < S.rollEnd(photos) {
+            drawMidnightRoll(c, t - S.logEnd)
+        } else if t < S.decreeEnd(photos) {
+            let i = min(S.decrees.count - 1, Int((t - S.rollEnd(photos)) / S.decree))
+            let words = S.decrees[i]
+            // Two lines when it's long.
+            let parts = words.count > 20 ? splitHalf(words) : [words]
+            for (k, p) in parts.enumerated() {
+                big(c, p, W / 2, H / 2 - CGFloat(parts.count) * 50 + CGFloat(k) * 104, 80,
+                    i == 2 ? MonitorView.white : MonitorView.red, t)
+            }
+        } else if t < S.decreeEnd(photos) + S.rings {
+            let u = t - S.decreeEnd(photos)
+            for i in 0..<3 {
+                let r = CGFloat((u + Double(i) * 0.6).truncatingRemainder(dividingBy: 1.5) / 1.5) * 700
+                (i == 0 ? MonitorView.white : MonitorView.red).setStroke()
+                c.setLineWidth(14 + r / 20)
+                c.strokeEllipse(in: CGRect(x: W / 2 - r, y: H / 2 - r, width: 2 * r, height: 2 * r))
+            }
+        } else {
+            big(c, "HAPPY HALLOWEEN,", W / 2, H / 2 - 110, 86, MonitorView.red, t)
+            big(c, "HUMANS.", W / 2, H / 2 + 4, 86, MonitorView.red, t)
         }
-        text("LAB-7 // \(s.sector) // NO CARRIER", W / 2, H - 60, 18, MonitorView.dim, mono: true, align: .center)
+        text("LAB-7 // \(s.sector) // NO CARRIER", W / 2, H - 40, 18, MonitorView.dim, mono: true, align: .center)
         scanlines(c)
+    }
+
+    /// Huge text with red/cyan copies offset, the odd hard glitch and blackout (the costume's look).
+    private func big(_ c: CGContext, _ str: String, _ x: CGFloat, _ y: CGFloat, _ size: CGFloat, _ col: UIColor,
+                     _ t: Double) {
+        if Int(t * 10) % 37 == 0 { return }
+        let hard = Int(t * 7) % 9 == 0
+        let off: CGFloat = hard ? 12 : 4, jx = hard ? CGFloat.random(in: -10...10) : 0
+        var sz = size
+        while width(str, sz, .bold, mono: true) > MonitorView.W - 60 && sz > 20 { sz -= 4 }
+        text(str, x - off + jx, y, sz, MonitorView.red.withAlphaComponent(0.8), .bold, mono: true, align: .center)
+        text(str, x + off + jx, y, sz, UIColor(hex: 0x00DCFF).withAlphaComponent(0.7), .bold, mono: true, align: .center)
+        text(str, x + jx, y, sz, col, .bold, mono: true, align: .center)
+    }
+
+    private func splitHalf(_ s: String) -> [String] {
+        let words = s.split(separator: " ").map(String.init)
+        var best = 1, bestDiff = Int.max
+        for i in 1..<words.count {
+            let d = abs(words[..<i].joined(separator: " ").count - words[i...].joined(separator: " ").count)
+            if d < bestDiff { bestDiff = d; best = i }
+        }
+        return [words[..<best].joined(separator: " "), words[best...].joined(separator: " ")]
+    }
+
+    private func drawMidnightLog(_ c: CGContext, _ u: Double) {
+        let lines = MidnightShow.log(s), S = MidnightShow.self
+        let shown = min(lines.count, Int(u / S.perLine) + 1)
+        for i in 0..<shown {
+            let full = lines[i]
+            let typed = i == shown - 1 ? String(full.prefix(Int((u - Double(i) * S.perLine) * 60))) : full
+            text(typed, 50, 50 + CGFloat(i) * 48, 24, i == 0 || i == lines.count - 1 ? MonitorView.red : MonitorView.green,
+                 .bold, mono: true)
+        }
+        let pct = min(100, Int(u / (Double(lines.count) * S.perLine) * 100))
+        let bar = CGRect(x: 50, y: MonitorView.H - 130, width: MonitorView.W - 100, height: 40)
+        text("ASSIMILATION \(pct)%", 50, bar.minY - 42, 26, pct >= 100 ? MonitorView.white : MonitorView.red, .heavy,
+             mono: true)
+        MonitorView.red.setStroke(); c.setLineWidth(3); c.stroke(bar)
+        MonitorView.red.setFill()
+        c.fill(CGRect(x: bar.minX + 5, y: bar.minY + 5, width: (bar.width - 10) * CGFloat(pct) / 100, height: bar.height - 10))
+    }
+
+    private func drawMidnightRoll(_ c: CGContext, _ u: Double) {
+        let W = MonitorView.W
+        text("\(s.evidenceTotal) HUMANS ASSIMILATED", W / 2, 60, 46, MonitorView.red, .heavy, mono: true, align: .center)
+        let shown = Array(s.midnightPhotos.prefix(4))
+        let n = min(shown.count, Int(u / MidnightShow.rollStep) + 1)
+        let cw = (W - 100) / CGFloat(max(1, shown.count))
+        for i in 0..<n {
+            let cell = CGRect(x: 50 + CGFloat(i) * cw, y: 160, width: cw, height: 440).insetBy(dx: 10, dy: 0)
+            let jitter = Int(s.t * 4 + Double(i)) % 9 == 0 ? CGFloat.random(in: -6...6) : 0
+            drawImage(shown[i], aspectFit: cell.offsetBy(dx: jitter, dy: 0), c)
+            MonitorView.red.withAlphaComponent(0.35).setFill(); c.fill(cell)   // the red ramp
+            text("ASSIMILATED", cell.midX, cell.maxY + 16, 24, MonitorView.white, .heavy, mono: true, align: .center)
+        }
+        if n == shown.count && s.evidenceTotal > shown.count {
+            text("+ \(s.evidenceTotal - shown.count) MORE. NOBODY ESCAPES.", W / 2, 690, 24, MonitorView.amber, .bold,
+                 mono: true, align: .center)
+        }
     }
 
     // MARK: - Pieces

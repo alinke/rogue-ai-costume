@@ -33,6 +33,9 @@ final class Scanner: ObservableObject {
     @Published private(set) var now = Date()
     @Published private(set) var jammedAt = Date.distantPast   // CONTAIN pressed while infected
     @Published private(set) var curedAt = Date.distantPast
+    @Published private(set) var midnightStart: Date?           // the takeover is playing (MidnightView)
+    private var takeoverClear = true                            // the beacon stopped saying TAKEOVER since the last one
+    private var midnightClockDone = 0.0                         // the event midnight already played for
     private var firedAt = Date.distantPast
     private var exposure = 0.0, aiExposure = 0.0
 
@@ -75,6 +78,33 @@ final class Scanner: ObservableObject {
         firedAt = now
         cooldownUntil = now.addingTimeInterval(Settings.containCooldown)
     }
+
+    /// The takeover ended (its last frame, or RESIST).
+    func endMidnight() { midnightStart = nil }
+
+    /// Midnight: when the costume's beacon says TAKEOVER (it plays its own for ~70 s),
+    /// or at the event's midnight time with no costume in range.
+    private func midnight(_ t: Date, _ a: AiState) {
+        let takeover = a.seen && a.activity == 3
+        if !takeover { takeoverClear = true }
+        if let s = midnightStart {
+            if t.timeIntervalSince(s) > MidnightShow.total + 2 { midnightStart = nil }
+            return
+        }
+        var clock = false
+        if settings.joined, let m = settings.midnightDate, t >= m, t.timeIntervalSince(m) < 120,
+           midnightClockDone != m.timeIntervalSince1970 {
+            clock = true
+        }
+        guard (takeover && takeoverClear) || clock else { return }
+        midnightStart = t
+        takeoverClear = !takeover
+        if let m = settings.midnightDate, abs(t.timeIntervalSince(m)) < 120 { midnightClockDone = m.timeIntervalSince1970 }
+    }
+
+#if DEBUG
+    func demoMidnight() { midnightStart = Date() }   // simulator: -demoMidnight
+#endif
 
     private func play(_ t: Tone, always: Bool = false) {
         if always || settings.soundOn { Sound.shared.play(t) }
@@ -148,6 +178,7 @@ final class Scanner: ObservableObject {
             if settings.soundOn && contain == .ready { Sound.shared.play(.tick) }
         }
         infection(t, z)
+        midnight(t, a)
         // A squad of scanners (3+ at once) contained it: the costume says so for a while.
         if a.seen && a.activity == 6 && contain != .squad {
             if t.timeIntervalSince(firedAt) < 15 { settings.countSquad() }   // this phone was in the squad

@@ -47,6 +47,10 @@ final class MonitorViewController: UIViewController {
     private var clearedByCap = false
     private var farSince: Double?
     private var prevActivity = -1
+    private var takeoverClear = true      // the costume stopped saying TAKEOVER since the last one
+    private var midnightClockDay = 0      // yyyymmdd the clock's midnight already played
+    private var midnightCue = -1
+    private var midnightPhotoCount = 0    // fixed when it starts, so the timeline doesn't shift
     private var squadWins = 0
     private var infectedHere = false        // an infected guest's phone is at the checkpoint
     private var infectedAnnouncedAt = 0.0
@@ -74,6 +78,7 @@ final class MonitorViewController: UIViewController {
     // Demo: "-demo calm|checkpoint|countdown|card|intrusion|cleared|beam|failed|midnight" pins a screen
     // with made-up data (the simulator has no camera or Bluetooth).
     private let demo = UserDefaults.standard.string(forKey: "demo")
+    private let demoStart = CACurrentMediaTime()
     private lazy var stand: UIImage? = demo == nil ? nil
         : MonitorViewController.standIn(people: (demo ?? "").hasPrefix("group") ? 3 : 1)
 
@@ -177,12 +182,29 @@ final class MonitorViewController: UIViewController {
         let close = single || faces.filter { $0.width >= 0.07 }.count >= 2
 
         // Midnight: the costume's takeover, or the clock.
-        let hm = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        let midnight = (ai.seen && ai.activity == 3) || (hm.hour == 0 && hm.minute == 0)
-        if midnight {
-            if mode != .midnight { abortCheckpoint(); go(.midnight); Sound.shared.play(.fail) }
-        } else if mode == .midnight {
-            go(.calm)
+        // Once started it plays to the end (~70 s, the costume's length), then waits for the
+        // costume to stop saying TAKEOVER before another can start; the clock fires once a night.
+        let hm = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: Date())
+        let takeover = ai.seen && ai.activity == 3
+        if !takeover { takeoverClear = true }
+        let today = (hm.year ?? 0) * 10000 + (hm.month ?? 0) * 100 + (hm.day ?? 0)
+        let clock = hm.hour == 0 && hm.minute == 0 && midnightClockDay != today
+        if mode != .midnight && ((takeover && takeoverClear) || clock) {
+            abortCheckpoint()
+            go(.midnight)
+            takeoverClear = !takeover
+            if hm.hour == 0 && hm.minute == 0 { midnightClockDay = today }
+            midnightCue = -1
+            midnightPhotoCount = min(4, feed.photos.filter { feed.image($0) != nil }.count)
+        }
+        if mode == .midnight {
+            let t = now - modeStart
+            let cue = MidnightShow.cue(t, photos: midnightPhotoCount)
+            if cue != midnightCue {
+                midnightCue = cue
+                if cue < 10 { Sound.shared.play(.beep) } else if cue != 11 { Sound.shared.play(.fail) }
+            }
+            if t > MidnightShow.total(midnightPhotoCount) { go(.calm) }
         }
 
         // The beam: the costume says it's being contained, then that it escaped.
@@ -372,6 +394,11 @@ final class MonitorViewController: UIViewController {
         s.feedOnline = feed.online
         s.verified = feed.verified
         s.assimilated = feed.assimilated
+        s.evidenceTotal = feed.all.count
+        s.topAgent = feed.topAgents.first.map { String($0.split(separator: "(").first ?? "").trimmingCharacters(in: .whitespaces) } ?? ""
+        if mode == .midnight {
+            s.midnightPhotos = Array(feed.photos.compactMap { feed.image($0) }.prefix(midnightPhotoCount))
+        }
         // Slideshow: a new photo every 6 s (only ones already downloaded).
         let ready = feed.photos.filter { feed.image($0) != nil }
         if now - slideAt > 6 { slide += 1; slideAt = now }
@@ -674,7 +701,12 @@ final class MonitorViewController: UIViewController {
         case "failed": s.mode = .beamFailed; s.t = 3
         case "squad": s.mode = .squadWin; s.t = 7; s.squadWins = 1
         case "infected": s.mode = .calm
-        case "midnight": s.mode = .midnight; s.t = 6
+        case "midnight":   // plays the whole takeover from launch
+            s.mode = .midnight
+            s.t = now - demoStart
+            s.evidenceTotal = 23
+            s.topAgent = "DISCO GOBLIN"
+            if let c = card?.image ?? stand { s.midnightPhotos = Array(repeating: c, count: 4) }
         default: s.mode = .calm; s.slide = stand; s.slideLabel = "VERIFIED HUMAN #014"
         }
         screen.s = s

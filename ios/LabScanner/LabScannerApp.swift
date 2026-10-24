@@ -82,6 +82,7 @@ struct RootView: View {
             if a.contains("-demoInfected") { settings.infected = true; settings.infectedSince = Date().timeIntervalSince1970 }
             if let p = arg("-demoGame") { game.demo(phase: p) }
             if a.contains("-joinSheet") { manualJoin = true }
+            if a.contains("-demoMidnight") { scanner.demoMidnight() }
             if let t = arg("-tab").flatMap(Int.init) { tab = t }
             if let u = arg("-invite").flatMap(URL.init(string:)) { invite = Settings.invite(from: u) }
             if let u = arg("-join").flatMap(URL.init(string:)), let inv = Settings.invite(from: u) { settings.join(inv) }
@@ -93,6 +94,11 @@ struct RootView: View {
                 settings.join(inv)   // your own scanner phones: lab7://configure
             } else {
                 invite = inv         // a guest: show what joining means first
+            }
+        }
+        .overlay {
+            if let start = scanner.midnightStart {
+                MidnightView(start: start) { scanner.endMidnight() }.ignoresSafeArea()
             }
         }
         .task { game.start() }
