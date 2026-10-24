@@ -11,7 +11,7 @@ lines and ROGUE.AI. Use two or all four.
 
 The notches are closed shapes in the cut layer, overlapping the outline: the
 laser cuts both, and the sliver between them drops out. Seen from the front a
-notch is a 3.1 mm strip -- the LED lies flat inside the 3 mm sheet -- with a
+notch is a ~3 mm strip -- the LED lies flat inside the 3 mm sheet -- with a
 rounded inner end for the LED's dome.
 
   python3 visor_leds.py      -> rogue_ai_visor_glasses_A_leds.svg
@@ -24,7 +24,7 @@ SRC = os.path.join(HERE, "rogue_ai_visor_glasses_A.svg")
 OUT = os.path.join(HERE, "rogue_ai_visor_glasses_A_leds.svg")
 
 PT = 25.4 / 72              # the file is in points
-NOTCH_W = 3.1 / PT          # the LED body (3 mm) plus a little
+NOTCH_W = 2.9 / PT          # drawn 2.9: the laser kerf opens it to ~3.0-3.05 mm, a snug push fit for a 3 mm LED
 NOTCH_D = 5.0 / PT          # how deep the LED goes in (its body; the rim stays outside)
 # Notch centre lines (points): top near the scored lines at y 22 and 29, bottom
 # between 104.2 and 111.3. The end edge slants there, and the LED's rim stops on
