@@ -2,8 +2,10 @@
 
 #include <esp_random.h>
 #include <esp_heap_caps.h>
+#if CONFIG_IDF_TARGET_ESP32P4
 #include <esp_cache.h>
 #include <driver/ppa.h>
+#endif
 
 #include "LGFX_Config.hpp"  // board bring-up, unmodified from the Sidekick firmware
 #include "config.h"
@@ -18,6 +20,7 @@ namespace gfx {
 static LGFX lcd;
 LGFX_Sprite canvas(&lcd);
 
+#if CONFIG_IDF_TARGET_ESP32P4
 // ---- Push to the panel ---------------------------------------------------------
 // The panel's frame buffer is native portrait (800x1280, little-endian RGB565);
 // the canvas is landscape (1280x800, LovyanGFX's byte-swapped RGB565).
@@ -92,6 +95,59 @@ static void ppaSelfTest() {
 }
 #endif
 
+#else
+// ---- Push to the panel (Elecrow 7", ESP32-S3) --------------------------------------
+// The scenes all draw at 1280x800; this panel is 800x480. Each dirty rect is
+// scaled down (5/8 x 3/5), every output pixel the average of a 2x2 block, so
+// 1-pixel lines and the scanlines don't vanish or shimmer. Writes go to the
+// panel's live frame buffer directly (LovyanGFX's per-pixel path was ~1 us a
+// pixel: 400 ms for a full screen).
+static uint16_t* s_canvasBuf = nullptr;
+static constexpr int PW = 800, PH = 480;  // the panel
+
+static uint16_t s_sx[PW], s_sy[PH];       // panel x / y -> canvas x / y
+static uint16_t* s_fb = nullptr;          // the panel's live frame buffer
+static bool s_fbSwapped = false;          // frame buffer holds byte-swapped RGB565 too
+
+// Average of four RGB565 pixels: green moved to the upper half-word so all three
+// channels add up in one 32-bit register without carrying into each other.
+static inline uint32_t spread(uint16_t v) { return (v | ((uint32_t)v << 16)) & 0x07E0F81Fu; }
+static inline uint16_t avg4(uint16_t a, uint16_t b, uint16_t c, uint16_t d) {
+  uint32_t t = (spread(a) + spread(b) + spread(c) + spread(d)) >> 2;
+  t &= 0x07E0F81Fu;
+  return (uint16_t)(t | (t >> 16));
+}
+
+// fast: one source pixel per panel pixel (2.6x quicker -- the PSRAM the panel is
+// scanned out of leaves little bandwidth), for big areas while they animate.
+static void scalePush(int x, int y, int w, int h, bool fast) {
+  int tx0 = x * PW / W, tx1 = min(PW, ((x + w) * PW + W - 1) / W);
+  int ty0 = y * PH / H, ty1 = min(PH, ((y + h) * PH + H - 1) / H);
+  if (tx1 <= tx0 || ty1 <= ty0) return;
+  for (int ty = ty0; ty < ty1; ty++) {
+    int sy = s_sy[ty], sy2 = min(H - 1, sy + 1);
+    const uint16_t* a = s_canvasBuf + sy * W;
+    const uint16_t* b = s_canvasBuf + sy2 * W;
+    uint16_t* out = s_fb + ty * PW;
+    for (int tx = tx0; tx < tx1; tx++) {
+      int sx = s_sx[tx], sx2 = sx + 1 < W ? sx + 1 : sx;
+      // canvas pixels are byte-swapped (LovyanGFX's swap565)
+      uint16_t v = fast ? __builtin_bswap16(a[sx])
+                        : avg4(__builtin_bswap16(a[sx]), __builtin_bswap16(a[sx2]),
+                               __builtin_bswap16(b[sx]), __builtin_bswap16(b[sx2]));
+      out[tx] = s_fbSwapped ? __builtin_bswap16(v) : v;
+    }
+  }
+}
+
+
+// Big areas go out fast while they change; once the screen settles they're
+// redrawn once with the averaging (see present()).
+static constexpr int FAST_AREA = 150000;  // canvas pixels
+static int s_refX0 = W, s_refY0 = H, s_refX1 = 0, s_refY1 = 0;
+static uint32_t s_lastChange = 0;
+#endif
+
 // ---- Fonts --------------------------------------------------------------------
 // Each font is parsed once at boot into its own VLWfont; switching is just a
 // pointer swap, and glyph bitmaps are read straight from flash.
@@ -119,11 +175,29 @@ bool begin() {
   if (!lcd.init()) return false;
   lcd.setBrightness(0);  // stays dark until the first frame is on screen
   lcd.setRotation(SCREEN_ROTATION);
+#if CONFIG_IDF_TARGET_ESP32P4
   if (lcd.width() != W || lcd.height() != H) {
     Serial.printf("[E][gfx] panel is %dx%d after rotation, expected %dx%d\n",
                   (int)lcd.width(), (int)lcd.height(), W, H);
     return false;
   }
+#else
+  if (lcd.width() != PW || lcd.height() != PH) {
+    Serial.printf("[E][gfx] panel is %dx%d, expected %dx%d\n", (int)lcd.width(), (int)lcd.height(), PW, PH);
+    return false;
+  }
+  for (int i = 0; i < PW; i++) s_sx[i] = i * W / PW;
+  for (int i = 0; i < PH; i++) s_sy[i] = i * H / PH;
+  s_fb = (uint16_t*)lcd.rgbBus()->getDMABuffer(PW * PH * 2);   // buffer 0: the one scanned out
+  if (!s_fb) {
+    Serial.println("[E][gfx] no frame buffer");
+    return false;
+  }
+  // Which byte order does the frame buffer use? Draw pure red and look.
+  lcd.fillRect(0, 0, 1, 1, (uint16_t)0xF800);
+  s_fbSwapped = s_fb[0] == 0x00F8;
+  Serial.printf("[I][gfx] frame buffer pixel for red: %04x (%s)\n", s_fb[0], s_fbSwapped ? "byte-swapped" : "native");
+#endif
 
   // Canvas buffer allocated here, cache-line aligned, for the PPA's DMA.
   s_canvasBuf = (uint16_t*)heap_caps_aligned_alloc(64, W * H * 2, MALLOC_CAP_SPIRAM);
@@ -134,6 +208,7 @@ bool begin() {
   canvas.setColorDepth(16);
   canvas.setBuffer(s_canvasBuf, W, H, 16);
 
+#if CONFIG_IDF_TARGET_ESP32P4
   auto* panel = static_cast<lgfx::Panel_DSI*>(lcd.getPanel());
   s_fb = panel->config_detail().buffer;
   s_fbBytes = W * H * 2;
@@ -144,6 +219,7 @@ bool begin() {
     Serial.println("[E][gfx] PPA / frame buffer setup failed");
     return false;
   }
+#endif
   canvas.setTextDatum(lgfx::textdatum_t::top_left);
   canvas.setTextWrap(false);
 
@@ -171,7 +247,11 @@ bool begin() {
 void powerDown() {
   lcd.sleep();
   delay(50);
+#if CONFIG_IDF_TARGET_ESP32P4
   lcd.dsiBus()->release();
+#else
+  lcd.setBrightness(0);
+#endif
 }
 
 void setBacklightPercent(int pct) {
@@ -184,6 +264,10 @@ static float s_cal[4] = {1, 0, 1, 0};  // ax, bx, ay, by
 bool getTouch(int* x, int* y) {
   int32_t tx, ty;
   if (!lcd.getTouch(&tx, &ty)) return false;
+#if !CONFIG_IDF_TARGET_ESP32P4
+  tx = tx * W / PW;   // the panel's touch is 800x480; the scenes think in 1280x800
+  ty = ty * H / PH;
+#endif
   *x = constrain((int)(s_cal[0] * tx + s_cal[1] + 0.5f), 0, W - 1);
   *y = constrain((int)(s_cal[2] * ty + s_cal[3] + 0.5f), 0, H - 1);
   return true;
@@ -264,6 +348,16 @@ void dirty(int x, int y, int w, int h) {
 }
 
 void present() {
+#if !CONFIG_IDF_TARGET_ESP32P4
+  if (!s_dirtyCount) {
+    if (s_refX1 > s_refX0 && millis() - s_lastChange > 250) {
+      scalePush(s_refX0, s_refY0, s_refX1 - s_refX0, s_refY1 - s_refY0, false);
+      s_refX0 = W; s_refY0 = H; s_refX1 = 0; s_refY1 = 0;
+    }
+    return;
+  }
+  s_lastChange = millis();
+#endif
   if (!s_dirtyCount) return;
 #ifdef BIGTEXT_TIMING
   uint32_t t0 = micros();
@@ -271,7 +365,16 @@ void present() {
 #endif
   for (int i = 0; i < s_dirtyCount; i++) {
     const Rect& r = s_dirty[i];
+#if CONFIG_IDF_TARGET_ESP32P4
     ppaPush(r.x, r.y, r.w, r.h, SCREEN_ROTATION);
+#else
+    bool fast = r.w * r.h > FAST_AREA;
+    scalePush(r.x, r.y, r.w, r.h, fast);
+    if (fast) {
+      s_refX0 = min(s_refX0, (int)r.x); s_refY0 = min(s_refY0, (int)r.y);
+      s_refX1 = max(s_refX1, r.x + r.w); s_refY1 = max(s_refY1, r.y + r.h);
+    }
+#endif
   }
 #ifdef BIGTEXT_TIMING
   uint32_t us = micros() - t0;

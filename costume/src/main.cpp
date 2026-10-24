@@ -122,7 +122,7 @@ void powerOff() {
   bool btOff = researcher::shutdown(8000);
   Serial.printf("[I][power] radios: Wi-Fi %s, Bluetooth/C6 link %s\n", upOff ? "off" : "TIMED OUT",
                 btOff ? "off" : "STILL UP");
-  if (btOff) {
+  if (btOff && C6_ENABLE_PIN >= 0) {
     // The pin belongs to the ESP-Hosted driver, so it's driven through ESP-IDF.
     gpio_set_direction((gpio_num_t)C6_ENABLE_PIN, GPIO_MODE_OUTPUT);
     gpio_set_level((gpio_num_t)C6_ENABLE_PIN, 0);
@@ -158,7 +158,7 @@ static void dmaProbe(const char* what) {
 void setup() {
   // Hold the ESP32-C6 (Wi-Fi/Bluetooth co-processor) off: its chip-enable
   // is active high, so low keeps it powered down for the whole run.
-#if !SCANNER_LINK_ENABLED
+#if !SCANNER_LINK_ENABLED && C6_ENABLE_PIN >= 0
   pinMode(C6_ENABLE_PIN, OUTPUT);
   digitalWrite(C6_ENABLE_PIN, LOW);
 #endif

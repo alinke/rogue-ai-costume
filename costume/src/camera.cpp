@@ -1,3 +1,23 @@
+#include "config.h"
+#if !CAMERA_ENABLED
+// No camera on this board (the Elecrow 7" backup): every scene already copes
+// with camera::available() == false (the scan shows its silhouette).
+#include "camera.h"
+namespace camera {
+bool begin(int, int) { return false; }
+bool available() { return false; }
+void requestCapture() {}
+bool ready() { return false; }
+Photo photo() { return Photo{}; }
+bool startLive() { return false; }
+void stopLive() {}
+uint32_t liveFrame(const uint8_t** pixels) { if (pixels) *pixels = nullptr; return 0; }
+bool takeMotion() { return false; }
+void setMotionEnabled(bool) {}
+void setLight(int) {}
+void dumpDebugRgb() {}
+}  // namespace camera
+#else
 #include "camera.h"
 
 #include <esp_heap_caps.h>
@@ -586,3 +606,5 @@ Photo photo() {
 }
 
 }  // namespace camera
+
+#endif  // CAMERA_ENABLED

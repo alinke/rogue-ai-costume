@@ -1,4 +1,25 @@
 #pragma once
+
+// ---- Board ---------------------------------------------------------------------
+// Default: the Guition JC8012P4A1C 10.1" (ESP32-P4). BOARD_ELECROW_7 (platformio
+// env elecrow-7) is the BACKUP costume: Elecrow CrowPanel 7.0 (ESP32-S3, 800x480,
+// GT911 touch). It has no camera, speaker, mic, LED strip, battery sense, clock
+// chip or C6; the scenes still draw at 1280x800 and gfx.cpp scales them down.
+#ifdef BOARD_ELECROW_7
+#define SCREEN_ROTATION 0          // the panel is landscape already
+#define BUTTON_PIN -1              // GPIO35 is the S3's PSRAM bus
+#define C6_ENABLE_PIN -1
+#define SOUND_ENABLED 0
+#define MIC_ENABLED 0
+#define SHOW_BATTERY 0
+#define BATTERY_SENSE_PIN -1
+#define CAMERA_ENABLED 0
+#define MOTION_TRIGGER_ENABLED 0
+#define LED_STRIP_ENABLED 0
+#define PHOTO_UPLOAD_ENABLED 0     // nothing to upload without a camera
+#define RTC_ENABLED 0              // no RX8025T (and the S3's default I2C pins are display pins)
+#endif
+
 // ---- Private settings: src/secrets.h (never committed; copy secrets.h.example) --
 // Wi-Fi, the photo service's URL and upload key, your site. Without the file
 // (or in a PUBLIC_BUILD, e.g. the web-flasher images) photo upload is off.
@@ -23,7 +44,9 @@
 
 // LovyanGFX rotation: 1 = landscape 1280x800 (confirmed on this panel).
 // Use 3 if the display ends up mounted upside down in the harness.
+#ifndef SCREEN_ROTATION
 #define SCREEN_ROTATION 1
+#endif
 
 // Frame rate cap. Scenes only redraw what changed, so this mostly bounds the
 // typing/animation tick; lower = less CPU/PSRAM power.
@@ -32,7 +55,9 @@
 // ---- Inputs ------------------------------------------------------------------
 // Button that skips to the next scene (active low, internal pull-up).
 // GPIO35 is the ESP32-P4's BOOT strap. -1 disables the button.
+#ifndef BUTTON_PIN
 #define BUTTON_PIN 35
+#endif
 
 // Minimum time between touch reactions (ms).
 #define TOUCH_COOLDOWN_MS 5000
@@ -93,7 +118,9 @@
 // ---- Power -------------------------------------------------------------------
 // The onboard ESP32-C6 (Wi-Fi/Bluetooth) is held off via its chip-enable pin --
 // unless the scanner link below needs its Bluetooth.
+#ifndef C6_ENABLE_PIN
 #define C6_ENABLE_PIN 54
+#endif
 
 // ---- Researcher's scanner (Bluetooth LE via the C6) ---------------------------------
 // The handheld scanner (../scanner in this repo) is detected by its
@@ -112,7 +139,9 @@
 // whenever Wi-Fi is reachable. Wi-Fi is on only while there's something to
 // send. Networks and the upload key: src/secrets.h (copy secrets.h.example).
 // Server: ../cloud (deploy.sh / teardown.sh).
+#ifndef PHOTO_UPLOAD_ENABLED
 #define PHOTO_UPLOAD_ENABLED PHOTO_SERVICE_CONFIGURED
+#endif
 #define PHOTO_UPLOAD_URL PHOTO_SERVICE_URL "/upload?set=ai"
 #define PHOTO_JPEG_QUALITY 80
 #define PHOTO_QUEUE_MAX 40         // photos kept waiting for Wi-Fi (oldest dropped)
@@ -120,7 +149,9 @@
 // ---- Sound -------------------------------------------------------------------
 // Siren on touch / presence (onboard speaker: ES8311 codec + NS4150 amp).
 // The amp is only powered while a sound plays.
+#ifndef SOUND_ENABLED
 #define SOUND_ENABLED 1
+#endif
 #define SIREN_VOLUME_PERCENT 25   // 0-100
 #define FX_VOLUME_PERCENT 60      // keypad clicks, buzzer, chimes
 #define VOICE_VOLUME_PERCENT 100  // robot voice
@@ -129,7 +160,9 @@
 // ---- Microphone --------------------------------------------------------------
 // The codec's mic input. Detected at boot; if nothing is heard it stays off.
 // A sudden noise this many dB above the room's average gets a reaction.
+#ifndef MIC_ENABLED
 #define MIC_ENABLED 1
+#endif
 #define NOISE_SPIKE_DB 15
 #define NOISE_COOLDOWN_S 60
 // Two claps (sharp sounds this many dB over the room, 0.2-0.9 s apart) get
@@ -140,14 +173,20 @@
 // ---- Battery -----------------------------------------------------------------
 // The IP5306 charger has no I2C on this board; battery voltage is read through
 // a 68k/100k divider on GPIO52 (schematic 1_PWR: R2/R6/R4).
+#ifndef BATTERY_SENSE_PIN
 #define BATTERY_SENSE_PIN 52
+#endif
 #define BATTERY_DIVIDER (100.0f / (68.0f + 100.0f))
+#ifndef SHOW_BATTERY
 #define SHOW_BATTERY 1
+#endif
 
 // ---- Camera ------------------------------------------------------------------
 // SC2336 on the MIPI-CSI connector: the Human Scan photographs whoever is in
 // front of the costume. Without a camera the scan shows a drawn silhouette.
+#ifndef CAMERA_ENABLED
 #define CAMERA_ENABLED 1
+#endif
 #define CAMERA_FLIP_H 0          // mirror left-right
 #define CAMERA_FLIP_V 0          // flip upside down (camera mounted inverted)
 #define CAMERA_MAX_SETTLE_MS 1500  // longest auto-exposure may take before the shot
@@ -172,13 +211,18 @@
 // The board's RX8025T real-time clock (needs a CR1220 cell to keep time while
 // off). Set it with tools/set_clock.py. The countdown runs to this time of day;
 // at that moment the midnight takeover plays.
+#ifndef RTC_ENABLED
+#define RTC_ENABLED 1              // RX8025T clock chip (the midnight countdown)
+#endif
 #define COUNTDOWN_HOUR 0
 #define COUNTDOWN_MINUTE 0
 
 // ---- Camera motion trigger -------------------------------------------------------
 // Peek through the camera every MOTION_CHECK_MS; someone stepping in front
 // (centre of the picture changes, edges don't) triggers a scan.
+#ifndef MOTION_TRIGGER_ENABLED
 #define MOTION_TRIGGER_ENABLED 1
+#endif
 #define MOTION_CHECK_MS 1500
 #define MOTION_COOLDOWN_S 60
 

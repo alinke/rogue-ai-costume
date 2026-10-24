@@ -79,6 +79,7 @@ static void setCharging(bool c, float before, float after, char why, uint32_t no
 }
 
 void begin() {
+  if (BATTERY_SENSE_PIN < 0) return;   // no battery sense on this board: percent() stays -1
   analogReadResolution(12);
   s_volts = readVolts();
   for (int i = 0; i < N; i++) s_hist[i] = s_volts;
@@ -91,6 +92,7 @@ void begin() {
 }
 
 void tick(uint32_t now) {
+  if (BATTERY_SENSE_PIN < 0) return;
   if ((int32_t)(now - s_nextSample) < 0) return;
   s_nextSample = now + 1000;
 

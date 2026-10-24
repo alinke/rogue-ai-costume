@@ -8,7 +8,9 @@
 #include <BLEDevice.h>
 #include <BLEScan.h>
 
-#include "esp32-hal-hosted.h"
+#if CONFIG_IDF_TARGET_ESP32P4
+#include "esp32-hal-hosted.h"   // Bluetooth through the board's ESP32-C6
+#endif
 
 namespace researcher {
 
@@ -126,6 +128,16 @@ static void setAdvert() {
   adv->start();
 }
 
+// The P4's radio is the C6 over ESP-Hosted (it must be down before the C6 is
+// held in reset); an S3's radio is on-chip.
+static bool radioLinkUp() {
+#if CONFIG_IDF_TARGET_ESP32P4
+  return hostedIsInitialized();
+#else
+  return false;
+#endif
+}
+
 static volatile bool s_scanPaused = false;  // see pauseScan()
 static volatile bool s_stopReq = false, s_stopped = false;  // see shutdown()
 static uint32_t s_scanStartedAt = 0;
@@ -133,7 +145,9 @@ static uint32_t s_scanStartedAt = 0;
 static void task(void*) {
   // The core's variant has the Tab5's SDIO pins: point ESP-Hosted at this
   // board's C6 (CLK 18, CMD 19, D0-D3 14-17, reset 54) before BLE starts it.
+#if CONFIG_IDF_TARGET_ESP32P4
   hostedSetPins(18, 19, 14, 15, 16, 17, 54);
+#endif
   uint32_t t0 = millis();
   if (!BLEDevice::init("ROGUE.AI")) {
     Serial.println("[E][researcher] BLE init failed (C6 co-processor link)");
@@ -161,7 +175,7 @@ static void task(void*) {
       scan->stop();
       adv->stop();
       BLEDevice::deinit(true);  // last user of ESP-Hosted: this also closes the SDIO link
-      Serial.printf("[I][researcher] Bluetooth off, C6 link %s\n", hostedIsInitialized() ? "STILL UP" : "closed");
+      Serial.printf("[I][researcher] Bluetooth off, C6 link %s\n", radioLinkUp() ? "STILL UP" : "closed");
       s_stopped = true;
       vTaskDelete(nullptr);
     }
@@ -190,7 +204,7 @@ bool shutdown(uint32_t timeoutMs) {
   s_stopReq = true;
   uint32_t t0 = millis();
   while (!s_stopped && millis() - t0 < timeoutMs) delay(50);
-  return s_stopped && !hostedIsInitialized();
+  return s_stopped && !radioLinkUp();
 }
 
 // While a photo uploads, Wi-Fi and Bluetooth share the C6 and its SDIO buffers

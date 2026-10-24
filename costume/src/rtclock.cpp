@@ -48,12 +48,19 @@ static void readTime() {
 }
 
 void begin() {
+#if !RTC_ENABLED
+  Serial.println("[I][clock] no clock chip on this board");
+  return;
+#endif
   readTime();
   Serial.printf("[I][clock] %s%s, %02d:%02d:%02d\n", s_present ? "RX8025T found" : "no clock chip",
                 s_present ? (s_valid ? ", time set" : ", time NOT set (send T...)") : "", s_h, s_m, s_s);
 }
 
 void tick(uint32_t now) {
+#if !RTC_ENABLED
+  return;
+#endif
   if ((int32_t)(now - s_nextRead) < 0) return;
   s_nextRead = now + 1000;
   readTime();

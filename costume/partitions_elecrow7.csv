@@ -1,0 +1,6 @@
+# The backup costume on the Elecrow 7" (4MB flash): one app slot as big as it
+# gets (no OTA, no photo queue -- this board has no camera).
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x9000,  0x5000,
+otadata,  data, ota,     0xe000,  0x2000,
+app0,     app,  ota_0,   0x10000, 0x3F0000,
