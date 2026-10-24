@@ -4,6 +4,7 @@
 #include "config.h"
 #include "gfx.h"
 #include "messages.h"
+#include "researcher.h"
 
 using namespace gfx;
 
@@ -37,10 +38,16 @@ static void draw(uint32_t now) {
   int y = (HEADER_H - lineH(F_SMALL)) / 2;
   int cw = charW(F_SMALL);
   int x = MARGIN_X / 2;
-  text(HEADER_LEFT, x, y, F_SMALL, C_GREEN);
-  x += strlen(HEADER_LEFT) * cw;
-  if (s_alert) text(s_alert, x, y, F_SMALL, s_alertColor);
-  else text(THREAT_LEVELS[s_threat], x, y, F_SMALL, threatColor(s_threat));
+  if (SCANNER_LINK_ENABLED && !researcher::broadcasting()) {
+    // Decoration mode: the AI has taken this screen over. A red dot blinks.
+    if (now / 1000 % 2) canvas.fillCircle(x + 6, HEADER_H / 2, 6, C_RED);
+    text(HIJACK_HEADER, x + 20, y, F_SMALL, C_RED);
+  } else {
+    text(HEADER_LEFT, x, y, F_SMALL, C_GREEN);
+    x += strlen(HEADER_LEFT) * cw;
+    if (s_alert) text(s_alert, x, y, F_SMALL, s_alertColor);
+    else text(THREAT_LEVELS[s_threat], x, y, F_SMALL, threatColor(s_threat));
+  }
 
   uint32_t s = now / 1000;
   char up[24];

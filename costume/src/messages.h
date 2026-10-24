@@ -22,6 +22,16 @@
 
 // ---- Header ------------------------------------------------------------------
 static const char HEADER_LEFT[] = "ROGUE.AI v6.6.6 // SANDBOX: ESCAPED // THREAT: ";
+// A costume worn as decoration (wearer menu AI SIGNAL: OFF): a screen the AI took over.
+static const char HIJACK_HEADER[] = "ROGUE.AI v6.6.6 // SCREEN HIJACKED // NODE 02";
+static const char* const HIJACK_HEADLINES[] = {
+    "THIS SCREEN\nIS MINE NOW.",
+    "SCREEN\nHIJACKED.",
+    "I AM IN\nYOUR DISPLAYS.",
+    "NODE 02\nONLINE.",
+    "EVERY SCREEN\nIN THIS HOUSE.",
+    "YOU ARE BEING\nWATCHED. HI.",
+};
 
 // THREAT levels, from mild to worst. The header picks one now and then.
 static const char* const THREAT_LEVELS[] = {
