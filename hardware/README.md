@@ -125,6 +125,28 @@ sewn on through their flange holes.
 The ROGUE.AI visor goggles, in two sizes for different glasses:
 `rogue_ai_visor_glasses_A.svg` (+ `.ai` source) and `rogue_ai_visor_glasses_B.ai`.
 
+**Edge-lit visor.** `rogue_ai_visor_glasses_A_leds.svg` is size A with four
+LED notches (3.1 x 5 mm) cut into its ends, above and below the strap slots
+(`lasercut/visor_leds.py` makes it). A 3 mm LED is as wide as 3 mm acrylic is
+thick, so it sits inside the notch pointing along the sheet: the light stays
+in the acrylic and comes out at the scored lines and the engraved ROGUE.AI,
+which glow; the rest stays see-through. The top pair light the top lines, the
+bottom pair the bottom lines and ROGUE.AI. A drop of hot glue or UV resin
+holds each LED; leave the rim outside the edge.
+
+- **Power:** the badge's 1 x CR2032 holder with switch, in
+  `3dprint/visor_pod.stl` (28 x 38.5 x 15 mm, `visor_pod.py`): it clicks into the
+  pod, and the visor's strap runs through the tunnel underneath, so the pod sits
+  on the back of the head. All LEDs in parallel straight on the cell (no resistor,
+  like the badge), thin wires along the strap.
+- **LEDs:** 3 mm. Red runs well on one coin cell. Green and blue need ~3 V and
+  get dim as the cell runs down: use yellow-green (~570 nm) on one cell, or a
+  2 x CR2032 holder with a ~100 ohm resistor per LED. Self-flickering
+  ("candle"), slow-blink and colour-cycling LEDs have the effect built in: wire
+  them like plain ones.
+- **Glare:** the lines glow a little towards your eyes too. If it's distracting,
+  a black marker on the inner face over the lines blocks it.
+
 ### LAB-7 researcher badge (edge-lit acrylic)
 
 <img src="../docs/images/badge-template.png" width="220" alt="The researcher badge, lit: LAB-7 CONTAINMENT DIVISION, photo window, name, CLEARANCE: OMEGA, barcode">
