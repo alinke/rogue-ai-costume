@@ -14,6 +14,7 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
     private let role = UISegmentedControl(items: ["Checkpoint", "Evidence Wall"])
     private let photos = UISwitch()
     private let takeover = UISwitch()
+    private let autoScan = UISwitch()
     private let signal = UILabel()
     private var timer: Timer?
 
@@ -40,6 +41,8 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
         photos.onTintColor = UIColor(hex: 0x2ECC71)
         takeover.isOn = cfg.takeoverEnabled
         takeover.onTintColor = UIColor(hex: 0x2ECC71)
+        autoScan.isOn = cfg.autoCheckpoint
+        autoScan.onTintColor = UIColor(hex: 0x2ECC71)
 
         field(room, cfg.sector, "e.g. KITCHEN", caps: true)
         field(dbm, "\(cfg.intrusionDbm)", "-62", numbers: true)
@@ -51,6 +54,7 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
             signal,
             row("THIS IPAD IS", "The checkpoint (camera, ID cards) or the evidence wall (slideshow, tracker).", role),
             row("CHECKPOINT PHOTOS", "Off: camera off, the checkpoint shows as closed.", photos),
+            row("AUTO-START CHECKS", "On: a check starts when a face comes close. Off: guests tap TAP TO SCAN.", autoScan),
             row("SIGNAL TAKEOVER", "The AI hijacks this screen when the costume comes close. Off: never.", takeover),
             row("ROOM NAME", "Shown on screen and on the cards.", room),
             row("IN-THIS-ROOM SIGNAL (dBm)", "The costume counts as in the room at this strength or stronger. Closer to 0 = it must come closer.", dbm),
@@ -112,6 +116,7 @@ final class SettingsViewController: UIViewController, UITextFieldDelegate {
         cfg.isWall = role.selectedSegmentIndex == 1
         cfg.photosEnabled = photos.isOn
         cfg.takeoverEnabled = takeover.isOn
+        cfg.autoCheckpoint = autoScan.isOn
         if let s = room.text?.trimmingCharacters(in: .whitespaces), !s.isEmpty { cfg.sector = s }
         if let v = Int(dbm.text ?? ""), v < 0 { cfg.intrusionDbm = v }
         if let v = Int(length.text ?? ""), v >= 5 { cfg.intrusionMaxSeconds = v }

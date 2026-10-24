@@ -33,6 +33,7 @@ final class MonitorViewController: UIViewController {
     private var subject = ""
     private var findings: [Finding] = []
     private var captured = false
+    private var manualCheck = false        // started with TAP TO SCAN: finishes even if the face is lost
     private var card: IDCard.Result?
     private var lastCount = 0
     private var qr: UIImage?
@@ -256,10 +257,10 @@ final class MonitorViewController: UIViewController {
         switch mode {
         case .calm:
             if close && now >= cooldownUntil && !waitFaceGone && camera.available && !cfg.isWall && cfg.photosEnabled { faceHold += dt } else { faceHold = 0 }
-            if faceHold > 0.8 { startCheckpoint() }
+            if faceHold > 0.8 && cfg.autoCheckpoint { startCheckpoint() }
         case .checkpoint:
             let t = now - modeStart
-            if !captured && now - lastFaceAt > 1.5 {
+            if !captured && !manualCheck && now - lastFaceAt > 1.5 {
                 go(.calm)
                 cooldownUntil = now + 2
                 say("SUBJECT LEFT THE CHECKPOINT")
@@ -286,7 +287,8 @@ final class MonitorViewController: UIViewController {
         render(now, ai: ai, faces: faces)
     }
 
-    private func startCheckpoint() {
+    private func startCheckpoint(manual: Bool = false) {
+        manualCheck = manual
         faceHold = 0
         subject = String(format: "C%03d", Config.shared.nextSubject())
         findings = Array(IDCard.humanFindings.shuffled().prefix(3))
@@ -381,6 +383,7 @@ final class MonitorViewController: UIViewController {
             s.slideFromAI = p.fromAI
         }
         s.cameraOn = camera.available && cfg.photosEnabled
+        s.scanButton = s.cameraOn && !cfg.isWall
         s.photosOff = !cfg.photosEnabled
         s.faces = cfg.photosEnabled && !cfg.isWall ? faces : []
         s.subject = subject
@@ -489,6 +492,12 @@ final class MonitorViewController: UIViewController {
 
     @objc private func tapped(_ g: UITapGestureRecognizer) {
         if mode == .card { dismissCard = true; return }
+        // TAP TO SCAN: the checkpoint camera starts a check (with its 3-2-1).
+        let cfg = Config.shared
+        if !cfg.isWall && mode == .calm && cfg.photosEnabled && camera.available {
+            let p = screen.toCanvas(g.location(in: screen))
+            if MonitorView.thumb.insetBy(dx: -20, dy: -30).contains(p) { startCheckpoint(manual: true); return }
+        }
         guard Config.shared.isWall, mode == .calm else { return }
         let p = screen.toCanvas(g.location(in: screen))
         if viewing != nil {
@@ -571,6 +580,7 @@ final class MonitorViewController: UIViewController {
         s.verified = 12
         s.assimilated = 5
         s.stand = stand
+        s.scanButton = !Config.shared.isWall
         s.cameraOn = true
         let groupDemo = d.hasPrefix("group")
         s.faces = groupDemo ? [CGRect(x: 0.155, y: 0.26, width: 0.13, height: 0.25), CGRect(x: 0.435, y: 0.2, width: 0.13, height: 0.25),

@@ -54,6 +54,11 @@ final class Config {
         get { d.object(forKey: "takeover") != nil ? d.bool(forKey: "takeover") : (secrets["takeoverEnabled"] as? Bool) ?? true }
         set { d.set(newValue, forKey: "takeover") }
     }
+    /// Start a check by itself when a face comes close (default off: guests tap TAP TO SCAN).
+    var autoCheckpoint: Bool {
+        get { d.object(forKey: "autoCheckpoint") != nil ? d.bool(forKey: "autoCheckpoint") : false }
+        set { d.set(newValue, forKey: "autoCheckpoint") }
+    }
     /// How often a guest comes out COMPROMISED (%).
     var compromisedPercent: Int { int("compromisedPercent", 20) }
     /// The costume's signal this strong (dBm): it's in the room -- intrusion.

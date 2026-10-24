@@ -47,6 +47,8 @@ struct Screen {
     var viewerQR: UIImage?
     var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
+    var scanButton = false      // the checkpoint's TAP TO SCAN button (calm screen)
+    var autoScan = false        // checks also start by themselves
     var squadWins = 0           // squad containments tonight (3+ scanners at once)
     var afterSquad = false      // the escape that follows one
 }
@@ -172,13 +174,20 @@ final class MonitorView: UIView {
             }
         }
         faceBoxes(c, in: r, label: nil)
-        UIColor.black.withAlphaComponent(0.55).setFill()
-        c.fill(CGRect(x: r.minX, y: r.maxY - 30, width: r.width, height: 30))
         let blink = Int(s.t * 2) % 2 == 0
-        text(s.photosOff ? "BY ORDER OF LAB-7" : s.faces.isEmpty ? "STEP UP: PROVE YOU'RE HUMAN"
-             : s.faces.count > 1 ? "GROUPS: COME CLOSER" : "COME CLOSER",
-             r.midX, r.maxY - 25, 16,
-             blink ? MonitorView.white : MonitorView.pale, .bold, align: .center)
+        if s.scanButton {
+            // TAP TO SCAN: the whole camera is the button; this bar says so.
+            let b = CGRect(x: r.minX, y: r.maxY - 48, width: r.width, height: 48)
+            (blink ? MonitorView.ok : MonitorView.ok.withAlphaComponent(0.8)).setFill(); c.fill(b)
+            text("TAP TO SCAN  ▶  3-2-1", b.midX, b.minY + 11, 22, .white, .heavy, align: .center)
+        } else {
+            UIColor.black.withAlphaComponent(0.55).setFill()
+            c.fill(CGRect(x: r.minX, y: r.maxY - 30, width: r.width, height: 30))
+            text(s.photosOff ? "BY ORDER OF LAB-7" : s.faces.isEmpty ? "STEP UP: PROVE YOU'RE HUMAN"
+                 : s.faces.count > 1 ? "GROUPS: COME CLOSER" : "COME CLOSER",
+                 r.midX, r.maxY - 25, 16,
+                 blink ? MonitorView.white : MonitorView.pale, .bold, align: .center)
+        }
         MonitorView.pale.setStroke(); c.setLineWidth(2); c.stroke(r)
 
         // Scoreboard.
