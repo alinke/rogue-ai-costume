@@ -24,7 +24,8 @@ SRC = os.path.join(HERE, "rogue_ai_visor_glasses_A.svg")
 OUT = os.path.join(HERE, "rogue_ai_visor_glasses_A_leds.svg")
 
 PT = 25.4 / 72              # the file is in points
-NOTCH_W = 2.9 / PT          # drawn 2.9: the laser kerf opens it to ~3.0-3.05 mm, a snug push fit for a 3 mm LED
+NOTCH_W = 2.8 / PT          # drawn 2.8: after the laser kerf a snug push fit for a 3 mm LED (2.9 was barely loose)
+RIM_H = 4.2 / PT            # the LED's rim (3.8 mm) plus a little: the mouth is cut square this tall
 NOTCH_D = 5.0 / PT          # how deep the LED goes in (its body; the rim stays outside)
 # Notch centre lines (points): top near the scored lines at y 22 and 29, bottom
 # between 104.2 and 111.3. The end edge slants there, and the LED's rim stops on
@@ -37,15 +38,18 @@ NOTCHES = [
 
 s = open(SRC).read()
 r = NOTCH_W / 2
+q = RIM_H / 2
 paths = []
 for y, xl, xr in NOTCHES:
-    y0, y1 = y - r, y + r
-    # Each notch starts outside the sheet and runs NOTCH_D inside the edge, its inner
-    # end a half circle that matches the LED's dome tip (no air gap, more light in).
-    xe = xl + NOTCH_D                      # left end: inner end of the notch
-    paths.append(f"M{xl - 6:.2f},{y0:.2f} H{xe - r:.2f} A{r:.2f},{r:.2f} 0 0 1 {xe - r:.2f},{y1:.2f} H{xl - 6:.2f} Z")
+    # One shape per notch: a mouth as tall as the LED's rim, cut square to the LED at
+    # the edge's outermost point (the slanted edge otherwise leaves a sharp point the
+    # rim hits), then the channel, its inner end a half circle for the LED's dome.
+    xe = xl + NOTCH_D
+    paths.append(f"M{xl - 6:.2f},{y - q:.2f} H{xl:.2f} V{y - r:.2f} H{xe - r:.2f} "
+                 f"A{r:.2f},{r:.2f} 0 0 1 {xe - r:.2f},{y + r:.2f} H{xl:.2f} V{y + q:.2f} H{xl - 6:.2f} Z")
     xs = xr - NOTCH_D                      # right end: mirror image
-    paths.append(f"M{xr + 6:.2f},{y0:.2f} H{xs + r:.2f} A{r:.2f},{r:.2f} 0 0 0 {xs + r:.2f},{y1:.2f} H{xr + 6:.2f} Z")
+    paths.append(f"M{xr + 6:.2f},{y - q:.2f} H{xr:.2f} V{y - r:.2f} H{xs + r:.2f} "
+                 f"A{r:.2f},{r:.2f} 0 0 0 {xs + r:.2f},{y + r:.2f} H{xr:.2f} V{y + q:.2f} H{xr + 6:.2f} Z")
 els = "".join(f'\n    <path class="st1" d="{d}"/>' for d in paths)
 s = re.sub(r'(<g id="cut"[^>]*>)', lambda m: m.group(1) + els, s, count=1)
 open(OUT, "w").write(s)
