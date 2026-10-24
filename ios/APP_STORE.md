@@ -88,6 +88,17 @@ automatically (already set).
 
 ## 5. Build and upload
 
+From the command line (bump CURRENT_PROJECT_VERSION first -- App Store Connect
+already has builds up to 3 of 1.0.0; ExportOptions.plist keeps Xcode from
+renumbering the build behind your back):
+
+    xcodebuild -project LabScanner.xcodeproj -scheme LabScanner -configuration Release \
+      -destination 'generic/platform=iOS' -archivePath /tmp/LabScanner.xcarchive -allowProvisioningUpdates archive
+    xcodebuild -exportArchive -archivePath /tmp/LabScanner.xcarchive -exportOptionsPlist ExportOptions.plist \
+      -exportPath /tmp/lab7-export -allowProvisioningUpdates
+
+Or from Xcode:
+
 1. Xcode › open `ios/LabScanner.xcodeproj`, scheme LabScanner, destination
    **Any iOS Device (arm64)**.
 2. Product › Archive. In the Organizer: Distribute App › App Store Connect › Upload.
