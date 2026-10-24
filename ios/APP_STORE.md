@@ -6,9 +6,8 @@ Everything App Store Connect asks for, ready to paste. Bundle id
 ## 1. Before you submit
 
 - Publish the two pages on pixelcade.org (WordPress, Custom HTML block):
-  - **https://pixelcade.org/privacy/** (the app links there) must cover the
-    LAB-7 app: add the LAB-7 section from `web/lab7-privacy.html` to it, with
-    your contact email filled in.
+  - `web/lab7-privacy.html` at **pixelcade.org/lab7-privacy** (the app links
+    there; contact support@pixelcade.org).
   - `web/lab7-join.local.html` (your filled-in copy of `web/lab7-join.html`)
     at **pixelcade.org/lab7-join**.
 - Screenshots: 6.9"/6.7" iPhone, 1290 x 2796 (scanner, evidence wall, agent
@@ -24,7 +23,7 @@ Everything App Store Connect asks for, ready to paste. Bundle id
 | Category | Games › Family (secondary: Entertainment) |
 | Age rating | 9+ (Infrequent/Mild Cartoon or Fantasy Violence: "containment beam"); everything else None. User-generated content: Yes. |
 | Price | Free |
-| Privacy policy URL | https://pixelcade.org/privacy/ |
+| Privacy policy URL | https://pixelcade.org/lab7-privacy/ |
 | Support URL | https://pixelcade.org/lab7-join |
 | Copyright | 2026 Pixelcade |
 

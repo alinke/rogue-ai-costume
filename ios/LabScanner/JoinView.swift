@@ -3,7 +3,7 @@
 // rules before anything is uploaded (App Store guideline 1.2).
 import SwiftUI
 
-let privacyURL = URL(string: "https://pixelcade.org/privacy/")!
+let privacyURL = URL(string: "https://pixelcade.org/lab7-privacy/")!
 
 struct JoinView: View {
     /// From a link; nil = the guest pastes one.
