@@ -31,8 +31,23 @@ enum Action {
   GO_SCAN, GO_KEYPAD, GO_CAPTCHA, GO_GALLERY,
   GO_QR, GO_COUNTDOWN, GO_MIDNIGHT, GO_TOUCHCAL,
   GO_BOOTH, LIGHT_DOWN, LIGHT_SHOW, LIGHT_UP,
-  CLEAR_PHOTOS, COUNT
+  CLEAR_PHOTOS, SIGNAL, COUNT
 };
+
+// What this board can't do is left out (the Elecrow 7" backup: no speaker, no
+// camera); the remaining buttons close up in the same order.
+bool shown(int i) {
+  if (!SOUND_ENABLED && (i == SOUND || (i >= SIREN_DOWN && i <= SIREN_UP) || (i >= VOICE_DOWN && i <= VOICE_UP))) return false;
+  if (!CAMERA_ENABLED && (i == GO_BOOTH || i == GO_GALLERY || (i >= LIGHT_DOWN && i <= LIGHT_UP))) return false;
+  if (!PHOTO_UPLOAD_ENABLED && i == CLEAR_PHOTOS) return false;
+  return true;
+}
+
+int slotOf(int i) {
+  int n = 0;
+  for (int k = 0; k < i; k++) n += shown(k);
+  return n;
+}
 
 char labels[COUNT][24];
 uint32_t lastTouch, nextStatus;
@@ -44,7 +59,10 @@ uint32_t clearArmedAt = 0;
 bool clearArmed(uint32_t now) { return clearArmedAt && now - clearArmedAt < 4000; }
 bool powerArmed(uint32_t now) { return powerArmedAt && now - powerArmedAt < 4000; }
 
-ui::Button button(int i) { return {X0 + (i % COLS) * (BW + GAP), Y0 + (i / COLS) * ROW, BW, BH, labels[i]}; }
+ui::Button button(int i) {
+  int s = slotOf(i);
+  return {X0 + (s % COLS) * (BW + GAP), Y0 + (s / COLS) * ROW, BW, BH, labels[i]};
+}
 
 void makeLabels() {
   static const char* const FIXED[COUNT] = {
@@ -54,7 +72,7 @@ void makeLabels() {
       "SCAN", "KILL SWITCH", "CAPTCHA", "GALLERY",
       "QR CODE", "COUNTDOWN", "MIDNIGHT TEST", "TOUCH CAL",
       "PHOTO BOOTH", "PHOTO -", "", "PHOTO +",
-      "CLEAR PHOTOS"};
+      "CLEAR PHOTOS", ""};
   for (int i = 0; i < COUNT; i++) snprintf(labels[i], sizeof(labels[i]), "%s", FIXED[i]);
   snprintf(labels[BRIGHT_SHOW], sizeof(labels[0]), "LIGHT %d%%", settings::brightness());
   snprintf(labels[SOUND], sizeof(labels[0]), "SOUND: %s", settings::muted() ? "OFF" : "ON");
@@ -67,10 +85,12 @@ void makeLabels() {
   if (clearArmed(millis())) snprintf(labels[CLEAR_PHOTOS], sizeof(labels[0]), "TAP AGAIN: CLEAR");
   else if (uploader::clearPending()) snprintf(labels[CLEAR_PHOTOS], sizeof(labels[0]), "CLEARING WEB...");
   snprintf(labels[PAUSE], sizeof(labels[0]), "%s", scenes::paused() ? "RESUME SHOW" : "PAUSE SHOW");
+  snprintf(labels[SIGNAL], sizeof(labels[0]), "AI SIGNAL: %s", settings::aiSignal() ? "ON" : "OFF");
 }
 
 uint32_t colorOf(int i) {
   if (i == EXIT) return C_RED;
+  if (i == SIGNAL) return settings::aiSignal() ? C_GREEN : C_RED;
   if (i == SIREN_DOWN || i == SIREN_SHOW || i == SIREN_UP) return C_AMBER;
   if (i == CLEAR_PHOTOS) return C_RED;
   if (i >= LIGHT_DOWN) return C_AMBER;
@@ -88,7 +108,9 @@ void drawPower(uint32_t now) {
 
 void drawButtons() {
   makeLabels();
-  for (int i = 0; i < COUNT; i++) ui::drawButton(button(i), F_BODY, colorOf(i), false);
+  for (int i = 0; i < COUNT; i++) {
+    if (shown(i)) ui::drawButton(button(i), F_BODY, colorOf(i), false);
+  }
   drawPower(millis());
 }
 
@@ -134,7 +156,7 @@ void touch(int x, int y, uint32_t now) {
   }
   int hit = -1;
   for (int i = 0; i < COUNT; i++) {
-    if (button(i).contains(x, y)) hit = i;
+    if (shown(i) && button(i).contains(x, y)) hit = i;
   }
   if (hit < 0) return;
   audio::fx(audio::FX_KEY);
@@ -190,6 +212,7 @@ void touch(int x, int y, uint32_t now) {
     case GO_MIDNIGHT: scenes::midnight(now); return;
     case GO_TOUCHCAL: scenes::playScene(&SCENE_TOUCHCAL, now); return;
     case EXIT: scenes::leaveMenu(now); return;
+    case SIGNAL: settings::setAiSignal(!settings::aiSignal()); break;
     default: return;
   }
   drawButtons();  // brightness / sound labels changed

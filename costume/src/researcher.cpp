@@ -115,7 +115,14 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
   }
 };
 
+static volatile bool s_broadcast = true;   // see setBroadcast()
+static volatile bool s_broadcastDirty = false;
+
 static void setAdvert() {
+  if (!s_broadcast) {
+    BLEDevice::getAdvertising()->stop();
+    return;
+  }
   uint8_t data[2 + 4 + 4] = {0xFF, 0xFF};
   memcpy(data + 2, TAG_AI, 4);
   for (int i = 0; i < 4; i++) data[6 + i] = s_state[i];
@@ -179,9 +186,11 @@ static void task(void*) {
       s_stopped = true;
       vTaskDelete(nullptr);
     }
-    if (s_stateDirty) {
+    if (s_stateDirty || s_broadcastDirty) {
       s_stateDirty = false;
+      s_broadcastDirty = false;
       setAdvert();
+      if (!s_broadcast) Serial.println("[I][researcher] AI signal off: not broadcasting");
     }
     if (s_scanPaused) {
       if (scan->isScanning()) scan->stop();
@@ -214,9 +223,21 @@ void pauseScan(bool paused) { s_scanPaused = paused; }
 
 void begin() { xTaskCreatePinnedToCore(task, "researcher", 6144, nullptr, 2, nullptr, 0); }
 
+void setBroadcast(bool on) {
+  if (on == s_broadcast) return;
+  s_broadcast = on;
+  s_broadcastDirty = true;
+}
+
+bool broadcasting() { return s_broadcast; }
+
 Events poll(uint32_t now) {
   Events ev;
   if (!s_up) return ev;
+  if (!s_broadcast) {   // out of the game: no zones, no CONTAIN
+    s_zone = NONE;
+    return ev;
+  }
   Scanner snap[MAX_SCANNERS];
   portENTER_CRITICAL(&s_mux);
   memcpy(snap, s_scanners, sizeof(snap));
@@ -297,6 +318,8 @@ const char* zoneName(Zone z) {
 #else
 
 namespace researcher {
+void setBroadcast(bool) {}
+bool broadcasting() { return false; }
 void begin() {}
 bool shutdown(uint32_t) { return true; }
 Events poll(uint32_t) { return Events(); }

@@ -4,6 +4,8 @@
 
 #include <Preferences.h>
 
+#include "researcher.h"
+
 #include "audio.h"
 #include "config.h"
 #include "gfx.h"
@@ -12,6 +14,7 @@ namespace settings {
 
 static Preferences s_prefs;
 static int s_photoLight = PHOTO_LIGHT_DEFAULT;
+static bool s_aiSignal = true;
 static int s_brightness = BACKLIGHT_PERCENT;
 static bool s_muted = false;
 static int s_siren = SIREN_VOLUME_PERCENT, s_voice = VOICE_VOLUME_PERCENT;
@@ -30,6 +33,8 @@ void begin() {
   s_photoLight = constrain((int)s_prefs.getUChar("plight", PHOTO_LIGHT_DEFAULT), 0, 6);
   camera::setLight(s_photoLight);
   s_voiceOn = s_prefs.getBool("voiceon", true);
+  s_aiSignal = s_prefs.getBool("aisignal", true);
+  researcher::setBroadcast(s_aiSignal);
   audio::setSirenEnabled(s_sirenOn);
   audio::setVoiceEnabled(s_voiceOn);
   gfx::setTouchCal(s_prefs.getFloat("tcax", 1), s_prefs.getFloat("tcbx", 0), s_prefs.getFloat("tcay", 1),
@@ -59,6 +64,13 @@ void setMuted(bool m) {
 }
 
 int photoLight() { return s_photoLight; }
+
+bool aiSignal() { return s_aiSignal; }
+void setAiSignal(bool on) {
+  s_aiSignal = on;
+  s_prefs.putBool("aisignal", on);
+  researcher::setBroadcast(on);
+}
 void setPhotoLight(int level) {
   s_photoLight = constrain(level, 0, 6);
   s_prefs.putUChar("plight", (uint8_t)s_photoLight);

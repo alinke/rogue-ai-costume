@@ -43,6 +43,10 @@ bool radioUp();
 // safe to hold the C6 in reset (otherwise ESP-Hosted restarts the board when
 // the C6 stops answering).
 bool shutdown(uint32_t timeoutMs);
+// The AI's signal on/off (wearer menu AI SIGNAL): off = no beacon, and no
+// reacting to scanners -- a second costume worn as decoration stays out of the game.
+void setBroadcast(bool on);
+bool broadcasting();
 void pauseScan(bool paused);           // stop listening for a moment (photo uploads)                       // the C6 link is running (Wi-Fi can use it too)
 
 }  // namespace researcher
