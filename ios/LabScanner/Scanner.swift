@@ -124,14 +124,18 @@ final class Scanner: ObservableObject {
             if z == .close && t.timeIntervalSince(lockBeepAt) > 20 {
                 play(.lock)
                 lockBeepAt = t
+            } else if z == .near && zone < .near {
+                play(.beep)   // the signal just turned strong
             }
             zone = z
         }
-        // Geiger counter: a buzz that speeds up as the AI gets closer (1.6 s far, 0.15 s close).
-        if settings.hapticsOn && a.seen && t >= nextBuzz {
+        // Geiger counter: a click (sound on) and a buzz (vibrate on) that speed up as
+        // the AI gets closer (1.6 s far, 0.15 s close). Quiet while the beam's sounds play.
+        if a.seen && t >= nextBuzz && (settings.hapticsOn || settings.soundOn) {
             let k = Double(min(max(a.rssi, -95), -45) + 95) / 50
             nextBuzz = t.addingTimeInterval(1.6 - 1.45 * k)
-            (z == .close ? thump : tap).impactOccurred()
+            if settings.hapticsOn { (z == .close ? thump : tap).impactOccurred() }
+            if settings.soundOn && contain == .ready { Sound.shared.play(.tick) }
         }
         infection(t, z)
         // A squad of scanners (3+ at once) contained it: the costume says so for a while.

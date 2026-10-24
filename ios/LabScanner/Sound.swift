@@ -4,7 +4,7 @@
 import AVFoundation
 import UIKit
 
-enum Tone { case lock, zap, fail, beep }
+enum Tone { case lock, zap, fail, beep, tick }   // tick: the Geiger counter (no haptic of its own)
 
 final class Sound {
     static let shared = Sound()
@@ -15,21 +15,44 @@ final class Sound {
     private var buffers: [Tone: AVAudioPCMBuffer] = [:]
 
     private init() {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
-        try? engine.start()
-        for t in [Tone.lock, .zap, .fail, .beep] { buffers[t] = synth(t) }
+        for t in [Tone.lock, .zap, .fail, .beep, .tick] { buffers[t] = synth(t) }
+        start()
+        // A call, Siri, an alarm or another app can stop the engine: restart it afterwards.
+        let nc = NotificationCenter.default
+        nc.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.start()
+        }
+        nc.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
+            self?.start()
+        }
+        nc.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.start()
+        }
+    }
+
+    /// Playback category: plays with the ring/silent switch on silent (media volume).
+    private func start() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playback, options: [.mixWithOthers])
+            try session.setActive(true)
+            if !engine.isRunning { try engine.start() }
+        } catch {
+            print("[lab7] sound: \(error)")
+        }
     }
 
     func play(_ t: Tone) {
         haptic(t)
         guard let b = buffers[t] else { return }
-        if !engine.isRunning { try? engine.start() }
+        if !engine.isRunning { start() }
+        guard engine.isRunning else { return }
         player.stop()
         player.scheduleBuffer(b, at: nil)
         player.play()
+        if t != .tick { print("[lab7] sound \(t) volume \(AVAudioSession.sharedInstance().outputVolume)") }
     }
 
     private func haptic(_ t: Tone) {
@@ -38,11 +61,21 @@ final class Sound {
         case .zap: UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         case .fail: UINotificationFeedbackGenerator().notificationOccurred(.error)
         case .beep: UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        case .tick: break   // the scanner buzzes the Geiger haptic itself
         }
     }
 
     private func synth(_ t: Tone) -> AVAudioPCMBuffer {
         let rate = 44100.0
+        if t == .tick {   // a Geiger click: a short burst of noise
+            let n = Int(rate * 0.012)
+            let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(n))!
+            buf.frameLength = AVAudioFrameCount(n)
+            for i in 0..<n {
+                buf.floatChannelData![0][i] = Float.random(in: -1...1) * 0.7 * Float(1 - Double(i) / Double(n))
+            }
+            return buf
+        }
         let ms: Double = t == .zap ? 700 : t == .fail ? 650 : t == .lock ? 260 : 60
         let n = Int(rate * ms / 1000)
         let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(n))!
@@ -58,6 +91,7 @@ final class Sound {
             case .fail: f = 140                                          // buzzer
             case .lock: f = (i / Int(rate / 16)) % 2 == 1 ? 0 : 1600     // beep-beep
             case .beep: f = 1200
+            case .tick: f = 0
             }
             var s = 0.0
             if f > 0 {
