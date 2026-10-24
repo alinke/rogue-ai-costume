@@ -18,6 +18,7 @@ Needs Python 3 with manifold3d + numpy (pip install manifold3d numpy); writes
 the STLs next to this file.
 
   python3 harness_parts.py
+  python3 harness_parts.py --strap 20 --thick 1.5 --name visor --no-clip   # the visor's strap
 """
 import math
 import os
@@ -145,8 +146,18 @@ def write_stl(man, path):
 
 
 if __name__ == "__main__":
+    import argparse
+    ap = argparse.ArgumentParser(description="Harness buckle + cross clip; or just a buckle for another strap.")
+    ap.add_argument("--strap", type=float, default=STRAP_WIDTH, help="strap width, mm")
+    ap.add_argument("--thick", type=float, default=STRAP_THICK, help="strap thickness, mm")
+    ap.add_argument("--name", default="harness", help="file name prefix")
+    ap.add_argument("--no-clip", action="store_true", help="buckle only (no cross clip)")
+    a = ap.parse_args()
+    SLOT_W, SLOT_T = a.strap + 1.5, a.thick + 1.5
     here = os.path.dirname(os.path.abspath(__file__))
-    parts = {"harness_buckle_socket": socket(), "harness_buckle_plug": plug(), "harness_cross_clip": cross_clip()}
+    parts = {a.name + "_buckle_socket": socket(), a.name + "_buckle_plug": plug()}
+    if not a.no_clip:
+        parts[a.name + "_cross_clip"] = cross_clip()
     for name, m in parts.items():
         write_stl(m, os.path.join(here, name + ".stl"))
         lo, hi = m.bounding_box()[:3], m.bounding_box()[3:]

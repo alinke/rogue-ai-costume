@@ -125,6 +125,14 @@ sewn on through their flange holes.
 The ROGUE.AI visor goggles, in two sizes for different glasses:
 `rogue_ai_visor_glasses_A.svg` (+ `.ai` source) and `rogue_ai_visor_glasses_B.ai`.
 
+**Visor strap buckle** (`3dprint/visor_buckle_socket.stl` + `visor_buckle_plug.stl`):
+the harness's side-release buckle made for the visor's strap (up to 20 mm wide,
+~1.5 mm thick), for the back of the head. One strap end loops through the
+socket's slot (sew or glue it), the other threads the plug's adjuster (up
+through one slot, down through the other) so you can set the length. Squeeze
+the two hooks to open. PETG, flat, no supports. Other straps:
+`python3 harness_parts.py --strap W --thick T --name visor --no-clip`.
+
 **Edge-lit visor.** `rogue_ai_visor_glasses_A_leds.svg` is size A with four
 LED notches (3.1 x 5 mm) cut into its ends, above and below the strap slots
 (`lasercut/visor_leds.py` makes it). A 3 mm LED is as wide as 3 mm acrylic is
