@@ -21,6 +21,12 @@ if [ -z "${UPLOAD_KEY:-}" ]; then
   UPLOAD_KEY=$(openssl rand -hex 16)
   ADMIN_KEY=$(openssl rand -hex 16)
 fi
+# GUEST_KEY: the guest app's key (it's in the join link guests get, so treat it
+# as semi-public). ROTATE_GUEST=1 ./deploy.sh makes a new one -- e.g. after the
+# party -- without touching the costume's or the scanners' key.
+if [ -z "${GUEST_KEY:-}" ] || [ "${ROTATE_GUEST:-}" = 1 ]; then
+  GUEST_KEY=$(openssl rand -hex 12)
+fi
 cat > .keys <<KEYS
 PROJECT=$PROJECT
 REGION=$REGION
@@ -28,6 +34,7 @@ BUCKET=$BUCKET
 SERVICE=$SERVICE
 UPLOAD_KEY=$UPLOAD_KEY
 ADMIN_KEY=$ADMIN_KEY
+GUEST_KEY=$GUEST_KEY
 KEYS
 
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
@@ -46,7 +53,7 @@ gcloud storage buckets add-iam-policy-binding gs://$BUCKET \
 
 gcloud run deploy $SERVICE --project $PROJECT --region $REGION --source service \
   --allow-unauthenticated --memory 512Mi --max-instances 3 \
-  --set-env-vars "BUCKET=$BUCKET,UPLOAD_KEY=$UPLOAD_KEY,ADMIN_KEY=$ADMIN_KEY" --quiet
+  --set-env-vars "BUCKET=$BUCKET,UPLOAD_KEY=$UPLOAD_KEY,ADMIN_KEY=$ADMIN_KEY,GUEST_KEY=$GUEST_KEY" --quiet
 
 URL=$(gcloud run services describe $SERVICE --project $PROJECT --region $REGION --format='value(status.url)')
 echo
@@ -54,3 +61,4 @@ echo "Service: $URL"
 echo "For src/secrets.h:  PHOTO_SERVICE_URL \"$URL\"   PHOTO_UPLOAD_KEY \"$UPLOAD_KEY\""
 echo "Gallery feed (landing page CONFIG.feed): $URL/photos"
 echo "Admin (private): $URL/admin?k=$ADMIN_KEY"
+echo "Guest app join link (add &event=...&mid=...): lab7://join?service=$URL&key=$GUEST_KEY"

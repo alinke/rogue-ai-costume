@@ -3,6 +3,7 @@
 // fails: the AI escapes), the beam's recharge, the lock beep.
 import Combine
 import Foundation
+import UIKit
 
 enum Zone: Int, Comparable {
     case lost, detected, near, close
@@ -21,6 +22,9 @@ final class Scanner: ObservableObject {
 
     private let settings = Settings.shared
     private var lockBeepAt = Date.distantPast
+    private var nextBuzz = Date.distantPast
+    private let tap = UIImpactFeedbackGenerator(style: .light)
+    private let thump = UIImpactFeedbackGenerator(style: .heavy)
     private var bag = Set<AnyCancellable>()
 
     init() {
@@ -43,6 +47,7 @@ final class Scanner: ObservableObject {
             return
         }
         radio.fireContain()
+        settings.countContain()
         play(.zap, always: true)
         contain = .fired
         containAt = now
@@ -70,6 +75,12 @@ final class Scanner: ObservableObject {
                 lockBeepAt = t
             }
             zone = z
+        }
+        // Geiger counter: a buzz that speeds up as the AI gets closer (1.6 s far, 0.15 s close).
+        if settings.hapticsOn && a.seen && t >= nextBuzz {
+            let k = Double(min(max(a.rssi, -95), -45) + 95) / 50
+            nextBuzz = t.addingTimeInterval(1.6 - 1.45 * k)
+            (z == .close ? thump : tap).impactOccurred()
         }
         // Follow the costume's side of the fight (it always wins).
         switch contain {

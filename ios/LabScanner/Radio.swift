@@ -36,6 +36,9 @@ final class Radio: NSObject, ObservableObject {
     private let session = UInt8.random(in: 1...255)  // per launch: the costume ignores a counter that restarted
     private var trigger: UInt8 = 0
     private var tick: Timer?
+    // Demo mode (Settings.demoMode): a simulated costume walking up and away.
+    private var demoContainAt: Date?
+    private var demoContained = 0
 
     override init() {
         super.init()
@@ -46,6 +49,7 @@ final class Radio: NSObject, ObservableObject {
     }
 
     func fireContain() {
+        if Settings.shared.demoMode && demoContainAt == nil { demoContainAt = Date() }
         trigger &+= 1
         print(String(format: "[lab7] %.3f CONTAIN pressed: trigger %d", Date().timeIntervalSince1970, trigger))
         advertise()
@@ -68,8 +72,36 @@ final class Radio: NSObject, ObservableObject {
     }
 
     private func refreshSeen() {
+        if Settings.shared.demoMode {
+            demoTick()
+            return
+        }
         let seen = Date().timeIntervalSince(lastSeen) < Self.lostAfter
         if seen != ai.seen { ai.seen = seen }
+    }
+}
+
+extension Radio {
+    /// Every 0.5 s in demo mode: the signal swells and fades on a 24 s cycle; CONTAIN
+    /// gets the costume's usual answer (being contained, then escaped).
+    private func demoTick() {
+        let now = Date()
+        let phase = (sin(now.timeIntervalSince1970 * 2 * .pi / 24) + 1) / 2
+        var activity = 0
+        if let at = demoContainAt {
+            let dt = now.timeIntervalSince(at)
+            if dt > 0.6 && dt < 4.6 {
+                activity = 4
+            } else if dt >= 4.6 && dt < 7 {
+                activity = 5
+            } else if dt >= 7 {
+                demoContainAt = nil
+                demoContained += 1
+            }
+        }
+        lastSeen = now
+        ai = AiState(seen: true, rssi: Int(-92 + phase * 46), threat: 3, activity: activity,
+                     scanned: 13, contained: demoContained)
     }
 }
 
@@ -81,6 +113,7 @@ extension Radio: CBCentralManagerDelegate {
 
     func centralManager(_ c: CBCentralManager, didDiscover p: CBPeripheral, advertisementData ad: [String: Any],
                         rssi RSSI: NSNumber) {
+        guard !Settings.shared.demoMode else { return }
         guard let m = ad[CBAdvertisementDataManufacturerDataKey] as? Data, m.count >= 10 else { return }
         let b = [UInt8](m)
         guard b[0] == 0xFF, b[1] == 0xFF, b[2] == 0x52, b[3] == 0x41, b[4] == 0x49, b[5] == 0x31 else { return } // "RAI1"

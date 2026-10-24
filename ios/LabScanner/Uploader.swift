@@ -55,9 +55,10 @@ final class Uploader: ObservableObject {
                 let label = (try? String(contentsOf: txtURL, encoding: .utf8)) ?? ""
                 let code = await send(data, id: id, label: label)
                 let msg = code == 200 ? "sent \(label)" : code == 403 ? "wrong upload key (HTTP 403)"
+                    : code == 429 ? "too many photos, waiting a bit"
                     : code < 0 ? "no connection to the photo service" : "HTTP \(code)"
                 await MainActor.run { self.lastStatus = msg }
-                if code == 200 || (400..<500).contains(code) {  // done, or never going to be accepted
+                if code == 200 || ((400..<500).contains(code) && code != 429) {  // done, or never going to be accepted
                     try? fm.removeItem(at: jpgURL)
                     try? fm.removeItem(at: txtURL)
                 } else {
@@ -78,6 +79,7 @@ final class Uploader: ObservableObject {
         req.setValue(s.uploadKey, forHTTPHeaderField: "X-Key")
         req.setValue(label, forHTTPHeaderField: "X-Label")
         req.setValue(id, forHTTPHeaderField: "X-Id")
+        req.setValue(s.deviceId, forHTTPHeaderField: "X-Device")  // the guest key needs it (rate limit)
         do {
             let (_, resp) = try await URLSession.shared.upload(for: req, from: data)
             return (resp as? HTTPURLResponse)?.statusCode ?? -1

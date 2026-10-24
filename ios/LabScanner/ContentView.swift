@@ -19,7 +19,7 @@ private let THREAT = ["LOW (FOR NOW)", "GUARDED", "ELEVATED", "HIGH", "SEVERE", 
 private let ACTIVITY = ["IDLE", "SCANNING A HUMAN", "PLAYING A GAME", "MIDNIGHT TAKEOVER", "BEING CONTAINED", "ESCAPED"]
 
 struct ContentView: View {
-    @StateObject private var scanner = Scanner()
+    @EnvironmentObject private var scanner: Scanner
     @ObservedObject private var settings = Settings.shared
     @ObservedObject private var uploads = Uploader.shared
     @State private var showCamera = false
@@ -31,18 +31,18 @@ struct ContentView: View {
             Scanlines().ignoresSafeArea()
             VStack(alignment: .leading, spacing: 0) {
                 header
-                Spacer(minLength: 12)
+                Spacer(minLength: 8)
                 meter
                     .contentShape(Rectangle())
                     .onTapGesture {  // tap the meter: sound on / quiet (CONTAIN still sounds)
                         settings.soundOn.toggle()
                         if settings.soundOn { Sound.shared.play(.beep) }
                     }
-                Spacer(minLength: 16)
+                Spacer(minLength: 8)
                 status
-                Spacer(minLength: 16)
+                Spacer(minLength: 8)
                 containButton
-                    .padding(.bottom, 22)
+                    .padding(.bottom, 14)
                 humanityButton
             }
             .padding(.horizontal, 18)
@@ -90,6 +90,9 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("LAB-7 SCANNER // ROGUE.AI").font(mono(14)).foregroundColor(.labDim)
                 Text("CONTAINMENT UNIT // TARGET v6.6.6").font(mono(11, .regular)).foregroundColor(.labDim)
+                if settings.demoMode {
+                    Text("DEMO MODE: SIMULATED SIGNAL").font(mono(11)).foregroundColor(.labAmber)
+                }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 4) {
@@ -128,7 +131,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .frame(height: 230)
+            .frame(minHeight: 90, maxHeight: 230)   // shrinks on small phones (the tab bar)
             Text(a.seen ? "\(a.rssi) dBm" : "-- dBm").font(mono(22)).foregroundColor(a.seen ? .labGreen : .labDim)
                 .frame(maxWidth: .infinity)
         }
@@ -170,7 +173,7 @@ struct ContentView: View {
             }
             .font(mono(17))
             .lineLimit(1).minimumScaleFactor(0.7)
-            if !scanner.radio.bluetoothOn {
+            if !scanner.radio.bluetoothOn && !settings.demoMode {
                 Text("BLUETOOTH IS OFF").font(mono(14)).foregroundColor(.labRed)
             }
         }
@@ -193,7 +196,7 @@ struct ContentView: View {
                     Text("CONTAIN").font(mono(52)).foregroundColor(.labWhite)
                 }
             }
-            .frame(height: 170)
+            .frame(minHeight: 100, maxHeight: 170)
         }
         .buttonStyle(PressStyle())
     }
@@ -205,7 +208,7 @@ struct ContentView: View {
                 Text("HUMANITY TEST").font(mono(26))
             }
             .foregroundColor(.labCyan)
-            .frame(maxWidth: .infinity).frame(height: 96)
+            .frame(maxWidth: .infinity).frame(minHeight: 64, maxHeight: 96)
             .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.labCyan, lineWidth: 3))
         }
         .buttonStyle(PressStyle())

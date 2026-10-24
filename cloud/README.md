@@ -28,7 +28,7 @@ photos), deploys the service, and prints:
   deletes photos, and shows the ones held back for having no face (SHOW puts one
   on the page).
 
-The first run saves the project, bucket name and two random keys in `.keys`
+The first run saves the project, bucket name and three random keys in `.keys`
 (never committed); run `./deploy.sh` again any time to update the service.
 
 ## How it works
@@ -40,7 +40,18 @@ The first run saves the project, bucket name and two random keys in `.keys`
   of `<set>/` (the costume also sends a plain copy of the photo just for this
   check). The page never sees them unless you SHOW them.
 - `GET /photos` lists both sets, newest first.
-- `POST /clear` with header `X-Key: <admin key>` deletes every photo -- the
+- **Guests' phones** (the LAB-7 iPhone app, after joining the event) use a
+  third key, `GUEST_KEY`, which goes in the join link (`ios/README.md`). It can
+  only upload to the LAB-7 set, needs `X-Device` (a random id per phone) and is
+  rate-limited (30 photos / hour per phone). `ROTATE_GUEST=1 ./deploy.sh` makes
+  a new one -- e.g. after the party -- without touching the costume's key.
+- `POST /stats` (either key, JSON `{device, name, contains, tests}`) and
+  `GET /leaders`: the app's TOP AGENTS leaderboard (also in the iPad monitor's
+  ticker).
+- `POST /report` (either key + `X-Device`, JSON `{name}`): a guest reports a
+  photo; it moves to the hidden set at once, and the admin page can SHOW it again.
+- `POST /clear` with header `X-Key: <admin key>` deletes every photo and the
+  leaderboard -- the
   costume's operator console CLEAR PHOTOS uses it if you give the costume the
   admin key (`PHOTO_ADMIN_KEY` in `costume/src/secrets.h`).
 

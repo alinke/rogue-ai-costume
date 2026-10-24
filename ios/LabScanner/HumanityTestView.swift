@@ -158,6 +158,7 @@ struct HumanityTestView: View {
             guard let img else { return }
             let r = IDCard.make(photo: img, settings: Settings.shared)
             Uploader.shared.add(r.image, label: r.label)  // the card, before the on-screen banner
+            Settings.shared.countTest()
             card = r
             Sound.shared.play(r.human ? .lock : .fail)
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { banner = true }

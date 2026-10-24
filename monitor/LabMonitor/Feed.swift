@@ -18,6 +18,8 @@ final class Feed {
     private(set) var verified = 0
     private(set) var assimilated = 0
     private(set) var online = false
+    /// The guest app's agent leaderboard (GET /leaders): "NAME (CONTAIN SHOTS)", best first.
+    private(set) var topAgents: [String] = []
     private var images: [URL: UIImage] = [:]
     private var lru: [URL] = []          // most recently used last
     private let cacheSize = 30
@@ -31,6 +33,18 @@ final class Feed {
 
     func fetch() {
         guard let base = Config.shared.serviceBase, let url = URL(string: base + "/photos") else { return }
+        if let lu = URL(string: base + "/leaders") {
+            URLSession.shared.dataTask(with: lu) { [weak self] data, resp, _ in
+                guard let data = data, (resp as? HTTPURLResponse)?.statusCode == 200,
+                      let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                      let agents = json["agents"] as? [[String: Any]] else { return }
+                let top = agents.prefix(3).compactMap { a -> String? in
+                    guard let n = a["name"] as? String else { return nil }
+                    return "\(n) (\(a["contains"] as? Int ?? 0))"
+                }
+                DispatchQueue.main.async { self?.topAgents = top }
+            }.resume()
+        }
         URLSession.shared.dataTask(with: url) { [weak self] data, resp, _ in
             guard let self = self, let data = data, (resp as? HTTPURLResponse)?.statusCode == 200,
                   let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {

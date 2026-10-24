@@ -30,6 +30,28 @@ enum IDCard {
 
     struct Result { let image: UIImage, human: Bool, subject: Int, label: String }
 
+    /// A stand-in photo for demo cards: a head-and-shoulders silhouette, no real person.
+    static func silhouette(_ seed: Int) -> UIImage {
+        let hues: [UInt32] = [0x2E4053, 0x4A235A, 0x1B4F72, 0x145A32, 0x6E2C00, 0x512E5F, 0x154360, 0x0E6251]
+        let fmt = UIGraphicsImageRendererFormat()
+        fmt.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: 600, height: 660), format: fmt).image { r in
+            let c = r.cgContext
+            UIColor(hex: hues[seed % hues.count]).setFill(); c.fill(CGRect(x: 0, y: 0, width: 600, height: 660))
+            UIColor(white: 1, alpha: 0.08).setFill()
+            for i in 0..<12 { c.fill(CGRect(x: 0, y: CGFloat(i) * 55, width: 600, height: 2)) }
+            UIColor(hex: 0x17202A).setFill()
+            let headW = CGFloat(190 + (seed * 13) % 40)
+            c.fillEllipse(in: CGRect(x: 300 - headW / 2, y: 130, width: headW, height: headW * 1.22))
+            c.fillEllipse(in: CGRect(x: 90 - CGFloat(seed % 3) * 10, y: 420, width: 420 + CGFloat(seed % 3) * 20, height: 420))
+            if seed % 4 == 1 {  // a witch hat, for the party
+                c.move(to: CGPoint(x: 300, y: 10)); c.addLine(to: CGPoint(x: 210, y: 175)); c.addLine(to: CGPoint(x: 390, y: 175))
+                c.fillPath()
+                c.fill(CGRect(x: 160, y: 160, width: 280, height: 26))
+            }
+        }
+    }
+
     static func make(photo: UIImage, settings: Settings) -> Result {
         let n = settings.nextSubject()
         let human = Int.random(in: 0..<100) >= settings.compromisedPercent

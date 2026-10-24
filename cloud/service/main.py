@@ -11,18 +11,34 @@ page deletes them. Temporary -- see ../teardown.sh.
   GET  /admin?k=ADMIN_KEY   phone page: every photo, delete / show buttons
   POST /delete              JSON {"k": ADMIN_KEY, "name": "ai/....jpg"}
   POST /show                JSON {"k": ADMIN_KEY, "name": "ai-hidden/....jpg"}
-  POST /clear               header X-Key: ADMIN_KEY -- deletes every photo (operator console)
+  POST /clear               header X-Key: ADMIN_KEY -- deletes every photo and the agent
+                            leaderboard (operator console)
   GET  /p/<id>              a guest's own photo (the QR code on the iPad checkpoint): the
                             photo with a save button; "still uploading" until it's in
+
+Guests' phones (the LAB-7 app, after joining the event) use GUEST_KEY instead of
+UPLOAD_KEY, with header X-Device (a random id per phone): rate-limited, and
+GUEST_KEY can be changed after the party (./deploy.sh with ROTATE_GUEST=1)
+without touching the costume or the scanners.
+  POST /stats               X-Key: UPLOAD_KEY or GUEST_KEY, JSON {"device", "name",
+                            "contains", "tests"}: an agent's score on the leaderboard
+  GET  /leaders             {"agents": [{"name", "contains", "tests"}, ...]}, best first
+  POST /report              X-Key + X-Device, JSON {"name": "lab/....jpg"}: a guest reports a
+                            photo -- it goes to the hidden set until the admin page shows it
 
 Photos without a face (Cloud Vision face detection) go to <set>-hidden/
 instead: not on the page, but on the admin page with a SHOW button.
 """
 import datetime
+import hashlib
 import hmac
+import json
 import os
 import re
 import secrets
+import threading
+import time
+from collections import defaultdict, deque
 
 from flask import Flask, Response, jsonify, request
 from google.cloud import storage, vision
@@ -30,9 +46,14 @@ from google.cloud import storage, vision
 BUCKET = os.environ["BUCKET"]
 UPLOAD_KEY = os.environ["UPLOAD_KEY"]
 ADMIN_KEY = os.environ["ADMIN_KEY"]
+GUEST_KEY = os.environ.get("GUEST_KEY", "")   # the guest app's key ("" = no guest app)
 SETS = ("ai", "lab")
 MAX_BYTES = 3 * 1024 * 1024
 LIST_LIMIT = 300
+GUEST_UPLOADS_PER_HOUR = 30
+GUEST_REPORTS_PER_HOUR = 20
+STATS_MIN_GAP = 3.0           # s between one phone's leaderboard updates
+LEADERS_SHOWN = 15
 
 FACE_MIN_CONFIDENCE = 0.5
 NAME_RE = r"(ai|lab)(-hidden)?/[A-Za-z0-9-]{6,48}\.jpg"
@@ -55,23 +76,67 @@ def face_count(data):
 
 
 def key_ok(given, expected):
-    return bool(given) and hmac.compare_digest(given.encode(), expected.encode())
+    return bool(given) and bool(expected) and hmac.compare_digest(given.encode(), expected.encode())
+
+
+def caller():
+    """'device' (the costume / scanners: UPLOAD_KEY), 'guest' (GUEST_KEY) or None."""
+    k = request.headers.get("X-Key", "")
+    if key_ok(k, UPLOAD_KEY):
+        return "device"
+    if key_ok(k, GUEST_KEY):
+        return "guest"
+    return None
+
+
+def device_tag():
+    """A short, stable tag for the calling phone (never the raw id), or ''."""
+    d = request.headers.get("X-Device", "")
+    if not re.fullmatch(r"[A-Za-z0-9-]{8,64}", d):
+        return ""
+    return hashlib.sha256(d.encode()).hexdigest()[:12]
+
+
+# Per-phone rate limits (per instance; max 3 instances, so roughly).
+_hits = defaultdict(deque)
+_hits_lock = threading.Lock()
+
+
+def allowed(kind, tag, per_hour):
+    now = time.time()
+    with _hits_lock:
+        q = _hits[(kind, tag)]
+        while q and now - q[0] > 3600:
+            q.popleft()
+        if len(q) >= per_hour:
+            return False
+        q.append(now)
+        return True
 
 
 @app.after_request
 def cors(resp):
     resp.headers["Access-Control-Allow-Origin"] = "*"
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Key, X-Device"
     return resp
 
 
 @app.post("/upload")
 def upload():
-    if not key_ok(request.headers.get("X-Key", ""), UPLOAD_KEY):
+    who = caller()
+    if not who:
         return "forbidden", 403
     s = request.args.get("set", "")
     if s not in SETS:
         return "bad set", 400
+    dev = device_tag()
+    if who == "guest":
+        if not dev:
+            return "missing device", 400
+        if s != "lab":
+            return "bad set", 400
+        if not allowed("upload", dev, GUEST_UPLOADS_PER_HOUR):
+            return "slow down", 429
     data = request.get_data(cache=False)
     if not (2 < len(data) <= MAX_BYTES) or data[:2] != b"\xff\xd8":
         return "not a jpeg", 400
@@ -96,7 +161,7 @@ def upload():
     faces = face_count(check)
     name = f"{s if faces != 0 else s + '-hidden'}/{pid}.jpg"
     blob = bucket.blob(name)
-    blob.metadata = {"label": label, "faces": str(faces)}
+    blob.metadata = {"label": label, "faces": str(faces), "dev": dev, "by": who}
     blob.cache_control = "public, max-age=86400"
     blob.upload_from_string(data, content_type="image/jpeg")
     print(f"stored {name} ({len(data)} bytes, faces={faces})")
@@ -112,6 +177,7 @@ def entries(prefix):
             "url": f"https://storage.googleapis.com/{BUCKET}/{b.name}",
             "t": b.time_created.isoformat(),
             "label": (b.metadata or {}).get("label", ""),
+            "dev": (b.metadata or {}).get("dev", ""),
         }
         for b in blobs[:LIST_LIMIT]
     ]
@@ -169,12 +235,85 @@ def clear():
     if not key_ok(request.headers.get("X-Key", ""), ADMIN_KEY):
         return "forbidden", 403
     n = 0
-    for prefix in ("ai/", "lab/", "ai-hidden/", "lab-hidden/"):
+    for prefix in ("ai/", "lab/", "ai-hidden/", "lab-hidden/", "stats/"):
         for b in bucket.list_blobs(prefix=prefix):
             b.delete()
             n += 1
     print(f"cleared {n} photos")
     return jsonify(cleared=n)
+
+
+_stats_last = {}
+_leaders_cache = {"t": 0.0, "data": None}
+
+
+@app.post("/stats")
+def stats():
+    """An agent's score for the leaderboard: the phone sends its running totals."""
+    if not caller():
+        return "forbidden", 403
+    body = request.get_json(silent=True) or {}
+    dev = body.get("device", "")
+    if not re.fullmatch(r"[A-Za-z0-9-]{8,64}", dev):
+        return "bad device", 400
+    tag = hashlib.sha256(dev.encode()).hexdigest()[:16]
+    now = time.time()
+    if now - _stats_last.get(tag, 0) < STATS_MIN_GAP:
+        return "slow down", 429
+    _stats_last[tag] = now
+    name = re.sub(r"[^A-Z0-9 .\-]", "", str(body.get("name", "")).upper()).strip()[:20] or "UNKNOWN AGENT"
+    try:
+        contains = max(0, min(100000, int(body.get("contains", 0))))
+        tests = max(0, min(100000, int(body.get("tests", 0))))
+    except (TypeError, ValueError):
+        return "bad numbers", 400
+    blob = bucket.blob(f"stats/{tag}.json")
+    blob.cache_control = "no-store"
+    blob.upload_from_string(json.dumps({"name": name, "contains": contains, "tests": tests}),
+                            content_type="application/json")
+    _leaders_cache["t"] = 0
+    return jsonify(ok=True)
+
+
+@app.get("/leaders")
+def leaders():
+    if _leaders_cache["data"] is None or time.time() - _leaders_cache["t"] > 15:
+        agents = []
+        for b in bucket.list_blobs(prefix="stats/"):
+            try:
+                a = json.loads(b.download_as_bytes())
+                agents.append({"name": a["name"], "contains": int(a["contains"]), "tests": int(a["tests"])})
+            except Exception:  # noqa: BLE001 -- skip a broken entry
+                continue
+        agents.sort(key=lambda a: (a["contains"], a["tests"]), reverse=True)
+        _leaders_cache.update(t=time.time(), data={"agents": agents[:LEADERS_SHOWN], "total": len(agents)})
+    resp = jsonify(_leaders_cache["data"])
+    resp.headers["Cache-Control"] = "public, max-age=10"
+    return resp
+
+
+@app.post("/report")
+def report():
+    """A guest reports a photo: hidden at once; the admin page can SHOW it again."""
+    if not caller():
+        return "forbidden", 403
+    dev = device_tag()
+    if not dev:
+        return "missing device", 400
+    if not allowed("report", dev, GUEST_REPORTS_PER_HOUR):
+        return "slow down", 429
+    name = (request.get_json(silent=True) or {}).get("name", "")
+    if not re.fullmatch(NAME_RE, name) or "-hidden/" in name:
+        return "bad name", 400
+    src = bucket.blob(name)
+    if not src.exists():
+        return jsonify(hidden=name)
+    s, rest = name.split("/", 1)
+    dest = f"{s}-hidden/{rest}"
+    bucket.copy_blob(src, bucket, dest)
+    src.delete()
+    print(f"reported {name} by {dev}")
+    return jsonify(hidden=dest)
 
 
 @app.get("/admin/photos")
@@ -201,7 +340,7 @@ button{width:100%;background:none;border:1px solid var(--red);color:var(--red);f
 button.sure{background:var(--red);color:#000}
 button.show{border-color:var(--green);color:var(--green);margin-bottom:6px}
 </style></head><body>
-<h1>ROGUE.AI // PHOTO ADMIN</h1><p>Tap DELETE twice to remove a photo from the site. "No face found" photos aren't on the site -- SHOW puts one there. Private page -- don't share the link.</p>
+<h1>ROGUE.AI // PHOTO ADMIN</h1><p>Tap DELETE twice to remove a photo from the site. Photos with no face found, or reported by a guest, aren't on the site -- SHOW puts one there. Private page -- don't share the link.</p>
 <div id="out">Loading...</div>
 <script>
 var K=new URLSearchParams(location.search).get('k');
@@ -211,7 +350,7 @@ function post(path,name){return fetch(path,{method:'POST',headers:{'Content-Type
 function load(){fetch('admin/photos?k='+encodeURIComponent(K)).then(function(r){return r.json()}).then(function(d){
  var out=document.getElementById('out');out.textContent='';
  [['ai','ROGUE.AI (costume) -- on the site'],['lab','LAB-7 (scanner) -- on the site'],
-  ['ai-hidden','ROGUE.AI -- no face found, hidden'],['lab-hidden','LAB-7 -- no face found, hidden']].forEach(function(s){
+  ['ai-hidden','ROGUE.AI -- hidden (no face found, or reported)'],['lab-hidden','LAB-7 -- hidden (no face found, or reported)']].forEach(function(s){
   var list=d[s[0]];out.appendChild(el('h2','',s[1]+' -- '+list.length));
   var g=el('div','grid');out.appendChild(g);
   list.forEach(function(p){

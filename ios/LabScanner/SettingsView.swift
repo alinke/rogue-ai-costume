@@ -1,4 +1,5 @@
-// In-app settings: everything the ESP32 scanner keeps in secrets.h / config.h.
+// In-app settings: everything the ESP32 scanner keeps in secrets.h / config.h,
+// plus feel (sound, haptics), demo mode and the hidden phones.
 import SwiftUI
 
 struct SettingsView: View {
@@ -9,6 +10,13 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Toggle("Sound", isOn: $s.soundOn)
+                    Toggle("Vibrate as the AI gets closer", isOn: $s.hapticsOn)
+                    Toggle("Demo mode (no costume nearby)", isOn: $s.demoMode)
+                } header: { Text("Scanner") } footer: {
+                    Text("Demo mode simulates the entity's signal so you can try the scanner anywhere. Turn it off at the party.")
+                }
                 Section {
                     TextField("Name on the ID card", text: $s.researcherName).textInputAutocapitalization(.characters)
                     Stepper("Compromised: \(s.compromisedPercent)%", value: $s.compromisedPercent, in: 0...100, step: 5)
@@ -30,12 +38,20 @@ struct SettingsView: View {
                     LabeledContent("Waiting", value: "\(up.pending)")
                     LabeledContent("Last", value: s.uploadConfigured ? up.lastStatus : "not set up")
                     Button("Send now") { up.kick() }.disabled(!s.uploadConfigured)
-                } header: { Text("Photo upload (optional)") } footer: {
-                    Text("Your own photo service: cloud/README.md in the rogue-ai-costume repo. Empty = cards stay on this phone (Files app › LAB-7 › photos).")
+                } header: { Text("Photo upload") } footer: {
+                    Text("Filled in when you join an event. Empty = cards stay on this phone (Files app › LAB-7 › photos).")
+                }
+                if !s.blocked.isEmpty {
+                    Section {
+                        Button("Show photos from \(s.blocked.count) hidden phone\(s.blocked.count == 1 ? "" : "s") again") {
+                            s.blocked = []
+                        }
+                    } header: { Text("Evidence wall") }
                 }
                 Section {
                     Text("Keep this app open with the screen on: iOS only sends the CONTAIN beacon while the app is in front.")
                         .font(.footnote).foregroundColor(.secondary)
+                    Link("Privacy policy", destination: privacyURL)
                 }
             }
             .navigationTitle("LAB-7 settings")

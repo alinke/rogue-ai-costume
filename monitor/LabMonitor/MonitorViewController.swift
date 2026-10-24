@@ -438,6 +438,10 @@ final class MonitorViewController: UIViewController {
         ]
         if !cfg.photosEnabled || cfg.isWall { items.removeAll { $0.contains("CHECKPOINT") } }
         if feed.online { items.insert("VERIFIED HUMANS: \(feed.verified) // ASSIMILATED: \(feed.assimilated)", at: 1) }
+        if !feed.topAgents.isEmpty {
+            let list = feed.topAgents.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "  ")
+            items.insert("TOP AGENTS (CONTAIN SHOTS): \(list)", at: min(2, items.count))
+        }
         if cfg.uploadConfigured { items.append("FIND YOUR SCAN AT \(cfg.siteText)") }
         return items.joined(separator: "   ///   ")
     }
