@@ -126,6 +126,9 @@ extension Radio {
             }
         }
         lastSeen = now
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-demoSquad") { activity = 6 }   // screenshots
+#endif
         ai = AiState(seen: true, rssi: Int(-92 + phase * 46), threat: 3, activity: activity,
                      scanned: 13, contained: demoContained)
     }

@@ -32,6 +32,7 @@ struct RootView: View {
     @ObservedObject private var game = Game.shared
     @State private var tab = 0
     @State private var invite: Settings.Invite?
+    @State private var manualJoin = false   // DEBUG screenshots: the join screen with its scan button
 
     /// Off the scanner tab and the AI comes close: say so (tap to go hunt it).
     @ViewBuilder private var nearBanner: some View {
@@ -72,6 +73,15 @@ struct RootView: View {
             let a = ProcessInfo.processInfo.arguments
             func arg(_ k: String) -> String? { a.firstIndex(of: k).flatMap { $0 + 1 < a.count ? a[$0 + 1] : nil } }
             if a.contains("-leave") { settings.leaveEvent() }
+            // Screenshots: a pretend event (no server), an infected scanner, a game in progress.
+            if a.contains("-fakeEvent") {
+                settings.serviceURL = "https://demo.invalid"; settings.uploadKey = "demo"
+                settings.eventName = "HALLOWEEN 2026"
+                settings.midnight = Date().addingTimeInterval(3 * 3600 + 17 * 60 + 42).timeIntervalSince1970
+            }
+            if a.contains("-demoInfected") { settings.infected = true; settings.infectedSince = Date().timeIntervalSince1970 }
+            if let p = arg("-demoGame") { game.demo(phase: p) }
+            if a.contains("-joinSheet") { manualJoin = true }
             if let t = arg("-tab").flatMap(Int.init) { tab = t }
             if let u = arg("-invite").flatMap(URL.init(string:)) { invite = Settings.invite(from: u) }
             if let u = arg("-join").flatMap(URL.init(string:)), let inv = Settings.invite(from: u) { settings.join(inv) }
@@ -87,6 +97,7 @@ struct RootView: View {
         }
         .task { game.start() }
         .fullScreenCover(isPresented: $game.showOrders) { SealedOrdersView() }
+        .sheet(isPresented: $manualJoin) { JoinView() }
         .sheet(item: $invite) { inv in
             JoinView(invite: inv) { tab = 1 }
         }

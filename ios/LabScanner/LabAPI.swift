@@ -143,8 +143,16 @@ final class Game: ObservableObject {
         let order: String?      // from the admin page: "infect" or "cure"
     }
 
+#if DEBUG
+    /// Screenshots: a game in progress without a server.
+    func demo(phase p: String) { phase = p }
+#endif
+
     func start() {
         guard !polling else { return }
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-fakeEvent") { return }   // no server calls
+#endif
         polling = true
         Task {
             while true {
