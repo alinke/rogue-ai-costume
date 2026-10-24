@@ -89,7 +89,7 @@ automatically (already set).
 ## 5. Build and upload
 
 From the command line (bump CURRENT_PROJECT_VERSION first -- App Store Connect
-already has builds up to 3 of 1.0.0; ExportOptions.plist keeps Xcode from
+already has builds up to 4 of 1.0.0; ExportOptions.plist keeps Xcode from
 renumbering the build behind your back):
 
     xcodebuild -project LabScanner.xcodeproj -scheme LabScanner -configuration Release \
