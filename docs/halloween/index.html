@@ -362,8 +362,8 @@
   }
   var gen = document.getElementById("rai-gen"), out = document.getElementById("rai-id");
   function show(id, flash) {
-    out.innerHTML = "UNIT <b>" + (100 + (id * 37) % 900) + "</b><br>CODENAME: <b>" + A[(id * 7) % 12] + " " +
-      B[(id * 5 + 3) % 12] + "</b><br>ROLE: <b>" + ROLE[(id * 3 + 1) % 10] + "</b><br>CLEARANCE: <b>" +
+    out.innerHTML = "UNIT <b>" + (100 + (id * 37) % 900) + "</b><br>CODENAME: <b>" + A[id % 12] + " " +
+      B[(Math.floor(id / 12) + id * 5) % 12] + "</b><br>ROLE: <b>" + ROLE[(id * 3 + 1) % 10] + "</b><br>CLEARANCE: <b>" +
       CLEAR[id % 5] + "</b><br>AGENT CODE:<span class=\"rai-code\">" + codeFor(id) + "</span>";
     if (flash) {
       out.className = "rai-id";

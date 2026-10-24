@@ -88,6 +88,16 @@ enum LabAPI {
         return (resp?.1 as? HTTPURLResponse)?.statusCode == 200
     }
 
+    /// This phone's agent id at the event (unique there): the one it has if free.
+    static func claimAgent(want: Int) async -> Int? {
+        guard let r = request("/claim-agent", method: "POST", json: ["want": want]),
+              let (data, resp) = try? await URLSession.shared.data(for: r),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let id = j["id"] as? Int, (0..<100).contains(id) else { return nil }
+        return id
+    }
+
     static func gameRequest() -> URLRequest? {
         var r = request("/game")
         r?.cachePolicy = .reloadIgnoringLocalCacheData
@@ -134,10 +144,23 @@ final class Game: ObservableObject {
         polling = true
         Task {
             while true {
-                if Settings.shared.joined { await refresh() }
+                if Settings.shared.joined {
+                    await claimAgent()
+                    await refresh()
+                }
                 try? await Task.sleep(for: .seconds(30))
             }
         }
+    }
+
+    /// Once per event: an agent id (kill-switch code + codename) no other guest has.
+    func claimAgent() async {
+        let s = Settings.shared
+        guard s.joined, s.agentClaimedFor != s.serviceURL,
+              let id = await LabAPI.claimAgent(want: s.agentId) else { return }
+        s.agentId = id
+        s.agentClaimedFor = s.serviceURL
+        Stats.shared.changed()
     }
 
     func refresh() async {

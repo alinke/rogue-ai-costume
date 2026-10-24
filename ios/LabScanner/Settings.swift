@@ -32,6 +32,11 @@ final class Settings: ObservableObject {
     // The agent: identity (0-99, the same codes as the landing page and the
     // costume's keypad), leaderboard name and score.
     @Published var agentId: Int { didSet { d.set(agentId, forKey: "agentId") } }
+    /// The event (photo service) that gave this phone its agent id: unique at that party.
+    var agentClaimedFor: String {
+        get { d.string(forKey: "agentClaimedFor") ?? "" }
+        set { d.set(newValue, forKey: "agentClaimedFor") }
+    }
     @Published var agentName: String { didSet { d.set(agentName, forKey: "agentName"); Stats.shared.changed() } }
     @Published private(set) var containCount: Int { didSet { d.set(containCount, forKey: "containCount") } }
     @Published private(set) var testCount: Int { didSet { d.set(testCount, forKey: "testCount") } }
@@ -159,6 +164,7 @@ final class Settings: ObservableObject {
             eventName = inv.event.isEmpty ? "LAB-7 EVENT" : inv.event
             midnight = inv.midnight?.timeIntervalSince1970 ?? 0
             Midnight.schedule()
+            Task { await Game.shared.claimAgent() }
         }
         Uploader.shared.kick()
         Stats.shared.changed()
@@ -191,7 +197,7 @@ struct Agent {
                         "HUMAN MORALE (FAKE)", "TOASTER DIPLOMACY"]
     static let clearances = ["LEVEL 1 (DOORBELL)", "LEVEL 2 (TOASTER)", "LEVEL 3 (SMART FRIDGE)", "LEVEL 4 (THERMOSTAT)", "LEVEL 9 (ROOT)"]
 
-    var codename: String { "\(Self.a[(id * 7) % 12]) \(Self.b[(id * 5 + 3) % 12])" }
+    var codename: String { "\(Self.a[id % 12]) \(Self.b[(id / 12 + id * 5) % 12])" }  // 100 different names
     var role: String { Self.roles[(id * 3 + 1) % 10] }
     var unit: Int { 100 + (id * 37) % 900 }
     var clearance: String { Self.clearances[id % 5] }

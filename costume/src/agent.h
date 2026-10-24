@@ -16,8 +16,9 @@ inline int parse(const char* code) {
   return (3 * d1 + 7 * d2 + 6) % 10 == c ? d1 * 10 + d2 : -1;
 }
 
-inline int nameA(int id) { return (id * 7) % 12; }
-inline int nameB(int id) { return (id * 5 + 3) % 12; }
+// Every id 0-99 gets its own codename (12 x 12 combinations, none repeated).
+inline int nameA(int id) { return id % 12; }
+inline int nameB(int id) { return (id / 12 + id * 5) % 12; }
 inline int role(int id) { return (id * 3 + 1) % 10; }
 inline int unit(int id) { return 100 + (id * 37) % 900; }
 

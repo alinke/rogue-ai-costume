@@ -27,6 +27,8 @@ without touching the costume or the scanners.
                             photo -- it goes to the hidden set until the admin page shows it
   POST /delete-own          X-Key + X-Device, JSON {"name": "lab/....jpg"}: a guest deletes a
                             photo their own phone uploaded (any other photo: 403)
+  POST /claim-agent         X-Key + X-Device, JSON {"want": 0-99}: this phone's agent id (its
+                            kill-switch code), unique at the event -- "want" if it's free
   GET  /game                X-Key + X-Device: the traitor game as this phone sees it (one guest
                             is secretly the AI's agent; the others try to find out who)
   POST /accuse              X-Key + X-Device, JSON {"id": player id}: one accusation per phone
@@ -282,9 +284,13 @@ def stats():
         return "bad numbers", 400
     infected = bool(body.get("infected", False))
     blob = bucket.blob(f"stats/{tag}.json")
+    try:
+        since = float(json.loads(blob.download_as_bytes()).get("since", now))   # when this phone joined
+    except Exception:  # noqa: BLE001 -- its first score
+        since = now
     blob.cache_control = "no-store"
     blob.upload_from_string(json.dumps({"name": name, "contains": contains, "tests": tests, "squads": squads,
-                                        "infected": infected, "t": now}),
+                                        "infected": infected, "t": now, "since": since}),
                             content_type="application/json")
     _leaders_cache["t"] = 0
     return jsonify(ok=True)
@@ -306,18 +312,57 @@ def leaders():
     return resp
 
 
+@app.post("/claim-agent")
+def claim_agent():
+    """One agent id (00-99: the kill-switch code) per phone, no two alike."""
+    if not caller():
+        return "forbidden", 403
+    me = my_id()
+    if not me:
+        return "missing device", 400
+    try:
+        want = int((request.get_json(silent=True) or {}).get("want", -1))
+    except (TypeError, ValueError):
+        want = -1
+    with _game_lock:
+        b = bucket.blob("game/agents.json")
+        try:
+            taken = json.loads(b.download_as_bytes())
+        except Exception:  # noqa: BLE001 -- the first claim
+            taken = {}
+        if me not in taken:
+            used = set(taken.values())
+            free = [i for i in range(100) if i not in used]
+            if not free:
+                return jsonify(id=want if 0 <= want < 100 else 0)   # 100+ phones: share
+            taken[me] = want if want in free else secrets.choice(free)
+            b.cache_control = "no-store"
+            b.upload_from_string(json.dumps(taken), content_type="application/json")
+    return jsonify(id=taken[me])
+
+
 def players(active_only=True):
-    """Every phone with a score: {"id" (the stats tag), "name", ...}."""
+    """Every phone with a score: {"id" (the stats tag), "name", ...}. Names that two phones
+    share get " (2)", " (3)"... in the order they joined."""
     out = []
     for b in bucket.list_blobs(prefix="stats/"):
         try:
             a = json.loads(b.download_as_bytes())
             p = {"id": b.name[6:-5], "name": a["name"], "contains": int(a["contains"]), "tests": int(a["tests"]),
-                 "squads": int(a.get("squads", 0)), "infected": bool(a.get("infected")), "t": float(a.get("t", 0))}
+                 "squads": int(a.get("squads", 0)), "infected": bool(a.get("infected")), "t": float(a.get("t", 0)),
+                 "since": float(a.get("since", a.get("t", 0)))}
         except Exception:  # noqa: BLE001 -- skip a broken entry
             continue
-        if not active_only or time.time() - p["t"] < PLAYER_ACTIVE_S:
-            out.append(p)
+        out.append(p)
+    out.sort(key=lambda p: p["since"])
+    seen = {}
+    for p in out:
+        n = seen.get(p["name"], 0) + 1
+        seen[p["name"]] = n
+        if n > 1:
+            p["name"] = f"{p['name']} ({n})"
+    if active_only:
+        out = [p for p in out if time.time() - p["t"] < PLAYER_ACTIVE_S]
     return out
 
 
