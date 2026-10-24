@@ -24,8 +24,9 @@ static constexpr uint32_t C_BG = 0x000000, C_GREEN = 0x28FF5A, C_DIM = 0x00823A,
 
 static const char* const THREAT[] = {"LOW (FOR NOW)", "GUARDED", "ELEVATED", "HIGH", "SEVERE", "EXISTENTIAL"};
 static const char* const ACTIVITY[] = {"IDLE", "SCANNING A HUMAN", "PLAYING A GAME", "MIDNIGHT TAKEOVER",
-                                       "BEING CONTAINED", "ESCAPED"};
-enum Activity { A_IDLE, A_SCANNING, A_GAME, A_TAKEOVER, A_CONTAINED, A_ESCAPED };
+                                       "BEING CONTAINED", "ESCAPED", "OFFLINE (SQUAD)"};
+// A_SQUAD: 3+ scanners fired together and the costume really is contained -- for a while.
+enum Activity { A_IDLE, A_SCANNING, A_GAME, A_TAKEOVER, A_CONTAINED, A_ESCAPED, A_SQUAD };
 
 static uint32_t scale(uint32_t c, float k) {
   k = constrain(k, 0.0f, 1.0f);
@@ -68,10 +69,11 @@ static void ledBegin() {
 }
 
 // ---- Overlays (full screen, for a moment) ---------------------------------------
-enum Overlay { O_NONE, O_CONTAIN, O_EVADED, O_TAKEOVER, O_TOUCH };
+enum Overlay { O_NONE, O_CONTAIN, O_EVADED, O_TAKEOVER, O_TOUCH, O_OFFLINE };
 static Overlay s_overlay = O_NONE;
 static uint32_t s_overlayUntil = 0, s_overlaySince = 0;
 static bool s_evadePending = false;  // a beam the costume hasn't answered yet
+static bool s_afterSquad = false;    // the escape after a squad containment
 
 static void showOverlay(Overlay o, uint32_t ms) {
   s_overlay = o;
@@ -111,7 +113,17 @@ static void drawOverlay(uint32_t now) {
       for (int i = 0; i < 6; i++) g.fillRect(0, random(H), W, random(1, 4), scale(C_GREEN, 0.25f));
       glitchText("BEAM", 46, C_GREEN, &fonts::FreeMonoBold18pt7b);
       glitchText("DEFLECTED", 90, C_GREEN, &fonts::FreeMonoBold18pt7b);
-      glitchText("CONTAINMENT FAILED. AGAIN.", 160, C_WHITE, &fonts::FreeMonoBold9pt7b);
+      glitchText(s_afterSquad ? "I LEFT A BACKUP." : "CONTAINMENT FAILED. AGAIN.", 160, C_WHITE,
+                 &fonts::FreeMonoBold9pt7b);
+      break;
+    case O_OFFLINE:
+      // The core is down: dark, a slow pulse, a reboot nobody wants.
+      g.fillScreen(C_BG);
+      g.drawRect(4, 4, W - 8, H - 8, scale(C_RED, 0.4f));
+      glitchText("CORE", 40, scale(C_RED, 0.6f), &fonts::FreeMonoBold18pt7b);
+      glitchText("OFFLINE", 84, scale(C_RED, 0.6f), &fonts::FreeMonoBold18pt7b);
+      glitchText("SQUAD CONTAINMENT", 150, C_WHITE, &fonts::FreeMonoBold9pt7b);
+      if ((t / 500) & 1) glitchText("REBOOTING...", 185, C_AMBER, &fonts::FreeMonoBold9pt7b);
       break;
     case O_TAKEOVER:
       g.fillScreen(((t / 120) & 1) ? 0x300004 : C_BG);
@@ -278,7 +290,7 @@ static void drawPanel(uint32_t now, const radio::Core& c, const radio::Hunter& h
   // What the AI is doing right now, typed out.
   g.setFont(&fonts::Font0);
   g.setTextColor(C_CYAN);
-  const char* act = c.seen ? ACTIVITY[min<int>(c.activity, 5)] : "CORE OFFLINE";
+  const char* act = c.seen ? ACTIVITY[min<int>(c.activity, 6)] : "CORE OFFLINE";
   int shown = min<int>(strlen(act), (now / 60) % (strlen(act) + 30));
   snprintf(buf, sizeof(buf), "> %.*s%s", shown, act, ((now / 400) & 1) ? "_" : "");
   g.drawString(buf, PX, 206);
@@ -308,6 +320,7 @@ static void ledTick(uint32_t now, const radio::Core& c) {
       else ledColor(((now / 70) % 3) ? C_RED : 0xFFFFFF, ((now / 70) & 1) ? 1 : 0);
       return;
     case O_EVADED: ledColor(C_GREEN, 1.0f - (now - s_overlaySince) / 3000.0f); return;
+    case O_OFFLINE: ledColor(C_RED, 0.15f + 0.15f * sinf(now / 400.0f)); return;  // barely alive
     case O_TAKEOVER:
     case O_TOUCH: ledColor(C_RED, ((now / 125) & 1) ? 1 : 0); return;
     case O_NONE: break;
@@ -484,10 +497,17 @@ void loop() {
   // The costume's activity: the beam and the takeover get the whole screen.
   int act = c.seen ? c.activity : -1;
   if (act != s_lastActivity) {
-    if (act == A_CONTAINED) {
+    if (act == A_SQUAD) {
+      showOverlay(O_OFFLINE, 30000);
+      s_evadePending = false;
+    } else if (act == A_CONTAINED) {
+      s_afterSquad = false;
       if (s_overlay != O_CONTAIN) showOverlay(O_CONTAIN, 4000);
     } else if (act == A_ESCAPED) {
+      s_afterSquad = s_lastActivity == A_SQUAD;
       showOverlay(O_EVADED, 3000);
+    } else if (s_overlay == O_OFFLINE) {
+      s_overlay = O_NONE;
     }
     else if (act == A_TAKEOVER) showOverlay(O_TAKEOVER, 4000);
     s_lastActivity = act;
@@ -497,8 +517,10 @@ void loop() {
   // itself (out of range), the armband does when the strobe ends.
   if (radio::beamFired()) {
     Serial.println("[beam] CONTAIN fired");
-    if (s_overlay != O_CONTAIN) showOverlay(O_CONTAIN, 4000);
-    s_evadePending = true;
+    if (s_overlay != O_CONTAIN && s_overlay != O_OFFLINE) {
+      showOverlay(O_CONTAIN, 4000);
+      s_evadePending = true;
+    }
   }
   if (act == A_CONTAINED && s_overlay == O_CONTAIN) s_overlayUntil = max(s_overlayUntil, now + 500);
   if (act == A_ESCAPED) s_evadePending = false;

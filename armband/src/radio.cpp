@@ -56,7 +56,8 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
     for (int i = dev.getServiceUUIDCount() - 1; i >= 0; i--) {
       String u = dev.getServiceUUID(i).toString();
       u.toLowerCase();
-      if (u.length() == 36 && u.startsWith("52534331-") && u.endsWith("-4c41-4237-000000000000")) {
+      // The app uses the last 12 digits for its own flags (the infection game).
+      if (u.length() == 36 && u.startsWith("52534331-") && u.substring(13, 24) == "-4c41-4237-") {
         uint8_t key[6] = {'i', 'O', 'S', 0, 0, (uint8_t)hexByte(u, 9)};
         recordHunter(key, r, (uint8_t)hexByte(u, 11), key[5]);
         return;
