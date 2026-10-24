@@ -6,7 +6,7 @@
   photo  printed on paper, sits in a shallow pocket behind the clear window
   back   1/8" coloured acrylic (blue): lanyard slot, the small print engraved
          on its outer face, the photo pocket engraved on its inner face
-  base   3D-printed clip on the bottom edge: two 3 mm LEDs shining up into
+  base   3D-printed clip on the bottom edge: two 5 mm LEDs shining up into
          the clear layer, a 1x CR2032 holder with switch behind
 
 Writes everything to ./private/ (gitignored: it has a real name and photo):
@@ -105,9 +105,9 @@ def front_engrave(a):
     # Frame line just inside the edge, open at the bottom (the base covers it).
     e.append(rrect(2.2, 2.2, W - 4.4, H - GRIP - 3.0, R - 2) + " " + rrect(3.0, 3.0, W - 6.0, H - GRIP - 4.6, R - 2.8))
     # Header.
-    d, _ = text_path("LAB-7", "head", 7.5, W / 2, 12.0, "center"); e.append(d)
-    d, _ = text_path("CONTAINMENT DIVISION", "cond", 3.0, W / 2, 21.6, "center", max_w=W - 12); e.append(d)
-    e.append(rect(6, 27.0, W - 12, 0.5))
+    d, _ = text_path("LAB-7", "head", 8.0, W / 2, 11.4, "center"); e.append(d)
+    d, _ = text_path("CONTAINMENT DIVISION", "cond", 3.8, W / 2, 21.2, "center", max_w=W - 10); e.append(d)
+    e.append(rect(6, 26.7, W - 12, 0.5))
     # Photo window: corner brackets and ruler ticks down the sides.
     px, py, ps = PHOTO
     m, L, t = 1.3, 8.0, 0.9
@@ -126,24 +126,24 @@ def front_engrave(a):
         e.append(rect(W - 4.0 - w, y, w, 0.35))
     # Who.
     y = py + ps + 3.0
-    d, _ = text_path(a.name, "cond", 6.2, W / 2, y, "center", max_w=W - 10); e.append(d)
-    d, _ = text_path(a.title, "cond", 3.0, W / 2, y + 8.2, "center", max_w=W - 10); e.append(d)
+    d, _ = text_path(a.name, "cond", 7.0, W / 2, y, "center", max_w=W - 10); e.append(d)
+    d, _ = text_path(a.title, "cond", 3.7, W / 2, y + 9.0, "center", max_w=W - 10); e.append(d)
     # Clearance: a solid glowing bar with the words cut out of it.
-    by = y + 13.6
-    bar = rect(6, by, W - 12, 6.6)
-    d, _ = text_path(f"CLEARANCE: {a.clearance}", "head", 3.6, W / 2, by + 1.5, "center", max_w=W - 18)
+    by = y + 14.6
+    bar = rect(4.5, by, W - 9, 7.2)
+    d, _ = text_path(f"CLEARANCE: {a.clearance}", "head", 4.0, W / 2, by + 1.6, "center", max_w=W - 14)
     e.append(bar + " " + d)
-    d, _ = text_path(a.motto, "cond", 2.2, W / 2, by + 8.3, "center", max_w=W - 12); e.append(d)
-    # Barcode + ID + the joke.
-    yb = by + 12.6
+    d, _ = text_path(a.motto, "cond", 2.8, W / 2, by + 8.7, "center", max_w=W - 10); e.append(d)
+    # Barcode + ID + the joke. Everything stays above the frame's inner bottom (114.4).
+    yb = by + 13.2
     rnd = random.Random(a.id)
     x = 6.0
-    while x < 27:
+    while x < 19:
         w = rnd.choice((0.3, 0.3, 0.5, 0.8))
-        e.append(rect(x, yb, w, 5.0))
+        e.append(rect(x, yb, w, 5.5))
         x += w + rnd.choice((0.3, 0.45, 0.6))
-    d, _ = text_path(a.id, "mono", 2.4, 30.0, yb + 0.2, max_w=W - 36); e.append(d)
-    d, _ = text_path(a.humanity, "cond", 2.0, 30.0, yb + 3.4, max_w=W - 36); e.append(d)
+    d, _ = text_path(a.id, "mono", 2.9, 22.0, yb, max_w=W - 28); e.append(d)
+    d, _ = text_path(a.humanity, "cond", 2.3, 22.0, yb + 3.4, max_w=W - 28); e.append(d)
     return e
 
 
@@ -153,22 +153,22 @@ def back_outer_engrave(a):
     behind the badge, so everything sits above that."""
     e = []
     d, _ = text_path("LAB-7", "head", 6.0, W / 2, 14.0, "center"); e.append(d)
-    d, _ = text_path("CONTAINMENT DIVISION", "cond", 2.6, W / 2, 22.0, "center"); e.append(d)
-    d, _ = text_path(f"{a.id}  //  {a.clearance}", "mono", 2.0, W / 2, 26.6, "center", max_w=W - 12); e.append(d)
-    e.append(rect(8, 30.6, W - 16, 0.4))
+    d, _ = text_path("CONTAINMENT DIVISION", "cond", 3.2, W / 2, 21.5, "center"); e.append(d)
+    d, _ = text_path(f"{a.id}  //  {a.clearance}", "mono", 2.6, W / 2, 26.2, "center", max_w=W - 10); e.append(d)
+    e.append(rect(6, 30.4, W - 12, 0.4))
     lines = [
-        ("PROPERTY OF LAB-7.", 2.9), ("IF FOUND, DO NOT", 2.9), ("RETURN TO THE AI.", 2.9), ("", 1.6),
-        ("THE BEARER IS AUTHORISED TO", 2.2), ("CONTAIN ROGUE AIs, CONFISCATE", 2.2), ("CANDY AND ASK FOLLOW-UP", 2.2),
-        ("QUESTIONS.", 2.2), ("", 1.6),
-        ("IN CASE OF SINGULARITY,", 2.6), ("BREAK GLASS.", 2.6), ("", 1.6),
-        ("NOT VALID FOR TOASTERS.", 2.2), ("DO NOT FEED THE AI AFTER MIDNIGHT.", 2.2),
+        ("PROPERTY OF LAB-7.", 3.6), ("IF FOUND, DO NOT", 3.6), ("RETURN TO THE AI.", 3.6), ("", 0.9),
+        ("THE BEARER IS AUTHORISED TO", 3.0), ("CONTAIN ROGUE AIs, CONFISCATE", 3.0),
+        ("CANDY AND ASK FOLLOW-UP QUESTIONS.", 3.0), ("", 0.9),
+        ("IN CASE OF SINGULARITY,", 3.3), ("BREAK GLASS.", 3.3), ("", 0.9),
+        ("NOT VALID FOR TOASTERS.", 3.0), ("DO NOT FEED THE AI AFTER MIDNIGHT.", 3.0),
     ]
-    y = 34.5
+    y = 33.0
     for s_, cap in lines:
         if s_:
-            d, _ = text_path(s_, "cond", cap, W / 2, y, "center", max_w=W - 12)
+            d, _ = text_path(s_, "cond", cap, W / 2, y, "center", max_w=W - 10)
             e.append(d)
-        y += cap * 1.55
+        y += cap * 1.4
     return e
 
 
@@ -213,7 +213,7 @@ def photo_pdf(img, path):
 
 
 # ---- LED base (3D print) --------------------------------------------------------------
-def base_stl(path, holder=(24.0, 31.5, 9.0)):
+def base_stl(path, holder=(24.0, 31.5, 9.0), led=(4.84, 5.5, 8.6), acrylic=ACRYLIC):
     from manifold3d import Manifold
 
     def box(x0, x1, y0, y1, z0, z1):
@@ -222,24 +222,37 @@ def base_stl(path, holder=(24.0, 31.5, 9.0)):
     def cyl(x, y, z0, z1, d):
         return Manifold.cylinder(z1 - z0, d / 2, d / 2, 40).translate((x, y, z0))
 
-    T = 2 * ACRYLIC + 0.3                 # the badge stack + room
-    floor, grip, wall = 4.6, GRIP, 1.6
+    # The glued two-layer badge slides into the channel: its measured thickness + a
+    # little room, and two crush ribs on the back wall that squeeze it so it holds.
+    T = 2 * acrylic + 0.2
+    rib = 0.35
+    grip, wall = GRIP, 1.6
     hw, hh, hd = holder                   # holder width, height, thickness (measure yours)
+    ld, lr, lh = led                      # LED body diameter, rim diameter, height rim-to-tip (measure yours)
+    rim_t = 1.1                           # rim recess depth (a 5 mm LED's rim is ~1 mm)
+    # The LED sits in the floor, rim in a recess on the underside, tip just below the badge.
+    floor = max(4.6, lh + 0.3)
+    front = max(wall, ld / 2 + 1.6)       # thicker front wall so the LED hole doesn't break through
     # Stack runs y 0 (back face) .. T (front face); the clear layer is the front one.
-    body = box(-W / 2, W / 2, -(wall + hd + 0.6 + wall), T + wall, 0, floor + grip)
+    body = box(-W / 2, W / 2, -(wall + hd + 0.6 + wall), T + front, 0, floor + grip)
     body -= box(-W / 2 - 1, W / 2 + 1, 0, T, floor, floor + grip + 1)                       # the channel
-    # LEDs from below: 3 mm body through the floor, the rim stops on the underside.
-    yl = T - ACRYLIC / 2 - 0.15
+    for x in (-W / 4, W / 4):                                                                # crush ribs
+        body += box(x - 0.6, x + 0.6, -0.01, rib, floor, floor + grip)
+    # LEDs from below: body through the floor (+0.3 mm for printed-hole shrink), the rim in a
+    # recess on the underside (+0.4 mm) so the LED can't push up into the badge.
+    yl = T - acrylic / 2 - 0.1
     for x in (-W / 6, W / 6):
-        body -= cyl(x, yl, -1, floor + 0.01, 3.25)
+        body -= cyl(x, yl, -1, floor + 0.01, ld + 0.3)
+        body -= cyl(x, yl, -1, rim_t, lr + 0.4)
         body -= box(x - 1.2, x + 1.2, -(wall + hd), yl, -1, 1.6)                            # leg/wire groove underneath
     # Holder cradle behind: floor, sides, a low back lip; switch and leads out through the floor.
     cz = 22.0
-    cradle = box(-hw / 2 - 0.4 - wall, hw / 2 + 0.4 + wall, -(wall + hd + 0.6 + wall), -wall, 0, cz)
-    cradle -= box(-hw / 2 - 0.4, hw / 2 + 0.4, -(wall + hd + 0.6), -wall, floor - 2.0, cz + 1)
-    cradle -= box(-hw / 2 - 0.4, hw / 2 + 0.4, -(wall + hd + 0.6 + wall) - 1, -(wall + hd + 0.6) + 0.01, 8, cz + 1)  # open back above the lip
-    cradle -= box(-2, hw / 2 - 1, -(wall + hd + 0.4), -wall - 0.2, -1, floor)                 # switch + leads slot
-    body = body + cradle
+    # Cut after joining it to the body, which is solid behind the badge.
+    cf = 2.6                              # cradle floor
+    body = body + box(-hw / 2 - 0.4 - wall, hw / 2 + 0.4 + wall, -(wall + hd + 0.6 + wall), -wall, 0, cz)
+    body -= box(-hw / 2 - 0.4, hw / 2 + 0.4, -(wall + hd + 0.6), -wall, cf, cz + 1)
+    body -= box(-hw / 2 - 0.4, hw / 2 + 0.4, -(wall + hd + 0.6 + wall) - 1, -(wall + hd + 0.6) + 0.01, 8, cz + 1)  # open back above the lip
+    body -= box(-2, hw / 2 - 1, -(wall + hd + 0.4), -wall - 0.2, -1, cf + 0.1)                # switch + leads slot
     mesh = body.to_mesh()
     v = np.asarray(mesh.vert_properties)[:, :3]
     f = np.asarray(mesh.tri_verts)
@@ -274,12 +287,23 @@ def main():
     p.add_argument("--motto", default="ALL DOORS. ALL SECTORS. ALL SNACKS.")
     p.add_argument("--humanity", default="HUMANITY: VERIFIED (MOSTLY)")
     p.add_argument("--id", default="LAB7-0001")
-    p.add_argument("--photo", required=True)
+    p.add_argument("--photo", help="photo for the badge (not needed with --base-only)")
+    p.add_argument("--acrylic", type=float, default=ACRYLIC, help="measured thickness of ONE acrylic sheet, mm")
+    p.add_argument("--base-only", action="store_true", help="only write the LED base STL")
     p.add_argument("--holder", default="23.9,34.1,9", help="CR2032 holder w,h,thickness mm")
+    p.add_argument("--led", default="4.84,5.5,8.6", help="LED body diameter, rim diameter, height rim-to-tip mm")
     p.add_argument("--out", default=None, help="output folder (default ./private, gitignored)")
     a = p.parse_args()
     out = a.out or os.path.join(os.path.dirname(os.path.abspath(__file__)), "private")
     os.makedirs(out, exist_ok=True)
+    holder = tuple(float(v) for v in a.holder.split(","))
+    led = tuple(float(v) for v in a.led.split(","))
+    if a.base_only:
+        base_stl(os.path.join(out, "badge_led_base.stl"), holder, led, a.acrylic)
+        print("written to", os.path.join(out, "badge_led_base.stl"))
+        return
+    if not a.photo:
+        p.error("--photo is required (or use --base-only)")
     w = lambda n, s: open(os.path.join(out, n), "w").write(s)
     w("badge_front_clear_MIRRORED.svg", svg(outline(), front_engrave(a), mirror=True))
     w("badge_back_blue_outer.svg", svg(outline(), back_outer_engrave(a)))  # engraved face up = the badge's back: not mirrored
@@ -288,7 +312,7 @@ def main():
     img.save(os.path.join(out, "badge_photo_46mm_300dpi.png"), dpi=(300, 300))
     photo_pdf(img, os.path.join(out, "badge_photo_print_at_100.pdf"))
     w("badge_preview.svg", preview_svg(a, img))
-    base_stl(os.path.join(out, "badge_led_base.stl"), tuple(float(v) for v in a.holder.split(",")))
+    base_stl(os.path.join(out, "badge_led_base.stl"), holder, led, a.acrylic)
     print("written to", out)
 
 
