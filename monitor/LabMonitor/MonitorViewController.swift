@@ -209,10 +209,9 @@ final class MonitorViewController: UIViewController {
         radio.curing = !cfg.isWall && (mode == .checkpoint || mode == .card)
         // An infected scanner at the checkpoint: call it over; say so when the check cured it.
         if !cfg.isWall && cfg.photosEnabled {
-            let seen = Date().timeIntervalSince(radio.infectedAt) < 3 && radio.infectedRssi >= -75
+            let seen = Date().timeIntervalSince(radio.infectedAt) < 3 && radio.infectedRssi >= -68   // a few steps away
             if seen && !infectedHere && (mode == .calm || mode == .card) && now - infectedAnnouncedAt > 20 {
-                say("☣ INFECTED SCANNER DETECTED // STEP UP FOR DECONTAMINATION", for: 6)
-                Sound.shared.play(.fail)
+                Sound.shared.play(.fail)   // the panel (drawCalm) says the rest while it's here
                 infectedAnnouncedAt = now
             }
             if !seen && infectedHere && (mode == .checkpoint || mode == .card) {
@@ -384,6 +383,8 @@ final class MonitorViewController: UIViewController {
         }
         s.cameraOn = camera.available && cfg.photosEnabled
         s.scanButton = s.cameraOn && !cfg.isWall
+        s.infectedNear = infectedHere && mode == .calm && !cfg.isWall && cfg.photosEnabled
+        s.decontaminating = infectedHere && mode == .checkpoint
         s.photosOff = !cfg.photosEnabled
         s.faces = cfg.photosEnabled && !cfg.isWall ? faces : []
         s.subject = subject
@@ -581,6 +582,7 @@ final class MonitorViewController: UIViewController {
         s.assimilated = 5
         s.stand = stand
         s.scanButton = !Config.shared.isWall
+        s.infectedNear = demo == "infected"
         s.cameraOn = true
         let groupDemo = d.hasPrefix("group")
         s.faces = groupDemo ? [CGRect(x: 0.155, y: 0.26, width: 0.13, height: 0.25), CGRect(x: 0.435, y: 0.2, width: 0.13, height: 0.25),
@@ -671,6 +673,7 @@ final class MonitorViewController: UIViewController {
         case "beam": s.mode = .beam; s.t = 2.5
         case "failed": s.mode = .beamFailed; s.t = 3
         case "squad": s.mode = .squadWin; s.t = 7; s.squadWins = 1
+        case "infected": s.mode = .calm
         case "midnight": s.mode = .midnight; s.t = 6
         default: s.mode = .calm; s.slide = stand; s.slideLabel = "VERIFIED HUMAN #014"
         }

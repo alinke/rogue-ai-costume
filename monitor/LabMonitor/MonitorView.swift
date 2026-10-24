@@ -48,6 +48,8 @@ struct Screen {
     var cardGroup = 0           // people on a group card (0 = a single card)
     var ticker = ""
     var scanButton = false      // the checkpoint's TAP TO SCAN button (calm screen)
+    var infectedNear = false    // an infected guest scanner at the checkpoint: how to get cured
+    var decontaminating = false // ...and it's being checked right now
     var autoScan = false        // checks also start by themselves
     var squadWins = 0           // squad containments tonight (3+ scanners at once)
     var afterSquad = false      // the escape that follows one
@@ -127,6 +129,7 @@ final class MonitorView: UIView {
         case .midnight: drawMidnight(c)
         case .checkpoint: break
         }
+        if s.mode == .calm && !s.wall && s.infectedNear { decontamination(c) }   // on top of the calm screen
         if let t = s.toast { banner(c, t) }
         c.restoreGState()
     }
@@ -453,6 +456,11 @@ final class MonitorView: UIView {
         text("LAB-7 HUMANITY CHECKPOINT // AI SCREENING", 24, 16, 24, MonitorView.white, .heavy)
         text(s.faces.count > 1 ? "GROUP #\(s.subject) x\(min(s.faces.count, 8))" : "SUBJECT #\(s.subject)", W - 24, 18, 22,
              MonitorView.pale, .bold, mono: true, align: .right)
+        if s.decontaminating {   // an infected scanner is in this check: it gets cleaned
+            MonitorView.bad.withAlphaComponent(0.85).setFill()
+            c.fill(CGRect(x: 0, y: 60, width: W, height: 44))
+            text("☣ DECONTAMINATING INFECTED SCANNER... KEEP YOUR PHONE CLOSE", W / 2, 70, 22, .white, .heavy, align: .center)
+        }
         // Readouts.
         let rows = [("FACE GEOMETRY", "MAPPED"), ("IRIS PATTERN", "LOGGED")] + s.findings.map { ($0.label, "...") }
             + [("AI EXPOSURE", "ANALYSING")]
@@ -646,6 +654,27 @@ final class MonitorView: UIView {
         col.setFill(); c.fill(CGRect(x: r.minX, y: r.minY, width: 6, height: r.height))
         text(title, r.minX + 22, r.minY + 10, 15, MonitorView.pale, .bold)
         text(value, r.maxX - 20, r.minY + 14, 46, col, .heavy, mono: true, align: .right)
+    }
+
+    /// An infected scanner at the checkpoint: what's wrong and how to fix it, over the evidence
+    /// slideshow (the TAP TO SCAN camera stays clear).
+    private func decontamination(_ c: CGContext) {
+        let r = CGRect(x: 368, y: 92, width: 632, height: 618)
+        MonitorView.bg.setFill(); c.fill(r)
+        let on = Int(s.t * 2) % 2 == 0
+        MonitorView.bad.setStroke(); c.setLineWidth(on ? 8 : 4); c.stroke(r.insetBy(dx: 4, dy: 4))
+        text("☣ INFECTION DETECTED", r.midX, r.minY + 40, 46, MonitorView.bad, .heavy, align: .center)
+        text("A SCANNER AT THIS CHECKPOINT IS INFECTED.", r.midX, r.minY + 112, 22, MonitorView.white, .bold, align: .center)
+        text("ITS CONTAINMENT BEAM IS JAMMED.", r.midX, r.minY + 144, 22, MonitorView.white, .bold, align: .center)
+        text("TO DECONTAMINATE:", r.minX + 50, r.minY + 214, 26, MonitorView.amber, .heavy)
+        let steps = ["1.  HOLD YOUR PHONE NEXT TO THIS iPAD",
+                     "2.  TAP  \"TAP TO SCAN\"  ON THE CAMERA (LEFT)",
+                     "3.  HOLD STILL FOR THE 3-2-1",
+                     "4.  YOUR PHONE SAYS \"CURED\": IMMUNE FOR 30 MIN"]
+        for (i, st) in steps.enumerated() {
+            text(st, r.minX + 44, r.minY + 270 + CGFloat(i) * 56, 19, MonitorView.white, .bold, mono: true)
+        }
+        if on { text("◀ TAP TO SCAN", r.minX + 50, r.maxY - 70, 30, MonitorView.ok, .heavy) }
     }
 
     private func banner(_ c: CGContext, _ s: String) {
