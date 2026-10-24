@@ -62,7 +62,7 @@ final class Settings: ObservableObject {
     var leaderboardName: String { agentName.isEmpty ? agent.codename : agentName }
 
     private init() {
-        d.register(defaults: ["nearDbm": -70, "closeDbm": -58, "soundOn": true, "hapticsOn": true,
+        d.register(defaults: ["nearDbm": -70, "closeDbm": -58, "soundOn": false, "hapticsOn": true,
                               "researcherName": "LAB-7 FIELD RESEARCHER", "compromisedPercent": 20,
                               "siteText": "THE ROGUE.AI WALL", "agentId": -1])
         nearDbm = d.integer(forKey: "nearDbm")

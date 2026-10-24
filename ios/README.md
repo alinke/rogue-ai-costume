@@ -29,7 +29,7 @@ No App Store needed for your own phone.
 
 - **Keep the app open, screen on.** It keeps the screen awake itself. iOS only
   sends the CONTAIN beacon while the app is in front.
-- **Tap the signal meter**: sound on / quiet (CONTAIN still sounds).
+- **Tap the signal meter**: sound on / quiet (off on a new install; CONTAIN still sounds). Vibration (gear) is on by default.
 - **Humanity test camera**: the rear camera by default (point the phone at the
   guest); the flip button in the viewfinder switches to the front one (a
   mirrored selfie) and the app remembers the choice.
