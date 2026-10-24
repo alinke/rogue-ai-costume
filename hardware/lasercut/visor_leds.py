@@ -9,8 +9,10 @@ above and below the strap slot (clear of the strap that wraps round the end):
 the top pair shine along the top band's lines, the bottom pair along the bottom
 lines and ROGUE.AI. Use two or all four.
 
-The notches are plain rectangles in the cut layer, overlapping the outline:
-the laser cuts both, and the sliver between them drops out.
+The notches are closed shapes in the cut layer, overlapping the outline: the
+laser cuts both, and the sliver between them drops out. Seen from the front a
+notch is a 3.1 mm strip -- the LED lies flat inside the 3 mm sheet -- with a
+rounded inner end for the LED's dome.
 
   python3 visor_leds.py      -> rogue_ai_visor_glasses_A_leds.svg
 """
@@ -34,14 +36,17 @@ NOTCHES = [
 ]
 
 s = open(SRC).read()
-rects = []
+r = NOTCH_W / 2
+paths = []
 for y, xl, xr in NOTCHES:
-    y0, h = y - NOTCH_W / 2, NOTCH_W
-    # Each rectangle starts outside the sheet and ends NOTCH_D inside the edge.
-    rects.append((xl - 6, y0, 6 + NOTCH_D, h))
-    rects.append((xr - NOTCH_D, y0, NOTCH_D + 6, h))
-paths = "".join(
-    f'\n    <rect class="st1" x="{x:.2f}" y="{y:.2f}" width="{w:.2f}" height="{h:.2f}"/>' for x, y, w, h in rects)
-s = re.sub(r'(<g id="cut"[^>]*>)', r"\1" + paths.replace("\\", "\\\\"), s, count=1)
+    y0, y1 = y - r, y + r
+    # Each notch starts outside the sheet and runs NOTCH_D inside the edge, its inner
+    # end a half circle that matches the LED's dome tip (no air gap, more light in).
+    xe = xl + NOTCH_D                      # left end: inner end of the notch
+    paths.append(f"M{xl - 6:.2f},{y0:.2f} H{xe - r:.2f} A{r:.2f},{r:.2f} 0 0 1 {xe - r:.2f},{y1:.2f} H{xl - 6:.2f} Z")
+    xs = xr - NOTCH_D                      # right end: mirror image
+    paths.append(f"M{xr + 6:.2f},{y0:.2f} H{xs + r:.2f} A{r:.2f},{r:.2f} 0 0 0 {xs + r:.2f},{y1:.2f} H{xr + 6:.2f} Z")
+els = "".join(f'\n    <path class="st1" d="{d}"/>' for d in paths)
+s = re.sub(r'(<g id="cut"[^>]*>)', lambda m: m.group(1) + els, s, count=1)
 open(OUT, "w").write(s)
-print("wrote", os.path.basename(OUT), "with", len(rects), "LED notches")
+print("wrote", os.path.basename(OUT), "with", len(paths), "LED notches")
