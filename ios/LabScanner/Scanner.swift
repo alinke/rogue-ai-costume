@@ -12,13 +12,16 @@ enum Zone: Int, Comparable {
 
 enum ContainState { case ready, fired, containing, failed, squad }
 
-/// The infection game's rules.
+/// The infection game's rules: rare and gentle -- a party is all close contact.
 enum Outbreak {
-    static let contactDbm = -64.0          // "close" to another phone: about 1-2 m
-    static let contactSeconds = 4.0        // that long near a contagious phone: infected
-    static let aiSeconds = 10.0            // that long right next to the AI: infected
+    static let contactDbm = -55.0          // "very close" to another phone: under ~50 cm
+    static let contactSeconds = 30.0       // that long near a contagious phone: a chance to catch it
+    static let aiSeconds = 45.0            // that long at TARGET LOCKED next to the AI: a chance
+    static let catchChance = 3             // 1 in 3 each time
+    static let maxShare = 0.25             // never more than a quarter of the guests infected
     static let cureDbm = -72.0             // standing at the checkpoint iPad
-    static let immuneSeconds = 300.0       // after a cure
+    static let immuneSeconds = 1800.0      // after a cure (or healing)
+    static let healSeconds = 900.0         // it wears off on its own
 }
 
 final class Scanner: ObservableObject {
@@ -86,10 +89,12 @@ final class Scanner: ObservableObject {
     /// The infection: catching it (near a contagious phone, or the AI), spreading it
     /// (this phone's beacon), and the cure at the checkpoint.
     private func infection(_ t: Date, _ z: Zone) {
-        let agent = MainActor.assumeIsolated { Game.shared.isAgent }
+        let (agent, crowd, sick) = MainActor.assumeIsolated { (Game.shared.isAgent, Game.shared.crowd, Game.shared.infectedNow) }
         radio.contagious = agent || settings.infected     // the AI's agent: a carrier that looks clean
+        radio.showsInfected = settings.infected           // what the checkpoint iPad sees (never the agent)
         if settings.infected {
-            if t.timeIntervalSince(radio.cureAt) < 2 && radio.cureRssi >= Outbreak.cureDbm {
+            let healed = t.timeIntervalSince1970 - settings.infectedSince > Outbreak.healSeconds
+            if healed || (t.timeIntervalSince(radio.cureAt) < 2 && radio.cureRssi >= Outbreak.cureDbm) {
                 settings.infected = false
                 settings.immuneUntil = t.addingTimeInterval(Outbreak.immuneSeconds).timeIntervalSince1970
                 curedAt = t
@@ -107,9 +112,14 @@ final class Scanner: ObservableObject {
         exposure = near ? exposure + 0.1 : max(0, exposure - 0.05)
         aiExposure = z == .close ? aiExposure + 0.1 : max(0, aiExposure - 0.05)
         if exposure >= Outbreak.contactSeconds || aiExposure >= Outbreak.aiSeconds {
-            settings.infectedBy = aiExposure >= Outbreak.aiSeconds ? "THE ENTITY" : "ANOTHER SCANNER"
-            settings.infected = true
+            let fromAI = aiExposure >= Outbreak.aiSeconds
             exposure = 0; aiExposure = 0
+            // A chance, not a certainty -- and never more than a quarter of the guests at once.
+            let capped = Double(sick) >= max(1, Double(crowd) * Outbreak.maxShare)
+            guard !capped, Int.random(in: 0..<Outbreak.catchChance) == 0 else { return }
+            settings.infectedBy = fromAI ? "THE ENTITY" : "ANOTHER SCANNER"
+            settings.infectedSince = t.timeIntervalSince1970
+            settings.infected = true
             play(.fail, always: true)
             thump.impactOccurred()
         }

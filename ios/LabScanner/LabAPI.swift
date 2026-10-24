@@ -128,6 +128,9 @@ final class Game: ObservableObject {
     @Published private(set) var agentName = ""
     @Published private(set) var byName = ""
     @Published var showOrders = false        // the agent's sealed orders, once
+    /// The party right now (GET /leaders): guests with the app, scanners infected (the infection's cap).
+    private(set) var crowd = 0
+    private(set) var infectedNow = 0
     private var polling = false
 
     struct Response: Decodable {
@@ -147,6 +150,10 @@ final class Game: ObservableObject {
                 if Settings.shared.joined {
                     await claimAgent()
                     await refresh()
+                    if let l = try? await LabAPI.leaders() {
+                        crowd = l.total
+                        infectedNow = l.infected
+                    }
                 }
                 try? await Task.sleep(for: .seconds(30))
             }

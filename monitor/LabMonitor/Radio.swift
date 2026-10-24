@@ -17,6 +17,10 @@ struct AiState {
 final class Radio: NSObject, CBCentralManagerDelegate, CBPeripheralManagerDelegate {
     private(set) var ai = AiState()
     private(set) var bluetoothOn = false
+    /// A guest's LAB-7 app that is visibly infected (its beacon's flag 02), close to this iPad:
+    /// when last heard, and how strong.
+    private(set) var infectedAt = Date.distantPast
+    private(set) var infectedRssi = -100.0
     private var central: CBCentralManager!
     private var peripheral: CBPeripheralManager!
     /// The checkpoint's cure beacon (the guest app's infection game): on while a
@@ -60,6 +64,18 @@ final class Radio: NSObject, CBCentralManagerDelegate, CBPeripheralManagerDelega
 
     func centralManager(_ c: CBCentralManager, didDiscover p: CBPeripheral, advertisementData ad: [String: Any],
                         rssi RSSI: NSNumber) {
+        // Guests' LAB-7 apps: 52534331-SSTT-4C41-4237-0000000000FF, flag 02 = infected.
+        if let uuids = ad[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID], RSSI.doubleValue < 0 {
+            for u in uuids {
+                let s = u.uuidString.uppercased()
+                guard s.count == 36, s.hasPrefix("52534331-"), s.contains("-4C41-4237-"),
+                      let flags = UInt8(String(s.suffix(2)), radix: 16), flags & 2 != 0 else { continue }
+                let now = Date()
+                infectedRssi = now.timeIntervalSince(infectedAt) > 3 ? RSSI.doubleValue
+                    : infectedRssi + (RSSI.doubleValue - infectedRssi) * 0.3
+                infectedAt = now
+            }
+        }
         guard let m = ad[CBAdvertisementDataManufacturerDataKey] as? Data, m.count >= 10 else { return }
         let b = [UInt8](m)
         guard b[0] == 0xFF, b[1] == 0xFF, b[2] == 0x52, b[3] == 0x41, b[4] == 0x49, b[5] == 0x31 else { return } // "RAI1"

@@ -57,7 +57,7 @@ struct ContentView: View {
             }
             if scanner.now.timeIntervalSince(scanner.curedAt) < 3 {
                 Color.labGreen.opacity(0.35).ignoresSafeArea().allowsHitTesting(false)
-                Text("CURED. IMMUNE FOR 5 MIN.").font(mono(26)).foregroundColor(.labGreen)
+                Text("CURED. IMMUNE FOR 30 MIN.").font(mono(26)).foregroundColor(.labGreen)
                     .padding(14).background(Color.black.opacity(0.85))
             }
         }

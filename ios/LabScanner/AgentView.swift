@@ -138,7 +138,7 @@ struct AgentView: View {
             Text("FIELD MANUAL").font(mono(11)).foregroundColor(.labDim)
             ForEach(["SCANNER tab: the meter climbs (and the phone buzzes faster) as the entity gets closer.",
                      "When it says SIGNAL STRONG, press CONTAIN. Alone, it always escapes. Three scanners firing together can actually contain it.",
-                     "INFECTION: stay close to an infected scanner (or the entity) and yours gets infected: CONTAIN jams. Stand at the LAB-7 checkpoint iPad during a humanity check to be cured.",
+                     "INFECTION: linger very close to an infected scanner (or the entity) and yours may catch it: CONTAIN jams. Get decontaminated at the LAB-7 checkpoint iPad, or wait 15 minutes.",
                      "HUMANITY TEST: photograph a guest. LAB-7 decides if they are human.",
                      "EVIDENCE tab: every card, every specimen, and the top agents."], id: \.self) { s in
                 HStack(alignment: .top, spacing: 8) {

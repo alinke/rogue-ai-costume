@@ -46,6 +46,7 @@ final class Settings: ObservableObject {
     @Published var infected: Bool { didSet { d.set(infected, forKey: "infected"); Stats.shared.changed() } }
     @Published var infectedBy: String { didSet { d.set(infectedBy, forKey: "infectedBy") } }
     @Published var immuneUntil: Double { didSet { d.set(immuneUntil, forKey: "immuneUntil") } }
+    @Published var infectedSince: Double { didSet { d.set(infectedSince, forKey: "infectedSince") } }
     /// Phones whose photos this user chose not to see (the wall's "hide this phone").
     @Published var blocked: [String] { didSet { d.set(blocked, forKey: "blocked") } }
     /// A random id for this phone (rate limits, the leaderboard): not tied to the person.
@@ -96,6 +97,7 @@ final class Settings: ObservableObject {
         infected = d.bool(forKey: "infected")
         infectedBy = d.string(forKey: "infectedBy") ?? ""
         immuneUntil = d.double(forKey: "immuneUntil")
+        infectedSince = d.double(forKey: "infectedSince")
         blocked = d.stringArray(forKey: "blocked") ?? []
         if let dev = d.string(forKey: "deviceId") {
             deviceId = dev

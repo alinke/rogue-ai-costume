@@ -12,12 +12,24 @@ struct JoinView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var pasted = ""
     @State private var agreed = false
+    @State private var resolved: Settings.Invite?   // from a scanned / pasted link
+    @State private var scanning = false
+    @State private var looking = false
+    @State private var lookFailed = false
 
-    private var current: Settings.Invite? {
-        if let invite { return invite }
-        let s = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: s) else { return nil }
-        return Settings.invite(from: url)
+    private var current: Settings.Invite? { invite ?? resolved }
+
+    /// A scanned or pasted link: the event's settings, read from the page if need be.
+    private func lookUp(_ text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { resolved = nil; lookFailed = false; return }
+        looking = true
+        Task {
+            let inv = await EventLink.resolve(t)
+            looking = false
+            resolved = inv
+            lookFailed = inv == nil
+        }
     }
 
     var body: some View {
@@ -26,13 +38,24 @@ struct JoinView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     Text("JOIN A LAB-7 EVENT").font(mono(22)).foregroundColor(.labGreen)
                     if invite == nil {
-                        Text("Paste the event link from your invitation, or scan the event's QR code with the iPhone Camera app.")
+                        Text("Scan the event's QR code (on the invitation or at the party), or paste the event link.")
                             .font(mono(13, .regular)).foregroundColor(.labWhite)
-                        TextField("lab7://join?…  or  https://…", text: $pasted, axis: .vertical)
+                        Button { scanning = true } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "qrcode.viewfinder").font(.system(size: 24))
+                                Text("SCAN THE EVENT QR CODE").font(mono(16))
+                            }
+                            .foregroundColor(.black).frame(maxWidth: .infinity).frame(height: 54)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.labCyan))
+                        }
+                        TextField("or paste: https://…  /  lab7://join?…", text: $pasted, axis: .vertical)
                             .font(mono(13, .regular)).textInputAutocapitalization(.never).autocorrectionDisabled()
                             .padding(10).overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.labDim))
-                        if !pasted.isEmpty && current == nil {
-                            Text("That doesn't look like a LAB-7 event link.").font(mono(12, .regular)).foregroundColor(.labRed)
+                            .onChange(of: pasted) { _, v in lookUp(v) }
+                        if looking {
+                            HStack { ProgressView().tint(.labGreen); Text("Contacting the lab…").font(mono(12, .regular)) }
+                        } else if lookFailed {
+                            Text("That doesn't look like a LAB-7 event.").font(mono(12, .regular)).foregroundColor(.labRed)
                         }
                     }
                     if let inv = current {
@@ -82,6 +105,17 @@ struct JoinView: View {
             }
             .background(Color.black.ignoresSafeArea())
             .toolbar { Button("Cancel") { dismiss() } }
+            .sheet(isPresented: $scanning) {
+                ZStack(alignment: .bottom) {
+                    QRScannerView { code in
+                        scanning = false
+                        pasted = code      // shows what was scanned, and looks it up
+                    }
+                    .ignoresSafeArea()
+                    Text("POINT AT THE EVENT'S QR CODE").font(mono(15)).foregroundColor(.labGreen)
+                        .padding(12).background(Color.black.opacity(0.75)).padding(.bottom, 40)
+                }
+            }
         }
         .preferredColorScheme(.dark)
     }

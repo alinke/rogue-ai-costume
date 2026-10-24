@@ -197,7 +197,7 @@
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "LAB-7";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "LAB-7 tracks the rogue AI costume by its Bluetooth beacon and fires the CONTAIN beam at it.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "The humanity test photographs the guest for their LAB-7 ID card.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "The humanity test photographs the guest for their LAB-7 ID card, and the camera scans the event's QR code to join it.";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -239,7 +239,7 @@
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "LAB-7";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "LAB-7 tracks the rogue AI costume by its Bluetooth beacon and fires the CONTAIN beam at it.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "The humanity test photographs the guest for their LAB-7 ID card.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "The humanity test photographs the guest for their LAB-7 ID card, and the camera scans the event's QR code to join it.";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

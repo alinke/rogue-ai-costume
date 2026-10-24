@@ -56,6 +56,10 @@ final class Radio: NSObject, ObservableObject {
     var contagious = false {
         didSet { if contagious != oldValue { advertise() } }
     }
+    /// Visibly infected (the checkpoint iPad spots it); the AI's agent is contagious but not this.
+    var showsInfected = false {
+        didSet { if showsInfected != oldValue { advertise() } }
+    }
     // Demo mode (Settings.demoMode): a simulated costume walking up and away.
     private var demoContainAt: Date?
     private var demoContained = 0
@@ -76,7 +80,9 @@ final class Radio: NSObject, ObservableObject {
     }
 
     private var beaconUUID: CBUUID {
-        CBUUID(string: String(format: "52534331-%02X%02X-4C41-4237-0000000000%02X", session, trigger, contagious ? 1 : 0))
+        // Flags: 01 contagious (other phones catch it), 02 infected (the checkpoint sees it).
+        CBUUID(string: String(format: "52534331-%02X%02X-4C41-4237-0000000000%02X", session, trigger,
+                              (contagious ? 1 : 0) | (showsInfected ? 2 : 0)))
     }
 
     private func advertise() {

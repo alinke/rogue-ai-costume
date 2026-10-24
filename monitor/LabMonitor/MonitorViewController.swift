@@ -47,6 +47,8 @@ final class MonitorViewController: UIViewController {
     private var farSince: Double?
     private var prevActivity = -1
     private var squadWins = 0
+    private var infectedHere = false        // an infected guest's phone is at the checkpoint
+    private var infectedAnnouncedAt = 0.0
     private var afterSquad = false
     private var nextGlitchSound = 0.0
 
@@ -204,6 +206,20 @@ final class MonitorViewController: UIViewController {
         if mode == .squadWin && (!ai.seen || now - modeStart > 30) { go(.calm) }
         // The infection game's cure: on while a guest is checked or their card is up.
         radio.curing = !cfg.isWall && (mode == .checkpoint || mode == .card)
+        // An infected scanner at the checkpoint: call it over; say so when the check cured it.
+        if !cfg.isWall && cfg.photosEnabled {
+            let seen = Date().timeIntervalSince(radio.infectedAt) < 3 && radio.infectedRssi >= -75
+            if seen && !infectedHere && (mode == .calm || mode == .card) && now - infectedAnnouncedAt > 20 {
+                say("☣ INFECTED SCANNER DETECTED // STEP UP FOR DECONTAMINATION", for: 6)
+                Sound.shared.play(.fail)
+                infectedAnnouncedAt = now
+            }
+            if !seen && infectedHere && (mode == .checkpoint || mode == .card) {
+                say("DECONTAMINATION COMPLETE // SCANNER CLEAN", for: 4)
+                Sound.shared.play(.lock)
+            }
+            infectedHere = seen
+        }
 
         // The AI in this room: its beacon strong for a moment; gone (or weak) for a few seconds.
         let near = ai.seen && ai.rssi >= cfg.intrusionDbm
