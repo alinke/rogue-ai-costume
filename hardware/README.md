@@ -135,6 +135,15 @@ drop of glue makes it permanent), and the 2.4 mm pad runs 11 mm back
 toward your face. Leaves ~13 mm of nose room near the top of the arch. Print
 front face down, PETG or PLA, no supports.
 
+**Strap clips, no sewing** (`3dprint/strap_clip_25mm.stl` for the armband's two
+straps, `strap_clip_20mm.stl` for the visor; `strap_clip.py`): a slim tri-glide,
+16 x 31 x 2.8 mm (25 mm). Wrap one strap end once round the ridged centre bar;
+take the other end round the arm (through the pod's tunnels) or through the
+visor's slot, then up through one slot, over the centre bar on top of the first
+end, and down through the other. Pull the tail to tighten; tilt the clip up to
+loosen. PETG, flat, no supports. Other straps:
+`python3 strap_clip.py --strap W --thick T` (elastic ~1 mm, webbing ~1.5 mm).
+
 **Visor strap buckle** (`3dprint/visor_buckle_socket.stl` + `visor_buckle_plug.stl`):
 the harness's side-release buckle made for the visor's strap (up to 20 mm wide,
 ~1.5 mm thick), for the back of the head. One strap end loops through the
