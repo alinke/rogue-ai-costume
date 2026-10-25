@@ -171,6 +171,13 @@ loosen. PETG, flat, no supports. Other straps:
 harness strap goes through the mount's bottom slot and back to a clip, so the
 harness goes on like a backpack (arms through) and adjusts with the clips.
 
+**Visor strap with clips** (no sewing, no buckle): a `strap_clip_20mm.stl` at
+each end -- the strap goes through the clip, out through the visor's end slot,
+and back through the clip on top of itself. 20 mm strap, cut ~24" and trimmed
+after fitting. On the LED visor, slide the battery pod onto the strap first.
+
+![Visor strap: from above, and threading a clip at the visor's slot](../docs/images/visor-clips.png)
+
 **Visor strap buckle** (`3dprint/visor_buckle_socket.stl` + `visor_buckle_plug.stl`):
 the harness's side-release buckle made for the visor's strap (up to 20 mm wide,
 ~1.5 mm thick), for the back of the head. One strap end loops through the
