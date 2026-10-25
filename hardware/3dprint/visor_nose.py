@@ -7,8 +7,9 @@ The arch is read from ../lasercut/rogue_ai_visor_glasses_A.svg. Seen from the
 front it's a band following the arch: its outer half grips the acrylic in a
 slot (front lip + back jaw), its inner half is the pad, which also runs
 straight back toward the face (PAD_DEPTH) so the nose bears on a wide surface.
-Push it on from below -- snug on 3 mm acrylic; a drop of clear glue or
-silicone makes it permanent.
+Push it on from below: crush ribs on the lip's inside squeeze the acrylic, so
+it stays on off your face too (your nose pushes it up into the arch while
+worn). A drop of clear glue or silicone makes it permanent.
 
 Print front face down (the lip on the bed), PETG or PLA, no supports: the back
 jaw is a short overhang. Size B's arch differs -- this is size A only.
@@ -27,7 +28,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SVG = os.path.join(HERE, "..", "lasercut", "rogue_ai_visor_glasses_A.svg")
 
 # ---- Your settings ----------------------------------------------------------------
-ACRYLIC = 3.1     # slot width: 3 mm acrylic (measured 2.97) + a snug margin
+ACRYLIC = 3.1     # slot width: 3 mm acrylic (measured 2.97) + room for the ribs
+RIB = 0.3         # crush ribs on the lip's inner face: the slot pinches to 2.8 mm at
+                  # each one, ~0.17 mm less than the acrylic -- the ribs squash/flex
+                  # and grip whatever the printer's slot comes out as. Too tight:
+                  # 0.2. Still loose: 0.4.
+RIBS = 7          # how many, spread along the arch
 GRIP = 3.0        # how far the clip reaches onto the acrylic around the arch
 PAD = 2.4         # pad thickness inside the arch (takes that much off the nose room)
 LIP = 1.6         # front lip (in front of the acrylic)
@@ -81,8 +87,25 @@ def nose():
     m = parts[0]
     for p in parts[1:]:
         m = m + p
+    m = m + ribs(hole)
     # Mirror y so +y is up when printed (svg y runs down).
     return m.scale((1, -1, 1))
+
+
+def ribs(hole):
+    """Small round bumps on the lip's inner face, on the acrylic side of the arch
+    (GRIP/2 out from its edge), evenly along it."""
+    _, a = arch()
+    a = a[a[:, 1] < BOTTOM - 2]
+    d = np.r_[0, np.cumsum(np.hypot(*np.diff(a, axis=0).T))]   # distance along the arch
+    out = Manifold()
+    for s_ in np.linspace(d[-1] * 0.06, d[-1] * 0.94, RIBS):
+        x, y = a[np.searchsorted(d, s_)]
+        v = np.array([x, y]) - (0.0, 45.0)        # roughly away from the hole
+        v = v / np.linalg.norm(v)
+        cx, cy = np.array([x, y]) + v * GRIP / 2
+        out = out + Manifold.cylinder(RIB, 0.9, circular_segments=24).translate((cx, cy, LIP))
+    return out
 
 
 def write_stl(man, path):

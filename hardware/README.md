@@ -129,7 +129,9 @@ The ROGUE.AI visor goggles, in two sizes for different glasses:
 `visor_nose.py`, size A only): pushes onto the nose arch from below and lines
 it, so the visor sits on your nose (or your glasses' bridge) instead of the
 acrylic edge. A slot grips the 3 mm acrylic between a front lip and a back jaw
-(snug; a drop of glue makes it permanent), and the 2.4 mm pad runs 11 mm back
+(seven crush ribs on the lip's inside pinch it to 2.8 mm, so it stays on
+whatever the printer's slot comes out as; `RIB` in the script tunes it, and a
+drop of glue makes it permanent), and the 2.4 mm pad runs 11 mm back
 toward your face. Leaves ~13 mm of nose room near the top of the arch. Print
 front face down, PETG or PLA, no supports.
 
