@@ -1,11 +1,12 @@
 #pragma once
 // One chained run of addressable LEDs (WS2812 / SK6812) on the UART connector's
-// TX pin, split into parts (sleeves, trim, eye pod) that each animate in step
-// with the show. Configured in config.h (LED_STRIP_ENABLED, LED_CHAIN).
+// TX pin, split into parts (sleeves, trim, eye pod, an 8x8 matrix) that each
+// animate in step with the show. Configured in config.h (LED_STRIP_ENABLED, LED_CHAIN).
 #include <Arduino.h>
 
 // Part types for LED_CHAIN in config.h.
-enum LedPart : uint8_t { LEDS_SLEEVE, LEDS_TRIM, LEDS_EYE };
+// LEDS_MATRIX: an 8x8 WS2812 panel (count 64) -- the watching eye on the back.
+enum LedPart : uint8_t { LEDS_SLEEVE, LEDS_TRIM, LEDS_EYE, LEDS_MATRIX };
 struct LedSegment { LedPart type; int count; bool reversed; };
 
 namespace leds {
@@ -25,5 +26,8 @@ enum Mode : uint8_t {
 void begin();
 void setMode(Mode m);
 void tick(uint32_t now);  // ~30 fps from loop()
+// The matrix shows a big number instead of the eye (the midnight countdown);
+// -1 = back to the eye.
+void matrixNumber(int n);
 
 }  // namespace leds

@@ -30,8 +30,8 @@ static rmt_encoder_handle_t s_enc = nullptr;
 static bool s_busy = false;
 static uint32_t s_nextFrame = 0;
 
-static void setPixel(int i, uint32_t rgb) {
-  int k = LED_BRIGHTNESS_PERCENT * 255 / 100;
+static void setPixel(int i, uint32_t rgb, int pct = LED_BRIGHTNESS_PERCENT) {
+  int k = pct * 255 / 100;
   uint8_t r = ((rgb >> 16) & 255) * k / 255, g = ((rgb >> 8) & 255) * k / 255, b = (rgb & 255) * k / 255;
   uint8_t* p = s_px + i * 3;
 #if LED_STRIP_COLOR_ORDER_GRB
@@ -163,6 +163,96 @@ static uint32_t eyeColor(float t, float tAbs) {
   return scale(gfx::C_RED, 0.25f + 0.75f * (0.5f + 0.5f * sinf(tAbs * 2.4f)));
 }
 
+// ---- The 8x8 matrix: the watching eye ----------------------------------------------
+// Panel index -> (x, y) as seen from the front, y = 0 at the top.
+static void matrixXY(int k, int* x, int* y) {
+  int r = k / 8, c = k % 8;
+#if MATRIX_SERPENTINE
+  if (r & 1) c = 7 - c;  // every other row runs back
+#endif
+#if MATRIX_MIRROR
+  c = 7 - c;
+#endif
+  switch (MATRIX_ROTATION & 3) {
+    case 0: *x = c; *y = r; break;
+    case 1: *x = 7 - r; *y = c; break;
+    case 2: *x = 7 - c; *y = 7 - r; break;
+    default: *x = r; *y = 7 - c; break;
+  }
+}
+
+static int s_number = -1;
+void matrixNumber(int n) { s_number = n; }
+
+// 5x7 digits (bit 4 = left column), and a narrow "10" for 8 columns.
+static const uint8_t DIGITS[10][7] = {
+    {14, 17, 19, 21, 25, 17, 14}, {4, 12, 4, 4, 4, 4, 14},   {14, 17, 1, 2, 4, 8, 31},
+    {31, 2, 4, 2, 1, 17, 14},     {2, 6, 10, 18, 31, 2, 2},  {31, 16, 30, 1, 1, 17, 14},
+    {6, 8, 16, 30, 17, 17, 14},   {31, 1, 2, 4, 8, 8, 8},    {14, 17, 17, 14, 17, 17, 14},
+    {14, 17, 17, 15, 1, 2, 12}};
+static const uint8_t TEN[7] = {0x27, 0x65, 0x25, 0x25, 0x25, 0x25, 0x77};  // "10", 7 columns
+
+static bool numberPixel(int n, int x, int y) {
+  if (y < 0 || y >= 7) return false;
+  if (n == 10) return x < 7 && (TEN[y] >> (6 - x)) & 1;
+  if (n < 0 || n > 9 || x < 1 || x > 5) return false;
+  return (DIGITS[n][y] >> (5 - x)) & 1;
+}
+
+// The eye's state, moved on once a frame.
+static float s_lookX = 0, s_lookTo = 0, s_open = 1;
+static uint32_t s_nextLook = 0, s_blinkAt = 0;
+
+static void eyeStep(uint32_t now) {
+  bool wary = s_mode == WARY;
+  if ((int32_t)(now - s_nextLook) >= 0) {  // a new place to look
+    s_lookTo = (gfx::rnd(100) < 25) ? 0 : ((int)gfx::rnd(200) - 100) / 100.0f;
+    s_nextLook = now + (wary ? gfx::rnd(400, 1200) : gfx::rnd(1500, 4000));
+  }
+  s_lookX += (s_lookTo - s_lookX) * (wary ? 0.35f : 0.15f);
+  if ((int32_t)(now - s_blinkAt) >= 0 && now - s_blinkAt > 220) s_blinkAt = now + gfx::rnd(2500, 7000);
+  int32_t b = (int32_t)(now - s_blinkAt);
+  float lid = (b >= 0 && b < 220) ? fabsf(b - 110) / 110.0f : 1.0f;  // closes and opens in 0.22 s
+  s_open = lid * (wary ? 0.6f : (s_mode == ALERT || s_mode == MIDNIGHT) ? 1.15f : 1.0f);
+}
+
+// The eye at (x, y): an almond of dim red, a bright iris, a dark pupil.
+static uint32_t eyePixel(int x, int y, uint32_t iris) {
+  float fx = x - 3.5f, fy = y - 3.5f;
+  float h = s_open * 3.7f * (1.0f - (fx * fx) / 18.0f);
+  if (h <= 0.2f || fabsf(fy) > h) return 0;
+  float px = s_lookX * 1.7f;
+  float d = sqrtf((fx - px) * (fx - px) + fy * fy);
+  if (d < 0.75f) return scale(iris, 0.05f);     // pupil
+  if (d < 2.1f) return iris;                    // iris
+  return scale(gfx::C_RED, 0.12f);              // the rest of the eye
+}
+
+static uint32_t matrixColor(int x, int y, float t) {
+  if (s_mode == OFF) return 0;
+  if (s_number >= 0) return numberPixel(s_number, x, y) ? gfx::C_RED : 0;
+  switch (s_mode) {
+    case SCAN: {  // a cyan line sweeping over a dim eye
+      int line = (int)(3.5f + 3.6f * sinf(t * 3.0f) + 0.5f);
+      return y == line ? gfx::C_CYAN : scale(eyePixel(x, y, gfx::C_RED), 0.3f);
+    }
+    case BREAKOUT: {
+      uint32_t r = gfx::rnd(100);
+      return r < 10 ? gfx::C_RED : r < 30 ? scale(gfx::C_GREEN, 0.6f) : eyePixel(x, y, gfx::C_RED);
+    }
+    case CONTAIN: {  // a flashing X: it's being hit
+      int f = (int)(t * 14);
+      bool on = (x == y || x == 7 - y);
+      return on && (f & 1) ? ((f & 2) ? gfx::C_WHITE : gfx::C_RED) : 0;
+    }
+    case ALERT:
+    case MIDNIGHT: return ((int)(t * 8) & 1) ? eyePixel(x, y, gfx::C_RED) : scale(eyePixel(x, y, gfx::C_RED), 0.2f);
+    case NOISE: return eyePixel(x, y, gfx::C_AMBER);
+    case WARY: return eyePixel(x, y, gfx::rnd(100) < 6 ? gfx::C_AMBER : gfx::C_RED);
+    default: return eyePixel(x, y, gfx::C_RED);
+  }
+}
+
 void tick(uint32_t now) {
   if (!s_chan || (int32_t)(now - s_nextFrame) < 0) return;
   if (s_busy && rmt_tx_wait_all_done(s_chan, 0) != ESP_OK) return;  // last frame still going out
@@ -172,8 +262,21 @@ void tick(uint32_t now) {
 #if LED_TEST_COLOR
   for (; i < s_total; i++) setPixel(i, LED_TEST_COLOR);
 #else
+  eyeStep(now);
   for (const auto& seg : CHAIN) {
     for (int k = 0; k < seg.count; k++, i++) {
+      if (seg.type == LEDS_MATRIX) {
+        int x, y;
+        matrixXY(k, &x, &y);
+#if MATRIX_ORIENT_TEST
+        // An "F" in the top-left, so the picture's turn/flip is easy to see.
+        bool f = x == 1 || (y == 1 && x < 6) || (y == 4 && x < 4);
+        setPixel(i, f && y >= 1 && y <= 6 ? gfx::C_GREEN : 0, MATRIX_BRIGHTNESS_PERCENT);
+#else
+        setPixel(i, matrixColor(x, y, t), MATRIX_BRIGHTNESS_PERCENT);
+#endif
+        continue;
+      }
       float u = seg.count > 1 ? (float)k / (seg.count - 1) : 0;
       if (seg.reversed) u = 1 - u;
       setPixel(i, seg.type == LEDS_EYE ? eyeColor(t, tAbs) : partColor(seg.type, u, t));
@@ -188,6 +291,7 @@ void tick(uint32_t now) {
 
 void begin() {}
 void tick(uint32_t) {}
+void matrixNumber(int) {}
 
 #endif
 

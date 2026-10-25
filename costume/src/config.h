@@ -263,6 +263,20 @@
 //   LEDS_EYE:    the hood's eye pod (1-3 LEDs): breathing red.
 #define LED_CHAIN { {LEDS_SLEEVE, 40, false}, {LEDS_SLEEVE, 40, true}, \
                     {LEDS_TRIM, 60, false}, {LEDS_EYE, 1, false} }
+// The 8x8 matrix ({LEDS_MATRIX, 64, false} in LED_CHAIN): the eye on the back.
+#ifndef MATRIX_SERPENTINE
+#define MATRIX_SERPENTINE 1     // flexible panels: every other row runs back (rigid ones: 0)
+#endif
+#ifndef MATRIX_ROTATION
+#define MATRIX_ROTATION 0       // 0-3 quarter turns, to match how it's sewn on
+#endif
+#ifndef MATRIX_MIRROR
+#define MATRIX_MIRROR 0
+#endif
+#ifndef MATRIX_ORIENT_TEST
+#define MATRIX_ORIENT_TEST 0    // 1: show an "F" (upright, top-left) to set the two above
+#endif
+#define MATRIX_BRIGHTNESS_PERCENT 20  // 64 LEDs close together: dimmer than the strips
 #define LED_STRIP_COLOR_ORDER_GRB 1  // WS2812/SK6812: GRB. Some strips are RGB.
 #define LED_BRIGHTNESS_PERCENT 40
 // Wiring test: every LED in the chain one solid colour (e.g. 0x800080 purple)

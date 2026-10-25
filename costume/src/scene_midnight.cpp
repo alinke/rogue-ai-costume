@@ -65,6 +65,7 @@ void showCount(uint32_t now) {
   clearBody();
   anim.start(buf, BODY_Y + 60, BODY_H - 120, step >= 7 ? C_RED : C_AMBER, now);
   audio::say(MIDNIGHT_COUNT[step]);
+  leds::matrixNumber(10 - step);  // the back counts down too
   if (step >= 7) leds::setMode(leds::MIDNIGHT);  // the strips join in for the last three
   stepStart = now;
 }
@@ -193,6 +194,7 @@ void startPhase(Phase p, uint32_t now) {
   switch (p) {
     case COUNT: audio::siren(); showCount(now); break;
     case STRIKE:
+      leds::matrixNumber(-1);
       glitchFrame(0.8f, C_RED);
       leds::setMode(leds::MIDNIGHT);
       audio::siren();
