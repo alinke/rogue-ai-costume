@@ -29,6 +29,7 @@ back stays reachable (USB ports, SD card, the UART/LED connector).
 | `channel_60mm_endcap.stl` | Channel with a closed end. |
 | `splice_25mm.stl` | Joins two strip ends. |
 | `saddle_clip.stl` | Saddle clip for crossing a seam. |
+| `strip_clip_glue_60mm.stl`, `strip_clip_glue_30mm.stl` | The channel for gluing instead of sewing (`strip_clip_glue.py`): 6 mm flanges with 2.5 mm holes the hot glue pushes up through. 60 mm on straight runs, 30 mm on curves and sleeves. TPU, flat. Fit depends on the strip's thickness (`--thick`, default 2 mm): print one first. |
 | `badge_led_base.stl` | The researcher badge's LED base: clips onto the badge's bottom edge, two 3 mm LEDs light the clear layer's edge, a cradle for a 1 x CR2032 holder with switch (23.9 x 34.1 mm). See [badge/](badge/README.md). |
 
 ### Harness for the 10" mount (worn in landscape on the chest)

@@ -377,12 +377,13 @@ sleeve 24"); the neck and tucked parts are estimates. If a lit part runs onto
 the hood or into a cuff, change that part's count in `LED_CHAIN` (and the dark
 part next to it by the same amount, so each strip still adds up to 160 / 126).
 
-Attaching (no sewing): the `led_clips.scad` channels (60 mm, made for a 5 mm
-strip), about every 12 cm -- 3 on each front edge, 2 round the neck, 5 per
-sleeve: 18, print 20. Hot glue on the channel's flanges holds on the chest and
-neck; on the sleeves, which flex, a safety pin through the flange holes at each
-end of a channel holds better (and comes off). On the left sleeve run beside
-the pocket, not over it.
+Attaching (no sewing): `hardware/3dprint/strip_clip_glue_*` -- the strip
+channel with wide flanges and round holes the hot glue pushes up through.
+About every 12 cm: 60 mm on the straight zipper edges (3 each), 30 mm round the
+neck (2) and on the sleeves (5 each, none on the elbow). Print 8 x 60 mm and
+14 x 30 mm (two spares of each), TPU. On the sleeves, which flex, a safety pin
+through a hole at each end of the clip holds better than glue alone (and comes
+off). On the left sleeve run beside the pocket, not over it.
 
 Colour order: the FCOB strips are `LED_COLOR_ORDER ORDER_RGB` and the matrix
 `MATRIX_COLOR_ORDER ORDER_GRB`. Check with `LED_TEST_COLOR 0xFF0000`: if the
