@@ -10,6 +10,8 @@ struct Screen {
     var clock = Date()
     var ai = AiState()
     var bluetooth = true
+    var battery: Float = -1     // this iPad's battery, 0...1 (-1 = unknown)
+    var charging = false
     var sector = "SECTOR 3"
     var site = ""
     // evidence feed
@@ -188,7 +190,8 @@ final class MonitorView: UIView {
         text("SECTOR MONITOR // \(s.sector)", 24, 44, 15, UIColor(hex: 0xD6EAF8))
         text(timeString(s.clock), W - 24, 14, 30, MonitorView.white, .bold, mono: true, align: .right)
         text(midnightString(), W - 230, 22, 18, MonitorView.amber, .bold, mono: true, align: .right)
-        if !s.bluetooth { text("BLUETOOTH OFF", W - 24, 50, 13, MonitorView.bad, .bold, align: .right) }
+        batteryGauge(c, right: W - 24, y: 50)
+        if !s.bluetooth { text("BLUETOOTH OFF", W - 120, 50, 13, MonitorView.bad, .bold, align: .right) }
 
         // The ROGUE.AI tracker (radar), where the target panel was.
         tracker(c, CGRect(x: 24, y: 92, width: 320, height: 352), radius: 118)
@@ -279,6 +282,7 @@ final class MonitorView: UIView {
         signalIndicator(c, x: 352)
         text(timeString(s.clock), W - 24, 14, 30, MonitorView.white, .bold, mono: true, align: .right)
         text(midnightString(), W - 230, 22, 18, MonitorView.amber, .bold, mono: true, align: .right)
+        batteryGauge(c, right: W - 24, y: 50)
 
         // The slide (or the roll call).
         let sp = CGRect(x: 24, y: 88, width: W - 48, height: 626)
@@ -902,6 +906,23 @@ final class MonitorView: UIView {
     private func timeString(_ d: Date) -> String {
         let c = Calendar.current.dateComponents([.hour, .minute, .second], from: d)
         return String(format: "%02d:%02d:%02d", c.hour ?? 0, c.minute ?? 0, c.second ?? 0)
+    }
+
+    /// This iPad's battery, under the clock: a small cell icon and the percentage
+    /// (amber under 30%, red under 15%, a bolt while charging).
+    private func batteryGauge(_ c: CGContext, right: CGFloat, y: CGFloat) {
+        guard s.battery >= 0 else { return }
+        let pct = Int((s.battery * 100).rounded())
+        let col = s.charging || pct >= 30 ? UIColor(hex: 0xD6EAF8) : pct >= 15 ? MonitorView.amber : MonitorView.bad
+        let label = (s.charging ? "⚡" : "") + "\(pct)%"
+        let tw = width(label, 13, .bold, mono: true)
+        text(label, right, y, 13, col, .bold, mono: true, align: .right)
+        let body = CGRect(x: right - tw - 36, y: y + 3, width: 26, height: 12)
+        col.setStroke(); c.setLineWidth(1.5); c.stroke(body)
+        col.setFill()
+        c.fill(CGRect(x: body.maxX, y: body.midY - 3, width: 2.5, height: 6))
+        c.fill(CGRect(x: body.minX + 2, y: body.minY + 2, width: (body.width - 4) * CGFloat(min(1, s.battery)),
+                      height: body.height - 4))
     }
 
     private func midnightString() -> String {

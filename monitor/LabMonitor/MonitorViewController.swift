@@ -87,6 +87,7 @@ final class MonitorViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        UIDevice.current.isBatteryMonitoringEnabled = true   // the header's battery gauge
         view.backgroundColor = .black
         view.layer.addSublayer(camera.preview)
         screen.frame = view.bounds
@@ -388,6 +389,8 @@ final class MonitorViewController: UIViewController {
         s.clock = Date()
         s.ai = ai
         s.bluetooth = radio.bluetoothOn
+        s.battery = UIDevice.current.batteryLevel
+        s.charging = [.charging, .full].contains(UIDevice.current.batteryState)
         s.sector = cfg.sector
         s.site = cfg.siteText
         s.feedConfigured = cfg.serviceBase != nil
@@ -603,6 +606,7 @@ final class MonitorViewController: UIViewController {
                        scanned: 17, contained: 4)
         s.sector = Config.shared.sector
         s.site = Config.shared.siteText
+        s.battery = 0.82
         s.feedConfigured = true
         s.feedOnline = true
         s.verified = 12
