@@ -259,10 +259,22 @@
 //   {type, LED count, reversed}
 //   LEDS_SLEEVE: "data flow" runs fingertips -> collar. Wired collar-first?
 //                set reversed = true.
-//   LEDS_TRIM:   hem / leg trace.
-//   LEDS_EYE:    the hood's eye pod (1-3 LEDs): breathing red.
-#define LED_CHAIN { {LEDS_SLEEVE, 40, false}, {LEDS_SLEEVE, 40, true}, \
-                    {LEDS_TRIM, 60, false}, {LEDS_EYE, 1, false} }
+//   LEDS_TRIM:   zipper edges / hem / leg trace ("data flow" toward the end;
+//                reversed = toward the start).
+//   LEDS_EYE:    an eye pod (1-3 LEDs): breathing red.
+//   LEDS_MATRIX: the 8x8 eye on the back (64).
+// The jacket (60 LEDs/m; front strips skip the part behind the chest screen):
+//   1 left zipper edge, screen bottom -> hem      [plug at the hem]
+//   2 right zipper edge, hem -> screen bottom     (behind the screen: jumper)
+//   3 right zipper edge, screen top -> collar     (over the right shoulder)
+//   4 right sleeve, shoulder -> cuff              (back up inside the sleeve)
+//   5 the back matrix                             (across to the left shoulder)
+//   6 left sleeve, shoulder -> cuff               (back up, over the shoulder)
+//   7 left zipper edge, collar -> screen top      (ends by the controller)
+// Every front strip flows up toward the collar.
+#define LED_CHAIN { {LEDS_TRIM, 17, true}, {LEDS_TRIM, 17, false}, {LEDS_TRIM, 16, false}, \
+                    {LEDS_SLEEVE, 36, true}, {LEDS_MATRIX, 64, false}, {LEDS_SLEEVE, 36, true}, \
+                    {LEDS_TRIM, 16, true} }
 // The 8x8 matrix ({LEDS_MATRIX, 64, false} in LED_CHAIN): the eye on the back.
 #ifndef MATRIX_SERPENTINE
 #define MATRIX_SERPENTINE 1     // flexible panels: every other row runs back (rigid ones: 0)

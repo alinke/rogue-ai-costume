@@ -344,35 +344,73 @@ takeover then stay off (the boot log says "time NOT set").
 ## LED strip
 
 One chained run of WS2812/SK6812-type LEDs (3 pads: power, GND, DATA), driven
-from the **4-pin UART connector's TX pin (GPIO37)**. Wire the parts in one
-chain, e.g. left sleeve -> right sleeve -> hem/leg -> hood eye pod, then
-describe that chain in `config.h`:
+from the **4-pin UART connector's TX pin (GPIO37)**, described in `config.h`'s
+`LED_CHAIN` as `{type, LED count, reversed}` in the order the data flows.
 
-```c
-#define LED_STRIP_ENABLED 1
-#define LED_CHAIN { {LEDS_SLEEVE, 40, false}, {LEDS_SLEEVE, 40, true}, \
-                    {LEDS_TRIM, 60, false}, {LEDS_EYE, 1, false} }
-```
+### The jacket
 
-Each entry is `{type, LED count, reversed}`, in the order the data flows.
-Sleeves show a green "data flow" from fingertips to collar (set `reversed` if
-that sleeve is wired collar-first), the trim runs the same effects, and the eye
-pod breathes red. Effects follow the show: red strobe on touch/siren, a sweep
-during scans, flicker during the breakout, a red chase at midnight, dark during
-the fake shutdown.
+Measured on the costume's jacket (60 LEDs/m strip; inches as measured):
 
-Wiring:
-- Connector GND -> strip GND. TX -> strip DATA through a 330 ohm resistor; a
-  74AHCT125 level shifter (3.3 V -> 5 V) for 5 V strips if they flicker.
-- Power the strip from its own supply (the power bank's second port). The
-  connector's VIN pin is the board's own supply: fine for the eye pod's 1-3
-  LEDs, not for sleeves.
+| # | Part | Run | LEDs | `LED_CHAIN` |
+|---|---|---|---|---|
+| 1 | left zipper edge | screen bottom (17.5" below the collar) -> hem (29") | 17 | `{LEDS_TRIM, 17, true}` |
+| 2 | right zipper edge | hem -> screen bottom | 17 | `{LEDS_TRIM, 17, false}` |
+| 3 | right zipper edge | screen top (11") -> collar | 16 | `{LEDS_TRIM, 16, false}` |
+| 4 | right sleeve | shoulder seam -> cuff (24") | 36 | `{LEDS_SLEEVE, 36, true}` |
+| 5 | back matrix | 8x8 panel between the shoulder blades | 64 | `{LEDS_MATRIX, 64, false}` |
+| 6 | left sleeve | shoulder seam -> cuff (24") | 36 | `{LEDS_SLEEVE, 36, true}` |
+| 7 | left zipper edge | collar -> screen top | 16 | `{LEDS_TRIM, 16, true}` |
+
+202 LEDs. Nothing behind the chest screen (11" to 17.5"): a jumper runs
+there instead. Every front strip flows up toward the collar, the sleeves from
+cuff to shoulder.
+
+Between the lit parts, unlit 3-wire jumpers (5V, GND, data; 22 AWG for 5V and
+GND), run inside the jacket:
+
+| From | To | About | Note |
+|---|---|---|---|
+| controller (20" below the collar) | 1 | 3" | **plug** (JST-SM 3-pin): the chest mount comes off |
+| 1 (hem) | 2 (hem) | 4" | **plug** at the bottom of the zipper: plug in after zipping up, unplug before unzipping |
+| 2 | 3 | 7" | behind the screen |
+| 3 (collar) | 4 | 12" | over the right shoulder |
+| 4 (cuff) | 5 | 24" + 10" | back up inside the right sleeve, across the back |
+| 5 | 6 | 10" | across the back to the left shoulder |
+| 6 (cuff) | 7 | 24" + 12" | back up inside the left sleeve, over the left shoulder |
+
+The first LED is about 3" from the controller on purpose: the board's data
+signal is 3.3 V and only that first wire has to carry it; every LED re-sends
+it at 5 V. The chain ends at the screen's top, a few inches from the
+controller -- bring power in there as well as at the start, so the far end
+doesn't dim.
+
+Sleeves: run along the top seam; on the left sleeve, beside the pocket (7.5"
+to 14.5" below the shoulder) rather than over it, so the pocket still opens.
+Leave ~2" of slack at each elbow and shoulder.
+
+The matrix: set `MATRIX_ORIENT_TEST 1`, flash, and turn `MATRIX_ROTATION` (0-3)
+/ `MATRIX_MIRROR` until the green "F" stands upright in its top-left corner,
+seen from behind; then back to 0. Its housing is
+`hardware/3dprint/back_matrix_*`.
+
+### Effects and wiring notes
+
+Sleeves and trim show a green "data flow"; the matrix is a red eye that looks
+round and blinks. Effects follow the show: red strobe on touch/siren, a sweep
+during scans, flicker during the breakout, a red chase at midnight (the matrix
+counts down 10..1 with the screen), dark during the fake shutdown.
+
+- Connector GND -> strip GND. TX -> strip DATA. A 3.3 V signal is marginal for
+  5 V strips: a 74AHCT125 level shifter, or a diode in the first LED's 5 V
+  (it then reads 3.3 V data reliably and re-sends 5 V to the rest).
+- Power the strips from their own supply (the power bank's second port), not
+  the connector's VIN. At the default brightness (strips 40%, matrix 20%) the
+  effects peak around 1.5-2 A.
 
 What changes with the strip enabled: the board's log no longer comes out of the
 CH340 USB port (TX is the LED data now), though serial commands and flashing
 still work; and the strip flickers briefly at power-on while the chip's boot
 messages go out on that pin. Leave `LED_STRIP_ENABLED 0` while debugging.
-Not yet tested with a real strip.
 
 ## Log and debug commands
 
