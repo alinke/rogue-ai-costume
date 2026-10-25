@@ -125,6 +125,14 @@ sewn on through their flange holes.
 The ROGUE.AI visor goggles, in two sizes for different glasses:
 `rogue_ai_visor_glasses_A.svg` (+ `.ai` source) and `rogue_ai_visor_glasses_B.ai`.
 
+**Visor nose rest** (`3dprint/visor_nose.stl`, 30.8 x 19.7 x 15.7 mm,
+`visor_nose.py`, size A only): pushes onto the nose arch from below and lines
+it, so the visor sits on your nose (or your glasses' bridge) instead of the
+acrylic edge. A slot grips the 3 mm acrylic between a front lip and a back jaw
+(snug; a drop of glue makes it permanent), and the 2.4 mm pad runs 11 mm back
+toward your face. Leaves ~13 mm of nose room near the top of the arch. Print
+front face down, PETG or PLA, no supports.
+
 **Visor strap buckle** (`3dprint/visor_buckle_socket.stl` + `visor_buckle_plug.stl`):
 the harness's side-release buckle made for the visor's strap (up to 20 mm wide,
 ~1.5 mm thick), for the back of the head. One strap end loops through the
