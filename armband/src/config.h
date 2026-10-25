@@ -29,7 +29,7 @@
 // costume over Bluetooth (../costume/src/remote.h).
 #define CONSOLE_HOLD_MS 800
 #define CONSOLE_IDLE_CLOSE_MS 20000
-#define ARM_TARGET 0          // which costume: 0 = any in range, 1 Guition, 2 Elecrow 10.1", 3 Elecrow 7"
+#define ARM_TARGET 0          // which costume: 0 = any in range, 1 Guition, 2 Elecrow 10.1", 3 Elecrow 7", 4 Sunton 7"
 #define ARM_LINK_KEY 0x7A37   // must match the costume's (remote.h)
 #define SEND_MS 3000          // a command is advertised this long, or until the costume confirms it
 

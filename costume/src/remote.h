@@ -20,6 +20,8 @@
 #define COSTUME_ID 2
 #elif defined(BOARD_ELECROW_7)
 #define COSTUME_ID 3
+#elif defined(BOARD_SUNTON_7)
+#define COSTUME_ID 4
 #else
 #define COSTUME_ID 1  // the Guition (main costume)
 #endif

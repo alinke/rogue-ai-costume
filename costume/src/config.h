@@ -21,7 +21,9 @@
 #define PHOTO_UPLOAD_ENABLED 0
 #define RTC_ENABLED 0
 #endif
-#ifdef BOARD_ELECROW_7
+// BOARD_SUNTON_7 (env sunton-7): the Sunton ESP32-8048S070 7" (ESP32-S3, 800x480,
+// GT911) -- a second backup, set up exactly like the Elecrow 7".
+#if defined(BOARD_ELECROW_7) || defined(BOARD_SUNTON_7)
 #define SCREEN_ROTATION 0          // the panel is landscape already
 #define BUTTON_PIN -1              // GPIO35 is the S3's PSRAM bus
 #define C6_ENABLE_PIN -1
