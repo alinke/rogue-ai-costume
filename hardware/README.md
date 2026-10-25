@@ -120,6 +120,13 @@ the arm and under the pod: in through a tunnel in one long side, across under
 the pod, out through the matching tunnel in the other side (the tunnels open on
 the side faces and on the underside, near the edges).
 
+**Closing the straps without sewing:** a `strap_clip_24mm_4layer.stl` per strap,
+under your forearm (palm side). One end wraps once round the clip's middle bar;
+the other goes round your arm, over the middle bar on top of it, and its end
+tucks back through. 24 mm x 1 mm elastic, ~21" per strap.
+
+![ARM-7 straps: from above, end-on, and threading the clip](../docs/images/armband-clips.png)
+
 **Battery gauge (optional):** two 100 kΩ resistors from the switched battery +
 to GND, the middle to GPIO35 on the board's P3 connector -- see
 [armband/README.md](../armband/README.md). They fit in the pod next to the
