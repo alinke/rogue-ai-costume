@@ -30,6 +30,7 @@ back stays reachable (USB ports, SD card, the UART/LED connector).
 | `splice_25mm.stl` | Joins two strip ends. |
 | `saddle_clip.stl` | Saddle clip for crossing a seam. |
 | `strip_clip_glue_60mm.stl`, `strip_clip_glue_30mm.stl` | The channel for gluing instead of sewing (`strip_clip_glue.py`): 6 mm flanges with 2.5 mm holes the hot glue pushes up through. 60 mm on straight runs, 30 mm on curves and sleeves. TPU, flat. Fit depends on the strip's thickness (`--thick`, default 2 mm): print one first. |
+| `cable_port.stl` | Glue-on port an Ethernet cable comes out of (`cable_port.py`): a 40 x 48 mm plate with rivet holes for hot glue, a collar whose bore leans 35 degrees down so the cable hangs, and a side slit to snap the cable in (the plug never has to fit through). The cable comes through a small slit in the jacket under it, or along the groove underneath. TPU, plate down, no supports; `--cable` for your cable's diameter (default 6 mm). |
 | `badge_led_base.stl` | The researcher badge's LED base: clips onto the badge's bottom edge, two 3 mm LEDs light the clear layer's edge, a cradle for a 1 x CR2032 holder with switch (23.9 x 34.1 mm). See [badge/](badge/README.md). |
 
 ### Harness for the 10" mount (worn in landscape on the chest)
@@ -43,6 +44,14 @@ from a top slot, over the shoulder on the same side, crosses the other strap
 on the back (through the cross clip), comes round the other side and clips
 into the buckle at that bottom slot. The buckles' adjuster tails set the
 length.
+
+**No-sew, no-buckle version (current):** a strap clip (`strap_clip_24mm.stl`,
+x4) at each of the mount's four slots, and the back matrix's base
+(`back_matrix_base.stl`) as the cross point. At each slot the strap goes
+through the clip, down through the slot, and back up through the clip on top
+of itself; pull the end to tighten. It goes on like a backpack.
+
+![Harness with strap clips: front, back with the matrix as the cross point, and how to thread a clip at a slot](../docs/images/harness-clips.png)
 
 | File | Print | What |
 |---|---|---|
