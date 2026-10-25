@@ -349,49 +349,54 @@ from the **4-pin UART connector's TX pin (GPIO37)**, described in `config.h`'s
 
 ### The jacket
 
-Measured on the costume's jacket (60 LEDs/m strip; inches as measured):
+![The jacket's LED layout: front and back, strips, extension leads, harness and clip positions](../docs/images/jacket-leds.png)
 
-| # | Part | Run | LEDs | `LED_CHAIN` |
-|---|---|---|---|---|
-| 1 | left zipper edge | screen bottom (17.5" below the collar) -> hem (29") | 17 | `{LEDS_TRIM, 17, true}` |
-| 2 | right zipper edge | hem -> screen bottom | 17 | `{LEDS_TRIM, 17, false}` |
-| 3 | right zipper edge | screen top (11") -> collar | 16 | `{LEDS_TRIM, 16, false}` |
-| 4 | right sleeve | shoulder seam -> cuff (24") | 36 | `{LEDS_SLEEVE, 36, true}` |
-| 5 | back matrix | 8x8 panel between the shoulder blades | 64 | `{LEDS_MATRIX, 64, false}` |
-| 6 | left sleeve | shoulder seam -> cuff (24") | 36 | `{LEDS_SLEEVE, 36, true}` |
-| 7 | left zipper edge | collar -> screen top | 16 | `{LEDS_TRIM, 16, true}` |
+Uncut strips, no soldering: three 1 m WS2811 FCOB strips (160 LEDs/m, 5 mm
+wide, a 3-pin connector at each end) and one 31" (126 LEDs, input connector
+only -- it goes last), plus the 8x8 matrix, joined by ready-made 3-pin JST-SM
+extension leads. Where a strip is longer than its run, the rest is tucked out
+of sight and kept dark (`LEDS_DARK`), so it costs no power.
 
-202 LEDs. Nothing behind the chest screen (11" to 17.5"): a jumper runs
-there instead. Every front strip flows up toward the collar, the sleeves from
-cuff to shoulder.
-
-Between the lit parts, unlit 3-wire jumpers (5V, GND, data; 22 AWG for 5V and
-GND), run inside the jacket:
-
-| From | To | About | Note |
+| | Strip | Where | LEDs (lit + dark) |
 |---|---|---|---|
-| controller (20" below the collar) | 1 | 3" | **plug** (JST-SM 3-pin): the chest mount comes off |
-| 1 (hem) | 2 (hem) | 4" | **plug** at the bottom of the zipper: plug in after zipping up, unplug before unzipping |
-| 2 | 3 | 7" | behind the screen |
-| 3 (collar) | 4 | 12" | over the right shoulder |
-| 4 (cuff) | 5 | 24" + 10" | back up inside the right sleeve, across the back |
-| 5 | 6 | 10" | across the back to the left shoulder |
-| 6 (cuff) | 7 | 24" + 12" | back up inside the left sleeve, over the left shoulder |
+| A | lead | controller -> strip 1, up behind the chest screen | |
+| 1 | 1 m | left zipper edge, screen top -> collar (45); round the neck under the hood (40, dark); right zipper edge, collar -> screen top (45); the rest behind the screen (30, dark) | 90 + 70 |
+| B | lead | behind the screen -> along the right harness strap -> top of the right sleeve | |
+| 2 | 1 m | right sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) | 98 + 62 |
+| C | lead | inside the cuff, up inside the sleeve and the jacket, out at the back of the neck under the hood, down the right harness strap | |
+| 5 | matrix | on the harness cross between the shoulder blades | 64 |
+| D | lead | up the left harness strap -> top of the left sleeve | |
+| 4 | 31" | left sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (28, dark) | 98 + 28 |
 
-The first LED is about 3" from the controller on purpose: the board's data
-signal is 3.3 V and only that first wire has to carry it; every LED re-sends
-it at 5 V. The chain ends at the screen's top, a few inches from the
-controller -- bring power in there as well as at the start, so the far end
-doesn't dim.
+The spare 1 m strip isn't used. Front strips flow up toward the collar,
+sleeves cuff to shoulder. The zipper edges below the screen stay dark: no
+strip crosses the zipper, so nothing has to be unplugged to open the jacket.
 
-Sleeves: run along the top seam; on the left sleeve, beside the pocket (7.5"
-to 14.5" below the shoulder) rather than over it, so the pocket still opens.
-Leave ~2" of slack at each elbow and shoulder.
+Lengths come from the jacket (collar to screen top 11", screen bottom 17.5",
+sleeve 24"); the neck and tucked parts are estimates. If a lit part runs onto
+the hood or into a cuff, change that part's count in `LED_CHAIN` (and the dark
+part next to it by the same amount, so each strip still adds up to 160 / 126).
 
-The matrix: set `MATRIX_ORIENT_TEST 1`, flash, and turn `MATRIX_ROTATION` (0-3)
-/ `MATRIX_MIRROR` until the green "F" stands upright in its top-left corner,
-seen from behind; then back to 0. Its housing is
+Attaching (no sewing): the `led_clips.scad` channels (60 mm, made for a 5 mm
+strip), about every 12 cm -- 3 on each front edge, 2 round the neck, 5 per
+sleeve: 18, print 20. Hot glue on the channel's flanges holds on the chest and
+neck; on the sleeves, which flex, a safety pin through the flange holes at each
+end of a channel holds better (and comes off). On the left sleeve run beside
+the pocket, not over it.
+
+Colour order: the FCOB strips are `LED_COLOR_ORDER ORDER_RGB` and the matrix
+`MATRIX_COLOR_ORDER ORDER_GRB`. Check with `LED_TEST_COLOR 0xFF0000`: if the
+strips show green or blue, try `ORDER_GRB` / `ORDER_BRG`.
+
+Matrix orientation: set `MATRIX_ORIENT_TEST 1`, flash, and turn
+`MATRIX_ROTATION` (0-3) / `MATRIX_MIRROR` until the green "F" stands upright in
+its top-left corner, seen from behind; then back to 0. Its housing is
 `hardware/3dprint/back_matrix_*`.
+
+Power: 5 V from the power bank into lead A, and into the matrix's middle (power)
+lead. At the default brightness (strips 40%, matrix 20%) the green effects
+draw well under 2 A; a full-white test of all 510 LEDs would draw far more, so
+don't.
 
 ### Effects and wiring notes
 

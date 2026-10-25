@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 """Housing for the 8x8 WS2812B matrix on the jacket's back (the watching eye):
-a sew-on base, a light grid, and a laser-cut smoke acrylic front.
+a base that is also the harness's cross point, a light grid, and a laser-cut
+smoke acrylic front. No sewing: the two harness straps cross behind it, each
+going in through a slot above the matrix and out through one below (it
+replaces harness_cross_clip.stl), so the harness holds it between the shoulder
+blades. A zip tie through the slot at the bottom to the jacket's D-ring (the
+metal ring on the little webbing tab at the middle of the back, just under the
+seam across the shoulders) stops it riding up.
 
   front (smoke acrylic, laser-cut, 4 holes)       back_matrix_window.svg
   grid  (printed: 8x8 cells, frame, 4 holes)     back_matrix_grid.stl
   panel (flexible 8x8, 79.67 mm, 1.72 mm)
-  base  (printed: locating pocket, wire window,  back_matrix_base.stl
-         wire grooves underneath, sewing flange)
+  base  (printed: locating pocket, lead holes,   back_matrix_base.stl
+         wire grooves underneath, 4 strap slots)
+
+Threading: each strap comes down over the shoulder, goes in through its
+top slot, runs behind the base (crossing the other strap), and comes out of
+the opposite bottom slot, then on round your side to the mount as before.
 
 Four M2.5 x 14 pan-head self-tapping screws go through the acrylic and the grid
 into the base (or M2.5 x 14 machine screws and nuts on the back). The grid's
@@ -15,11 +25,10 @@ each LED's light in its own cell, so the pixels read as squares.
 
 The panel's three leads (data in, 5V/GND, data out) come off its back in a row
 24 mm from one edge (its mounting template, LEADS below). They go through the
-base's three holes and out under the base in three grooves to that edge -- the
-WIRE edge, marked by a notch in the flange's corner. Sew it on with the WIRE
-edge toward your left: the back strip ends at your left shoulder blade and the
-left sleeve starts there. (The firmware's MATRIX_ROTATION turns the picture to
-match.)
+base's three holes and out under the base in three grooves to its top edge,
+between the top strap slots -- up toward your shoulders, where the leads to the
+sleeves run along the harness straps. (The firmware's MATRIX_ROTATION turns the
+picture to match how the panel sits.)
 
 Print both parts in BLACK (PETG or PLA), flat, no supports: black walls stop
 light bleeding between cells and round the edge.
@@ -27,6 +36,7 @@ light bleeding between cells and round the edge.
   python3 back_matrix.py   -> back_matrix_base.stl, back_matrix_grid.stl,
                               ../lasercut/back_matrix_window.svg
 """
+import math
 import os
 import struct
 
@@ -54,8 +64,12 @@ POCKET = 0.2       # how deep the panel sits in the base: about its PCB, so the 
 LEADS = [(23.13, 24.01), (38.81, 24.01), (54.86, 24.01)]
 LEAD_HOLE = 12.4   # the template's cut-outs: big enough for the wires and plugs
 GROOVE_W, GROOVE_D = 6.0, 2.2   # wire grooves under the base, lead holes -> the WIRE edge
-FLANGE = 8.0       # sewing flange round the base
-SEW_HOLE, SEW_PITCH = 2.2, 8.0
+# Harness straps (harness_parts.py: 24 mm, 1 mm elastic, crossing at 60 deg).
+STRAP_W, STRAP_T, CROSS_ANGLE = 24.0, 1.0, 60.0
+SLOT_L, SLOT_T = STRAP_W + 1.5, STRAP_T + 1.5
+SLOT_D = 67.0      # slot centres from the middle, along each strap: clear of the grid
+BASE_W = BODY + 16.0
+TIE = (10.0, 3.2)  # zip-tie slot at the bottom (to the jacket's D-ring)
 GRID_H = 8.0       # grid height above the panel's PCB: LED (1.6) + ~6 mm to the acrylic
 WALL = 0.8         # cell walls
 
@@ -74,31 +88,44 @@ def screw_holes(d):
             for sx in (-1, 1) for sy in (-1, 1)]
 
 
+def strap_slots():
+    """(x, y, angle) of the four strap slots: two per strap, above and below."""
+    a = math.radians(CROSS_ANGLE / 2)
+    out = []
+    for sx in (-1, 1):
+        dx, dy = sx * math.sin(a), math.cos(a)            # the strap's direction
+        ang = math.degrees(math.atan2(dy, dx)) + 90        # slot runs across the strap
+        for k in (-1, 1):
+            out.append((k * SLOT_D * dx, k * SLOT_D * dy, ang))
+    return out
+
+
+def slot(cx, cy, length, width, ang):
+    s = CrossSection.square((length - width, 0.01)).translate((-(length - width) / 2, -0.005))
+    return s.offset(width / 2, JoinType.Round, circular_segments=24).rotate(ang).translate((cx, cy))
+
+
 def base():
-    outer = BODY + 2 * FLANGE
-    plate = rounded_square(outer, CORNER_R + FLANGE)
-    for h in screw_holes(SCREW_PILOT):
-        plate = plate - h
+    top = max(abs(y) for _, y, _ in strap_slots()) + SLOT_L / 2 * math.sin(math.radians(CROSS_ANGLE / 2)) + 7
+    h = 2 * top
+    plate = CrossSection.square((BASE_W - 24, h - 24)).translate((-(BASE_W - 24) / 2, -(h - 24) / 2)).offset(
+        12, JoinType.Round, circular_segments=48)
+    for hole in screw_holes(SCREW_PILOT):
+        plate = plate - hole
     for x, y in lead_xy():
         plate = plate - CrossSection.circle(LEAD_HOLE / 2, 48).translate((x, y))
-    # Sewing holes along the flange, SEW_HOLE from... centred in the flange.
-    c = BODY / 2 + FLANGE / 2
-    k = int((BODY - 2 * CORNER_R) // SEW_PITCH)
-    for i in range(k + 1):
-        t = -((k) * SEW_PITCH) / 2 + i * SEW_PITCH
-        for x, y in ((t, c), (t, -c), (c, t), (-c, t)):
-            plate = plate - CrossSection.circle(SEW_HOLE / 2, 20).translate((x, y))
+    for x, y, ang in strap_slots():
+        plate = plate - slot(x, y, SLOT_L, SLOT_T, ang)
+    plate = plate - CrossSection.square(TIE).translate((-TIE[0] / 2, -top + 4))
     m = plate.extrude(BASE_T)
     # Locating pocket for the panel.
     p = PANEL + 2 * FIT
     m = m - square(p).extrude(POCKET + 1).translate((0, 0, BASE_T - POCKET))
-    # Wire grooves underneath: from each lead hole straight out through the
-    # nearest (WIRE) edge's flange, so the leads lie flat between base and jacket.
+    # Wire grooves underneath: from each lead hole straight out through the top
+    # (WIRE) edge, between the top strap slots, so the leads lie flat.
     for x, y in lead_xy():
-        g = CrossSection.square((GROOVE_W, outer)).translate((x - GROOVE_W / 2, y))
+        g = CrossSection.square((GROOVE_W, h)).translate((x - GROOVE_W / 2, y))
         m = m - g.extrude(GROOVE_D)
-    # A notch in the flange marks the WIRE edge (faces your left when sewn on).
-    m = m - CrossSection.circle(2.5, 24).translate((-outer / 2 + 3, outer / 2 - 3)).extrude(BASE_T)
     return m
 
 

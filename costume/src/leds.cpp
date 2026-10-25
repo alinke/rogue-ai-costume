@@ -30,15 +30,18 @@ static rmt_encoder_handle_t s_enc = nullptr;
 static bool s_busy = false;
 static uint32_t s_nextFrame = 0;
 
-static void setPixel(int i, uint32_t rgb, int pct = LED_BRIGHTNESS_PERCENT) {
+static void setPixel(int i, uint32_t rgb, int pct = LED_BRIGHTNESS_PERCENT, int order = LED_COLOR_ORDER) {
   int k = pct * 255 / 100;
   uint8_t r = ((rgb >> 16) & 255) * k / 255, g = ((rgb >> 8) & 255) * k / 255, b = (rgb & 255) * k / 255;
   uint8_t* p = s_px + i * 3;
-#if LED_STRIP_COLOR_ORDER_GRB
-  p[0] = g; p[1] = r; p[2] = b;
-#else
-  p[0] = r; p[1] = g; p[2] = b;
-#endif
+  switch (order) {  // the byte order the LED chip expects
+    case ORDER_GRB: p[0] = g; p[1] = r; p[2] = b; break;
+    case ORDER_BRG: p[0] = b; p[1] = r; p[2] = g; break;
+    case ORDER_RBG: p[0] = r; p[1] = b; p[2] = g; break;
+    case ORDER_GBR: p[0] = g; p[1] = b; p[2] = r; break;
+    case ORDER_BGR: p[0] = b; p[1] = g; p[2] = r; break;
+    default: p[0] = r; p[1] = g; p[2] = b; break;
+  }
 }
 
 static uint32_t scale(uint32_t rgb, float k) {
@@ -265,15 +268,19 @@ void tick(uint32_t now) {
   eyeStep(now);
   for (const auto& seg : CHAIN) {
     for (int k = 0; k < seg.count; k++, i++) {
+      if (seg.type == LEDS_DARK) {
+        setPixel(i, 0);
+        continue;
+      }
       if (seg.type == LEDS_MATRIX) {
         int x, y;
         matrixXY(k, &x, &y);
 #if MATRIX_ORIENT_TEST
         // An "F" in the top-left, so the picture's turn/flip is easy to see.
         bool f = x == 1 || (y == 1 && x < 6) || (y == 4 && x < 4);
-        setPixel(i, f && y >= 1 && y <= 6 ? gfx::C_GREEN : 0, MATRIX_BRIGHTNESS_PERCENT);
+        setPixel(i, f && y >= 1 && y <= 6 ? gfx::C_GREEN : 0, MATRIX_BRIGHTNESS_PERCENT, MATRIX_COLOR_ORDER);
 #else
-        setPixel(i, matrixColor(x, y, t), MATRIX_BRIGHTNESS_PERCENT);
+        setPixel(i, matrixColor(x, y, t), MATRIX_BRIGHTNESS_PERCENT, MATRIX_COLOR_ORDER);
 #endif
         continue;
       }

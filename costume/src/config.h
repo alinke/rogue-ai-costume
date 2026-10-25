@@ -263,18 +263,20 @@
 //                reversed = toward the start).
 //   LEDS_EYE:    an eye pod (1-3 LEDs): breathing red.
 //   LEDS_MATRIX: the 8x8 eye on the back (64).
-// The jacket (60 LEDs/m; front strips skip the part behind the chest screen):
-//   1 left zipper edge, screen bottom -> hem      [plug at the hem]
-//   2 right zipper edge, hem -> screen bottom     (behind the screen: jumper)
-//   3 right zipper edge, screen top -> collar     (over the right shoulder)
-//   4 right sleeve, shoulder -> cuff              (back up inside the sleeve)
-//   5 the back matrix                             (across to the left shoulder)
-//   6 left sleeve, shoulder -> cuff               (back up, over the shoulder)
-//   7 left zipper edge, collar -> screen top      (ends by the controller)
-// Every front strip flows up toward the collar.
-#define LED_CHAIN { {LEDS_TRIM, 17, true}, {LEDS_TRIM, 17, false}, {LEDS_TRIM, 16, false}, \
-                    {LEDS_SLEEVE, 36, true}, {LEDS_MATRIX, 64, false}, {LEDS_SLEEVE, 36, true}, \
-                    {LEDS_TRIM, 16, true} }
+//   LEDS_DARK:   always off (tucked-away strip).
+// The jacket: four uncut 1 m strips (WS2811 FCOB, 160 LEDs/m; the last one is
+// 31", 126 LEDs) plus the matrix, joined by ready-made 3-pin extension leads.
+// Strip that's longer than its run is tucked away and kept dark (LEDS_DARK).
+//   strip 1  left zipper edge, screen top -> collar (45), round the neck under
+//            the hood (40, dark), right zipper edge, collar -> screen top (45),
+//            the rest behind the screen (30, dark)
+//   strip 2  right sleeve, shoulder -> cuff (98), the rest tucked in the cuff (62, dark)
+//   matrix   the eye on the back (64)
+//   strip 4  left sleeve, shoulder -> cuff (98), the rest tucked in the cuff (28, dark)
+// (strip 3, the spare 1 m, isn't used.)
+#define LED_CHAIN { {LEDS_TRIM, 45, false}, {LEDS_DARK, 40, false}, {LEDS_TRIM, 45, true}, \
+                    {LEDS_DARK, 30, false}, {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false}, \
+                    {LEDS_MATRIX, 64, false}, {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 28, false} }
 // The 8x8 matrix ({LEDS_MATRIX, 64, false} in LED_CHAIN): the eye on the back.
 #ifndef MATRIX_SERPENTINE
 #define MATRIX_SERPENTINE 1     // flexible panels: every other row runs back (rigid ones: 0)
@@ -289,7 +291,20 @@
 #define MATRIX_ORIENT_TEST 0    // 1: show an "F" (upright, top-left) to set the two above
 #endif
 #define MATRIX_BRIGHTNESS_PERCENT 20  // 64 LEDs close together: dimmer than the strips
-#define LED_STRIP_COLOR_ORDER_GRB 1  // WS2812/SK6812: GRB. Some strips are RGB.
+// Colour byte order the LEDs expect. Test with LED_TEST_COLOR 0xFF0000: if the
+// strip shows green or blue instead of red, try the others.
+#define ORDER_RGB 0
+#define ORDER_GRB 1
+#define ORDER_BRG 2
+#define ORDER_RBG 3
+#define ORDER_GBR 4
+#define ORDER_BGR 5
+#ifndef LED_COLOR_ORDER
+#define LED_COLOR_ORDER ORDER_RGB     // the strips: WS2811 FCOB (WS2812B 5050 strips: ORDER_GRB)
+#endif
+#ifndef MATRIX_COLOR_ORDER
+#define MATRIX_COLOR_ORDER ORDER_GRB  // the 8x8 panel: WS2812B
+#endif
 #define LED_BRIGHTNESS_PERCENT 40
 // Wiring test: every LED in the chain one solid colour (e.g. 0x800080 purple)
 // instead of the show's effects. 0 = off (normal effects).

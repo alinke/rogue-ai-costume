@@ -135,6 +135,18 @@ drop of glue makes it permanent), and the 2.4 mm pad runs 11 mm back
 toward your face. Leaves ~13 mm of nose room near the top of the arch. Print
 front face down, PETG or PLA, no supports.
 
+**Back matrix** (`3dprint/back_matrix_base.stl`, `back_matrix_grid.stl`,
+`lasercut/back_matrix_window.svg`; `back_matrix.py`): the 8x8 WS2812 panel on
+the back, where the harness straps cross. Base (black, 112 x 143 x 3 mm): the
+panel's three leads drop through its holes and run out under it to the top; the
+two harness straps go in through its top slots, cross behind it and out through
+the opposite bottom slots, so it replaces `harness_cross_clip.stl` and needs no
+sewing. A zip tie through the bottom slot to the jacket's D-ring (the ring on
+the webbing tab below the back's shoulder seam) stops it riding up. Grid
+(black, 96 x 96 x 8 mm): 64 cells, presses the panel flat. Smoke acrylic front,
+96 mm square; sand its back or add tracing paper to diffuse. Four M2.5 x 14
+screws. Leads, colour order and orientation: `costume/README.md`, "The jacket".
+
 **Strap clips, no sewing** (`3dprint/strap_clip_25mm.stl` for the armband's two
 straps, `strap_clip_20mm.stl` for the visor; `strap_clip.py`): a slim tri-glide,
 16 x 31 x 2.8 mm (25 mm). Wrap one strap end once round the ridged centre bar;
@@ -143,6 +155,9 @@ visor's slot, then up through one slot, over the centre bar on top of the first
 end, and down through the other. Pull the tail to tighten; tilt the clip up to
 loosen. PETG, flat, no supports. Other straps:
 `python3 strap_clip.py --strap W --thick T` (elastic ~1 mm, webbing ~1.5 mm).
+`strap_clip_24mm.stl` (24 mm, 1 mm elastic) replaces the harness buckles: each
+harness strap goes through the mount's bottom slot and back to a clip, so the
+harness goes on like a backpack (arms through) and adjusts with the clips.
 
 **Visor strap buckle** (`3dprint/visor_buckle_socket.stl` + `visor_buckle_plug.stl`):
 the harness's side-release buckle made for the visor's strap (up to 20 mm wide,

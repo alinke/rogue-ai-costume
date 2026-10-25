@@ -6,7 +6,9 @@
 
 // Part types for LED_CHAIN in config.h.
 // LEDS_MATRIX: an 8x8 WS2812 panel (count 64) -- the watching eye on the back.
-enum LedPart : uint8_t { LEDS_SLEEVE, LEDS_TRIM, LEDS_EYE, LEDS_MATRIX };
+// LEDS_DARK: LEDs that stay off -- strip tucked out of sight (uncut strips
+// longer than their run, the stretch behind the chest screen).
+enum LedPart : uint8_t { LEDS_SLEEVE, LEDS_TRIM, LEDS_EYE, LEDS_MATRIX, LEDS_DARK };
 struct LedSegment { LedPart type; int count; bool reversed; };
 
 namespace leds {
