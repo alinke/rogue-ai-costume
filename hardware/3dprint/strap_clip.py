@@ -18,6 +18,10 @@ Print flat, PETG (flexes instead of snapping), no supports.
   python3 strap_clip.py                         -> strap_clip_25mm.stl (armband),
                                                    strap_clip_20mm.stl (visor)
   python3 strap_clip.py --strap 24 --thick 1    -> one clip for that strap
+  python3 strap_clip.py --strap 24 --thick 1 --layers 4
+                                                -> strap_clip_24mm_4layer.stl: slots
+                                                   that also take the loose end
+                                                   tucked back through (4 layers)
 """
 import argparse
 import os
@@ -37,8 +41,8 @@ RIDGE = 0.35      # grip ridges on the centre bar
 ROUND = 1.0       # rounded outline
 
 
-def clip(strap, thick):
-    slot = 2 * thick + 0.8                 # two layers of strap through each slot + room
+def clip(strap, thick, layers=2):
+    slot = layers * thick + 0.8            # that many layers of strap through each slot + room
     inner = strap + 1.0                    # slot length, across the strap
     L = 2 * BAR + 2 * slot + CENTRE
     Wd = inner + 2 * SIDE
@@ -82,10 +86,11 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--strap", type=float, help="strap width, mm")
     ap.add_argument("--thick", type=float, default=1.5, help="strap thickness, mm (elastic ~1, webbing ~1.5)")
+    ap.add_argument("--layers", type=int, default=2, help="strap layers each slot takes (4 = room to tuck the end back through)")
     a = ap.parse_args()
     sizes = [a.strap] if a.strap else [25.0, 20.0]
     for w in sizes:
-        m, (L, Wd, slot) = clip(w, a.thick)
-        name = "strap_clip_%gmm" % w
+        m, (L, Wd, slot) = clip(w, a.thick, a.layers)
+        name = "strap_clip_%gmm" % w + ("_%dlayer" % a.layers if a.layers != 2 else "")
         write_stl(m, os.path.join(HERE, name + ".stl"), "ROGUE.AI " + name)
         print("%s.stl: %.1f x %.1f x %.1f mm, slots %.1f mm (strap %g x %g)" % (name, L, Wd, H, slot, w, a.thick))

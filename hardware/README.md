@@ -167,14 +167,20 @@ visor's slot, then up through one slot, over the centre bar on top of the first
 end, and down through the other. Pull the tail to tighten; tilt the clip up to
 loosen. PETG, flat, no supports. Other straps:
 `python3 strap_clip.py --strap W --thick T` (elastic ~1 mm, webbing ~1.5 mm).
+`strap_clip_24mm_4layer.stl` is the same clip with slots for 4 layers, so
+the loose end tucks back through too (visor and harness).
 `strap_clip_24mm.stl` (24 mm, 1 mm elastic) replaces the harness buckles: each
 harness strap goes through the mount's bottom slot and back to a clip, so the
 harness goes on like a backpack (arms through) and adjusts with the clips.
 
-**Visor strap with clips** (no sewing, no buckle): a `strap_clip_20mm.stl` at
-each end -- the strap goes through the clip, out through the visor's end slot,
-and back through the clip on top of itself. 20 mm strap, cut ~24" and trimmed
-after fitting. On the LED visor, slide the battery pod onto the strap first.
+**Visor strap with clips** (no sewing, no buckle): a clip at each end -- the
+strap goes through the clip, out through the visor's end slot, and back through
+the clip on top of itself. With the harness's 24 mm x 1 mm elastic, use
+`strap_clip_24mm_4layer.stl` (x2): its slots take 4 layers, so the loose end
+tucks back through the clip as well (the same clip works on the harness). For a
+20 mm strap, `strap_clip_20mm.stl`. Cut ~24" and trim after fitting. On the LED
+visor, slide the battery pod onto the strap first. The visor's slots are 22 mm
+long: a 24 mm elastic goes through slightly gathered.
 
 ![Visor strap: from above, and threading a clip at the visor's slot](../docs/images/visor-clips.png)
 
