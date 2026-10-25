@@ -25,13 +25,19 @@
 #define LED_ACTIVE_LOW 1
 #define LED_MAX_PERCENT 60    // it's bright, and it's right under your nose
 
-#define TOUCH_GAG_COOLDOWN_MS 2500
+// Operator console: hold the screen this long to open it. Its buttons run the
+// costume over Bluetooth (../costume/src/remote.h).
+#define CONSOLE_HOLD_MS 800
+#define CONSOLE_IDLE_CLOSE_MS 20000
+#define ARM_TARGET 0          // which costume: 0 = any in range, 1 Guition, 2 Elecrow 10.1", 3 Elecrow 7"
+#define ARM_LINK_KEY 0x7A37   // must match the costume's (remote.h)
+#define SEND_MS 3000          // a command is advertised this long, or until the costume confirms it
 
-// Power off: hold the screen this long. Everything shuts down and the board
-// sleeps; the battery chip (IP5306) then cuts the power itself after ~30 s at
-// that low draw -- SW1 on the back or plugging in USB starts it again. A tap
-// also wakes it (in case the chip keeps the power on): checked 4x a second.
-#define POWER_HOLD_MS 3000
+// Power off: the console's ARM-7 OFF (tap twice). Everything shuts down and the
+// board sleeps; the battery chip (IP5306) then cuts the power itself after
+// ~30 s at that low draw -- SW1 on the back or plugging in USB starts it
+// again. A tap also wakes it (in case the chip keeps the power on): checked 4x
+// a second.
 #define BACKLIGHT_PIN 27
 
 // Battery gauge. The board has no battery sense of its own: two 100k resistors

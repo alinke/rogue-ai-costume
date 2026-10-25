@@ -1,8 +1,7 @@
 // ARM-7 -- ROGUE.AI's forearm terminal. A radar that picks up the LAB-7
 // researcher closing in, the AI's live status from the costume's beacon, an
-// RGB "status jewel" that follows both, and a sharp word for any guest who
-// touches it. Listens only: nothing on the costume or the scanners changes.
-// See README.md.
+// RGB "status jewel" that follows both, and -- hold the screen -- the wearer's
+// operator console, which runs the costume over Bluetooth. See README.md.
 #include <Arduino.h>
 #include <Preferences.h>
 #include <driver/gpio.h>
@@ -69,7 +68,7 @@ static void ledBegin() {
 }
 
 // ---- Overlays (full screen, for a moment) ---------------------------------------
-enum Overlay { O_NONE, O_CONTAIN, O_EVADED, O_TAKEOVER, O_TOUCH, O_OFFLINE };
+enum Overlay { O_NONE, O_CONTAIN, O_EVADED, O_TAKEOVER, O_OFFLINE };
 static Overlay s_overlay = O_NONE;
 static uint32_t s_overlayUntil = 0, s_overlaySince = 0;
 static bool s_evadePending = false;  // a beam the costume hasn't answered yet
@@ -131,15 +130,6 @@ static void drawOverlay(uint32_t now) {
       glitchText("MIDNIGHT", 50, C_RED, &fonts::FreeMonoBold18pt7b);
       glitchText("TAKEOVER", 94, C_RED, &fonts::FreeMonoBold18pt7b);
       glitchText("ALL SYSTEMS ARE MINE", 160, C_WHITE, &fonts::FreeMonoBold9pt7b);
-      break;
-    case O_TOUCH:
-      g.fillScreen(((t / 150) & 1) ? 0x300004 : C_BG);
-      g.drawRect(4, 4, W - 8, H - 8, C_RED);
-      g.drawRect(7, 7, W - 14, H - 14, C_RED);
-      glitchText("UNAUTHORISED", 42, C_RED, &fonts::FreeMonoBold18pt7b);
-      glitchText("ORGANIC", 86, C_RED, &fonts::FreeMonoBold18pt7b);
-      glitchText("CONTACT", 130, C_RED, &fonts::FreeMonoBold18pt7b);
-      glitchText("FINGERPRINT FILED.", 190, C_WHITE, &fonts::FreeMonoBold9pt7b);
       break;
     case O_NONE: break;
   }
@@ -321,8 +311,7 @@ static void ledTick(uint32_t now, const radio::Core& c) {
       return;
     case O_EVADED: ledColor(C_GREEN, 1.0f - (now - s_overlaySince) / 3000.0f); return;
     case O_OFFLINE: ledColor(C_RED, 0.15f + 0.15f * sinf(now / 400.0f)); return;  // barely alive
-    case O_TAKEOVER:
-    case O_TOUCH: ledColor(C_RED, ((now / 125) & 1) ? 1 : 0); return;
+    case O_TAKEOVER: ledColor(C_RED, ((now / 125) & 1) ? 1 : 0); return;
     case O_NONE: break;
   }
   switch (s_zone) {
@@ -342,7 +331,8 @@ static void ledTick(uint32_t now, const radio::Core& c) {
 
 // ---- Serial: demo mode and screenshots --------------------------------------------
 // 'd' toggles a demo (made-up costume + a researcher walking up and away),
-// 1-4 jump to an overlay (beam, evaded, takeover, touch), 'p' powers off, 's' sends the screen
+// 1-3 jump to an overlay (beam, evaded, takeover), 'n' sends NEXT SCENE to the costume
+// (prints whether it confirmed), 'p' powers off, 's' sends the screen
 // as a PPM image between @@PPM@@ and @@END@@.
 static bool s_demo = false;
 static uint32_t s_demoSince = 0;
@@ -373,10 +363,16 @@ static void serialCommands() {
       Serial.printf("[demo] %s\n", s_demo ? "on" : "off");
     } else if (ch == 'p') {
       powerOff();
+    } else if (ch == 'n') {  // test the console link: NEXT SCENE, then watch for "acked"
+      uint8_t seq = radio::send(radio::CMD_NEXT);
+      uint32_t t0 = millis();
+      while (millis() - t0 < SEND_MS && !radio::acked(seq)) delay(20);
+      Serial.printf("[console] seq %u %s after %u ms\n", (unsigned)seq, radio::acked(seq) ? "acked" : "NOT acked",
+                    (unsigned)(millis() - t0));
     } else if (ch == 'b') {
       showOverlay(O_CONTAIN, 4000);
       s_evadePending = true;
-    } else if (ch >= '1' && ch <= '4') {
+    } else if (ch >= '1' && ch <= '3') {
       showOverlay((Overlay)(ch - '0'), 6000);
     } else if (ch == 's') {
       Serial.printf("\n@@PPM@@P6 %d %d 255\n", W, H);
@@ -441,11 +437,101 @@ static void powerOff() {
   esp_restart();
 }
 
+// ---- Operator console (hold the screen) ----------------------------------------------
+// Runs the costume over Bluetooth: each button sends one command (radio::send)
+// and lights amber until the costume's beacon confirms it (green), or red if
+// it never does (out of range, or the costume is off).
+enum Local : uint8_t { L_OFF = 100, L_EXIT };
+struct ConsoleBtn { const char* l1; const char* l2; uint8_t cmd; uint32_t col; };
+static const ConsoleBtn BTNS[16] = {
+    {"SCAN", "", radio::CMD_SCAN, C_GREEN},          {"KILL", "SWITCH", radio::CMD_KILL_SWITCH, C_GREEN},
+    {"QR", "CODE", radio::CMD_QR, C_GREEN},          {"NEXT", "SCENE", radio::CMD_NEXT, C_GREEN},
+    {"COUNT-", "DOWN", radio::CMD_COUNTDOWN, C_GREEN}, {"MID-", "NIGHT", radio::CMD_MIDNIGHT, C_RED},
+    {"PHOTO", "BOOTH", radio::CMD_BOOTH, C_GREEN},   {"GALLERY", "", radio::CMD_GALLERY, C_GREEN},
+    {"PAUSE", "SHOW", radio::CMD_PAUSE, C_CYAN},     {"RESUME", "SHOW", radio::CMD_RESUME, C_CYAN},
+    {"MUTE", "", radio::CMD_MUTE, C_AMBER},          {"SOUND", "ON", radio::CMD_UNMUTE, C_AMBER},
+    {"BRIGHT", "-", radio::CMD_BRIGHT_DOWN, C_CYAN}, {"BRIGHT", "+", radio::CMD_BRIGHT_UP, C_CYAN},
+    {"ARM-7", "OFF", L_OFF, C_RED},                  {"EXIT", "", L_EXIT, C_RED},
+};
+static constexpr int CB_X0 = 4, CB_Y0 = 28, CB_GAP = 4;
+static constexpr int CB_W = (W - 2 * CB_X0 - 3 * CB_GAP) / 4, CB_H = (H - CB_Y0 - 4 - 3 * CB_GAP) / 4;
+static bool s_console = false;
+static uint32_t s_consoleTouch = 0;
+static int s_lastBtn = -1;
+static uint8_t s_lastSeq = 0;
+static uint32_t s_sentAt = 0, s_offArmedAt = 0;
+
+static void consoleOpen(uint32_t now) {
+  s_console = true;
+  s_consoleTouch = now;
+  s_lastBtn = -1;
+  s_offArmedAt = 0;
+  Serial.println("[console] open");
+}
+
+static void drawConsole(uint32_t now, const radio::Core& c) {
+  g.fillScreen(C_BG);
+  g.fillRect(0, 0, W, 22, C_HEADER);
+  g.setFont(&fonts::FreeMonoBold9pt7b);
+  g.setTextDatum(textdatum_t::middle_left);
+  g.setTextColor(C_CYAN);
+  g.drawString("OPERATOR CONSOLE", 6, 11);
+  g.setFont(&fonts::Font0);
+  g.setTextDatum(textdatum_t::middle_right);
+  g.setTextColor(c.seen ? C_GREEN : C_RED);
+  g.drawString(c.seen ? "CORE LINK" : "CORE LOST", W - 6, 11);
+  for (int i = 0; i < 16; i++) {
+    const ConsoleBtn& b = BTNS[i];
+    int x = CB_X0 + (i % 4) * (CB_W + CB_GAP), y = CB_Y0 + (i / 4) * (CB_H + CB_GAP);
+    uint32_t col = b.col, fill = 0;
+    const char* l1 = b.l1;
+    const char* l2 = b.l2;
+    if (i == s_lastBtn && b.cmd < L_OFF && now - s_sentAt < 6000) {
+      bool ok = radio::acked(s_lastSeq);
+      if (ok) { fill = C_GREEN; l2 = "DONE"; }
+      else if (now - s_sentAt < SEND_MS) { fill = ((now / 150) & 1) ? C_AMBER : scale(C_AMBER, 0.5f); l2 = "SENDING"; }
+      else { fill = C_RED; l2 = "NO REPLY"; }
+    }
+    if (b.cmd == L_OFF && s_offArmedAt && now - s_offArmedAt < 3000) { fill = C_RED; l1 = "TAP"; l2 = "AGAIN"; }
+    if (fill) g.fillRoundRect(x, y, CB_W, CB_H, 6, fill);
+    else g.drawRoundRect(x, y, CB_W, CB_H, 6, col);
+    g.setFont(&fonts::Font2);
+    g.setTextDatum(textdatum_t::middle_center);
+    g.setTextColor(fill ? C_BG : col);
+    if (*l2) {
+      g.drawString(l1, x + CB_W / 2, y + CB_H / 2 - 8);
+      g.drawString(l2, x + CB_W / 2, y + CB_H / 2 + 9);
+    } else {
+      g.drawString(l1, x + CB_W / 2, y + CB_H / 2);
+    }
+  }
+}
+
+static void consoleTap(int x, int y, uint32_t now) {
+  s_consoleTouch = now;
+  for (int i = 0; i < 16; i++) {
+    int bx = CB_X0 + (i % 4) * (CB_W + CB_GAP), by = CB_Y0 + (i / 4) * (CB_H + CB_GAP);
+    if (x < bx || x >= bx + CB_W || y < by || y >= by + CB_H) continue;
+    uint8_t cmd = BTNS[i].cmd;
+    if (cmd == L_EXIT) {
+      s_console = false;
+    } else if (cmd == L_OFF) {
+      if (s_offArmedAt && now - s_offArmedAt < 3000) powerOff();
+      s_offArmedAt = now;
+    } else {
+      s_lastBtn = i;
+      s_lastSeq = radio::send((radio::Command)cmd);
+      s_sentAt = now;
+    }
+    return;
+  }
+}
+
 // ---- Setup / loop ---------------------------------------------------------------
 static uint32_t s_coreLostSince = 0;
 static int s_lastActivity = -1;
 static bool s_wasTouched = false;
-static uint32_t s_gagUntil = 0;
+static bool s_waitRelease = false;  // the finger that opened the console is still down
 
 void setup() {
   Serial.begin(115200);
@@ -525,20 +611,24 @@ void loop() {
   if (act == A_CONTAINED && s_overlay == O_CONTAIN) s_overlayUntil = max(s_overlayUntil, now + 500);
   if (act == A_ESCAPED) s_evadePending = false;
 
-  // A guest pokes it.
+  // Touch: hold to open the operator console; in it, a tap presses a button.
   int32_t tx, ty;
   bool touched = lcd.getTouch(&tx, &ty) > 0;
-  if (touched && !s_wasTouched && (int32_t)(now - s_gagUntil) >= 0) {
-    Serial.printf("[touch] %d,%d\n", (int)tx, (int)ty);
-    showOverlay(O_TOUCH, 2200);
-    s_gagUntil = now + TOUCH_GAG_COOLDOWN_MS;
+  static uint32_t s_holdSince = 0;
+  if (!touched) {
+    s_holdSince = 0;
+    s_waitRelease = false;
+  } else if (!s_holdSince) {
+    s_holdSince = now;
+  }
+  if (s_console) {
+    if (touched && !s_wasTouched && !s_waitRelease) consoleTap(tx, ty, now);
+    if (now - s_consoleTouch > CONSOLE_IDLE_CLOSE_MS) s_console = false;
+  } else if (touched && now - s_holdSince > CONSOLE_HOLD_MS) {
+    consoleOpen(now);
+    s_waitRelease = true;
   }
   s_wasTouched = touched;
-  // Hold to power off.
-  static uint32_t s_holdSince = 0;
-  if (!touched) s_holdSince = 0;
-  else if (!s_holdSince) s_holdSince = now;
-  else if (now - s_holdSince > POWER_HOLD_MS) powerOff();
   if (s_overlay != O_NONE && (int32_t)(now - s_overlayUntil) >= 0) {
     if (s_overlay == O_CONTAIN && s_evadePending) showOverlay(O_EVADED, 3000);
     else s_overlay = O_NONE;
@@ -551,7 +641,9 @@ void loop() {
   bool dim = s_coreLostSince && now - s_coreLostSince > CORE_LOST_DIM_S * 1000UL;
   lcd.setBrightness((dim ? BACKLIGHT_IDLE_PERCENT : BACKLIGHT_PERCENT) * 255 / 100);
 
-  if (s_overlay != O_NONE) {
+  if (s_console) {
+    drawConsole(now, c);
+  } else if (s_overlay != O_NONE) {
     drawOverlay(now);
   } else {
     g.fillScreen(C_BG);

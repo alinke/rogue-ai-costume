@@ -15,6 +15,7 @@
 #include "input.h"
 #include "leds.h"
 #include "power.h"
+#include "remote.h"
 #include "researcher.h"
 #include "rtclock.h"
 #include "messages.h"
@@ -267,6 +268,11 @@ void loop() {
   {
     static uint32_t containAllowedAt = 0, nearAlertAllowedAt = 0;
     researcher::Events rev = researcher::poll(start);
+    uint8_t cmd, seq;
+    if (researcher::takeCommand(&cmd, &seq)) {  // the armband's operator console
+      remote::run(cmd, start);
+      researcher::ackCommand(seq);
+    }
     extern int g_squad;
     g_squad = rev.squad;
     if (rev.contain && (int32_t)(start - containAllowedAt) >= 0) {

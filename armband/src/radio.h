@@ -1,8 +1,9 @@
 #pragma once
-// Listens (only -- it sends nothing) for the costume's beacon ("RAI1" + its
-// state) and the researcher's scanners: the ESP32 scanner's "RSC1" beacon and
-// the iPhone app's 52534331-SSTT-4C41-4237-... service UUID. Formats as in
-// ../costume/src/researcher.cpp.
+// Listens for the costume's beacon ("RAI1" + its state) and the researcher's
+// scanners: the ESP32 scanner's "RSC1" beacon and the iPhone app's
+// 52534331-SSTT-4C41-4237-... service UUID. Formats as in
+// ../costume/src/researcher.cpp. Sends only the operator console's commands
+// ("RCT1", ../costume/src/remote.h), for a few seconds per press.
 #include <Arduino.h>
 
 namespace radio {
@@ -25,5 +26,13 @@ Hunter hunter();
 // it doesn't wait for the costume.
 bool beamFired();
 void shutdown();  // Bluetooth off (power-off); waits up to ~2 s
+
+// Operator console commands -- keep in step with ../costume/src/remote.h.
+enum Command : uint8_t {
+  CMD_NONE, CMD_SCAN, CMD_KILL_SWITCH, CMD_QR, CMD_NEXT, CMD_COUNTDOWN, CMD_MIDNIGHT, CMD_BOOTH,
+  CMD_GALLERY, CMD_PAUSE, CMD_RESUME, CMD_MUTE, CMD_UNMUTE, CMD_BRIGHT_DOWN, CMD_BRIGHT_UP,
+};
+uint8_t send(Command cmd);   // starts advertising it; returns its seq
+bool acked(uint8_t seq);     // the costume says it carried that one out
 
 }  // namespace radio

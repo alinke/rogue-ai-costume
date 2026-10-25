@@ -1,6 +1,7 @@
 #include "researcher.h"
 
 #include "config.h"
+#include "remote.h"
 
 #if SCANNER_LINK_ENABLED
 
@@ -18,8 +19,11 @@ namespace researcher {
 // the payload.
 //   AI:      "RAI1" threat, activity, humans scanned, times contained
 //   Scanner: "RSC1" trigger counter, session id (random per scanner boot)
+//   Armband: "RCT1" target, seq, command, key (the operator console, remote.h)
+// The AI's beacon ends with the last armband command it carried out (seq).
 static const uint8_t TAG_AI[4] = {'R', 'A', 'I', '1'};
 static const uint8_t TAG_SCANNER[4] = {'R', 'S', 'C', '1'};
+static const uint8_t TAG_REMOTE[4] = {'R', 'C', 'T', '1'};
 
 static volatile bool s_up = false;
 // Every scanner in range, tracked on its own (by Bluetooth address): with the
@@ -42,6 +46,9 @@ static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static volatile float s_rssi = -100;  // the nearest scanner's, for rssi()
 static volatile uint8_t s_state[4] = {0, 0, 0, 0};
 static volatile bool s_stateDirty = true;
+static volatile int s_remoteSeq = -1;       // the last armband press heard
+static volatile bool s_remotePending = false;
+static volatile uint8_t s_remoteCmd = 0, s_ackSeq = 0;
 
 static Zone s_zone = NONE;
 
@@ -109,6 +116,15 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
     if (!dev.haveManufacturerData()) return;
     String m = dev.getManufacturerData();
     if (m.length() < 8 || (uint8_t)m[0] != 0xFF || (uint8_t)m[1] != 0xFF) return;
+    if (m.length() >= 11 && !memcmp(m.c_str() + 2, TAG_REMOTE, 4)) {  // the armband's console
+      uint8_t target = m[6], seq = m[7], cmd = m[8];
+      uint16_t key = (uint8_t)m[9] | ((uint8_t)m[10] << 8);
+      if (key != ARM_LINK_KEY || (target != 0 && target != COSTUME_ID) || seq == s_remoteSeq) return;
+      s_remoteSeq = seq;
+      s_remoteCmd = cmd;
+      s_remotePending = true;
+      return;
+    }
     if (memcmp(m.c_str() + 2, TAG_SCANNER, 4) != 0) return;
     BLEAddress ba = dev.getAddress();
     record((const uint8_t*)ba.getNative(), r, (uint8_t)m[6], (uint8_t)m[7]);
@@ -123,9 +139,10 @@ static void setAdvert() {
     BLEDevice::getAdvertising()->stop();
     return;
   }
-  uint8_t data[2 + 4 + 4] = {0xFF, 0xFF};
+  uint8_t data[2 + 4 + 4 + 1] = {0xFF, 0xFF};
   memcpy(data + 2, TAG_AI, 4);
   for (int i = 0; i < 4; i++) data[6 + i] = s_state[i];
+  data[10] = s_ackSeq;  // readers check for at least 10 bytes, so this extra one is safe
   BLEAdvertisementData ad;
   ad.setFlags(0x06);
   ad.setManufacturerData(String((const char*)data, sizeof(data)));
@@ -300,6 +317,19 @@ Events poll(uint32_t now) {
 Zone zone() { return s_zone; }
 int rssi() { return (int)s_rssi; }
 
+bool takeCommand(uint8_t* cmd, uint8_t* seq) {
+  if (!s_remotePending) return false;
+  s_remotePending = false;
+  *cmd = s_remoteCmd;
+  *seq = (uint8_t)s_remoteSeq;
+  return true;
+}
+
+void ackCommand(uint8_t seq) {
+  s_ackSeq = seq;
+  s_stateDirty = true;  // the beacon carries it
+}
+
 void setState(uint8_t threat, Activity activity, uint8_t scanned, uint8_t contained) {
   uint8_t n[4] = {threat, (uint8_t)activity, scanned, contained};
   for (int i = 0; i < 4; i++) {
@@ -329,6 +359,8 @@ Zone zone() { return NONE; }
 int rssi() { return -100; }
 void setState(uint8_t, Activity, uint8_t, uint8_t) {}
 const char* zoneName(Zone) { return "off"; }
+bool takeCommand(uint8_t*, uint8_t*) { return false; }
+void ackCommand(uint8_t) {}
 }  // namespace researcher
 
 #endif

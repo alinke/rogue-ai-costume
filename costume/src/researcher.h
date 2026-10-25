@@ -47,6 +47,10 @@ bool shutdown(uint32_t timeoutMs);
 // reacting to scanners -- a second costume worn as decoration stays out of the game.
 void setBroadcast(bool on);
 bool broadcasting();
-void pauseScan(bool paused);           // stop listening for a moment (photo uploads)                       // the C6 link is running (Wi-Fi can use it too)
+void pauseScan(bool paused);
+// The armband's operator console (remote.h): a command not yet carried out
+// (false = none), and the confirmation that goes back in the beacon.
+bool takeCommand(uint8_t* cmd, uint8_t* seq);
+void ackCommand(uint8_t seq);           // stop listening for a moment (photo uploads)                       // the C6 link is running (Wi-Fi can use it too)
 
 }  // namespace researcher

@@ -3,6 +3,7 @@
 #include <BLEAdvertisedDevice.h>
 #include <BLEDevice.h>
 #include <BLEScan.h>
+#include <esp_random.h>
 
 #include "config.h"
 
@@ -10,6 +11,12 @@ namespace radio {
 
 static const uint8_t TAG_AI[4] = {'R', 'A', 'I', '1'};
 static const uint8_t TAG_SCANNER[4] = {'R', 'S', 'C', '1'};
+static const uint8_t TAG_REMOTE[4] = {'R', 'C', 'T', '1'};
+
+// The operator console: one command at a time, advertised for SEND_MS or
+// until the costume's beacon carries its seq back.
+static volatile uint8_t s_seq = 0, s_cmd = 0, s_ack = 0;
+static volatile bool s_sendReq = false;
 
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static uint32_t s_coreSeen = 0;
@@ -72,6 +79,7 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
       s_coreRssi = (now - s_coreSeen > 3000) ? r : s_coreRssi + (r - s_coreRssi) * 0.25f;
       s_coreSeen = now;
       for (int i = 0; i < 4; i++) s_state[i] = (uint8_t)m[6 + i];
+      if (m.length() >= 11) s_ack = (uint8_t)m[10];  // the last console command it carried out
       portEXIT_CRITICAL(&s_mux);
     } else if (!memcmp(m.c_str() + 2, TAG_SCANNER, 4)) {
       BLEAddress ba = dev.getAddress();
@@ -82,8 +90,30 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
 
 static volatile bool s_stopReq = false, s_stopped = false;
 
+static void advertise(BLEAdvertising* adv) {
+  uint8_t data[2 + 4 + 5] = {0xFF, 0xFF};
+  memcpy(data + 2, TAG_REMOTE, 4);
+  data[6] = ARM_TARGET;
+  data[7] = s_seq;
+  data[8] = s_cmd;
+  data[9] = ARM_LINK_KEY & 0xFF;
+  data[10] = ARM_LINK_KEY >> 8;
+  BLEAdvertisementData ad;
+  ad.setFlags(0x06);
+  ad.setManufacturerData(String((const char*)data, sizeof(data)));
+  adv->stop();
+  adv->setAdvertisementData(ad);
+  adv->start();
+}
+
 static void task(void*) {
   BLEDevice::init("ARM-7");
+  BLEAdvertising* adv = BLEDevice::getAdvertising();
+  adv->setScanResponse(false);
+  adv->setMinInterval(48);  // 30-50 ms: the costume's scan window catches it fast
+  adv->setMaxInterval(80);
+  bool sending = false;
+  uint32_t sendUntil = 0;
   BLEScan* scan = BLEDevice::getScan();
   scan->setAdvertisedDeviceCallbacks(new ScanCB(), true);  // every packet: live signal strength
   scan->setActiveScan(false);
@@ -93,8 +123,18 @@ static void task(void*) {
   Serial.printf("[radio] listening (heap %u)\n", (unsigned)ESP.getFreeHeap());
   uint32_t startedAt = millis();
   for (;;) {
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(50));
+    if (s_sendReq) {
+      s_sendReq = false;
+      advertise(adv);
+      sending = true;
+      sendUntil = millis() + SEND_MS;
+    } else if (sending && ((int32_t)(millis() - sendUntil) >= 0 || s_ack == s_seq)) {
+      adv->stop();
+      sending = false;
+    }
     if (s_stopReq) {
+      adv->stop();
       scan->stop();
       BLEDevice::deinit(true);
       s_stopped = true;
@@ -115,7 +155,20 @@ void shutdown() {
   for (int i = 0; i < 40 && !s_stopped; i++) delay(50);
 }
 
-void begin() { xTaskCreatePinnedToCore(task, "radio", 6144, nullptr, 2, nullptr, 0); }
+void begin() {
+  s_seq = (uint8_t)esp_random();  // a fresh start each boot, so the costume can't take it for an old press
+  xTaskCreatePinnedToCore(task, "radio", 6144, nullptr, 2, nullptr, 0);
+}
+
+uint8_t send(Command cmd) {
+  s_cmd = cmd;
+  s_seq = s_seq + 1;
+  s_sendReq = true;
+  Serial.printf("[console] send %u (seq %u)\n", (unsigned)cmd, (unsigned)s_seq);
+  return s_seq;
+}
+
+bool acked(uint8_t seq) { return s_ack == seq; }
 
 Core core() {
   Core c;
