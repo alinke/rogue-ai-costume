@@ -53,6 +53,8 @@ of itself; pull the end to tighten. It goes on like a backpack.
 
 ![Harness with strap clips: front, back with the matrix as the cross point, and how to thread a clip at a slot](../docs/images/harness-clips.png)
 
+![The same harness in 3D: front, front from the left, back from the left, back](../docs/images/harness-3d.png)
+
 | File | Print | What |
 |---|---|---|
 | `harness_buckle_socket.stl` | 2, PETG | Side-release buckle, female half. Loop a short strap through its slot and through the mount's bottom slot, stitch or Velcro it closed. |
