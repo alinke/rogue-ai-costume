@@ -6,12 +6,39 @@
 
 #if SOUND_ENABLED
 
+#ifdef BOARD_ELECROW_P4_10
+#include "CrowPanel101Audio.hpp"  // two NS4168 I2S amps, no codec (from the Sidekick firmware)
+#else
 #include "JC8012Audio.hpp"  // ES8311 + I2S bring-up, unmodified from the Sidekick firmware
+#endif
 #include "voice/voice_clips.h"
 
 namespace audio {
 
+#ifdef BOARD_ELECROW_P4_10
+using namespace crowpanel101audio;
+static void paPower(bool on) { digitalWrite(pin_amp_enable, on ? LOW : HIGH); }  // LOW = amp on
+static void outWrite(const int16_t* b, size_t n) { i2s_spk.write((const uint8_t*)b, n); }
+static void outStart() {}
+static void outStop() {}
+static size_t inRead(int16_t*, size_t, TickType_t) { return 0; }  // no mic
+#else
 using namespace jc8012audio;
+static void outWrite(const int16_t* b, size_t n) {
+  size_t w;
+  i2s_write(i2s_port, b, n, &w, portMAX_DELAY);
+}
+static void outStart() {
+  i2s_zero_dma_buffer(i2s_port);
+  i2s_start(i2s_port);
+}
+static void outStop() { i2s_stop(i2s_port); }
+static size_t inRead(int16_t* b, size_t n, TickType_t to) {
+  size_t r = 0;
+  i2s_read(i2s_port, b, n, &r, to);
+  return r;
+}
+#endif
 
 static constexpr int CHUNK = 256;  // stereo frames per I2S transfer (~5.8 ms)
 static constexpr gpio_num_t PIN_MIC_DATA = GPIO_NUM_11;  // ES8311 ADC -> P4 (I2S DIN)
@@ -198,17 +225,15 @@ static void task(void*) {
     if (!s_tone.active && !s_clip) {
       if (ampOn) {
         memset(out, 0, sizeof(out));
-        size_t w;
-        i2s_write(i2s_port, out, sizeof(out), &w, portMAX_DELAY);  // flush silence first
+        outWrite(out, sizeof(out));  // flush silence first
         paPower(false);
         ampOn = false;
-        if (!s_mic) i2s_stop(i2s_port);
+        if (!s_mic) outStop();
       }
       if (s_busy) s_quietSince = millis();
       s_busy = false;
       if (s_mic) {
-        size_t r = 0;
-        i2s_read(i2s_port, in, sizeof(in), &r, pdMS_TO_TICKS(50));
+        size_t r = inRead(in, sizeof(in), pdMS_TO_TICKS(50));
         micProcess(in, r / 4);
         while (xQueueReceive(s_queue, &c, 0)) handle(c);
         continue;
@@ -218,10 +243,7 @@ static void task(void*) {
     }
     while (xQueueReceive(s_queue, &c, 0)) handle(c);
     if (!ampOn) {
-      if (!s_mic) {
-        i2s_zero_dma_buffer(i2s_port);
-        i2s_start(i2s_port);
-      }
+      if (!s_mic) outStart();
       paPower(true);
       vTaskDelay(pdMS_TO_TICKS(10));  // let the amp settle (no pop)
       ampOn = true;
@@ -233,18 +255,20 @@ static void task(void*) {
       out[i * 2] = v;
       out[i * 2 + 1] = v;
     }
-    size_t w;
-    i2s_write(i2s_port, out, sizeof(out), &w, portMAX_DELAY);
+    outWrite(out, sizeof(out));
     if (s_mic) {
-      size_t r = 0;
-      i2s_read(i2s_port, in, sizeof(in), &r, 0);  // keep the RX side drained
+      size_t r = inRead(in, sizeof(in), 0);  // keep the RX side drained
       micProcess(in, r / 4);
     }
   }
 }
 
 void begin() {
+#ifdef BOARD_ELECROW_P4_10
+  crowpanel101audio::init();
+#else
   jc8012audio::init();  // codec + I2S (shares the touch controller's I2C bus; boot only)
+#endif
   paPower(false);
 #if MIC_ENABLED
   // Re-install the port full-duplex so the codec's ADC (mic) comes in on DIN.
@@ -272,7 +296,7 @@ void begin() {
     i2s_driver_install(i2s_port, &cfg, 0, nullptr);
   }
 #endif
-  if (!s_mic) i2s_stop(i2s_port);
+  if (!s_mic) outStop();
   s_queue = xQueueCreate(8, sizeof(Cmd));
   xTaskCreatePinnedToCore(task, "audio", 6144, nullptr, 3, nullptr, 1);
   Serial.printf("[I][audio] ready, %d voice clips\n", (int)VOICE_CLIP_COUNT);

@@ -5,6 +5,22 @@
 // env elecrow-7) is the BACKUP costume: Elecrow CrowPanel 7.0 (ESP32-S3, 800x480,
 // GT911 touch). It has no camera, speaker, mic, LED strip, battery sense, clock
 // chip or C6; the scenes still draw at 1280x800 and gfx.cpp scales them down.
+// BOARD_ELECROW_P4_10 (env elecrow-p4-10): Elecrow CrowPanel Advanced 10.1"
+// (ESP32-P4, 1024x600 MIPI-DSI, GT911, stereo speakers, ESP32-C6). No camera,
+// mic, LED strip, battery sense or clock chip; gfx.cpp scales the 1280x800
+// scenes to 960x600 (centred).
+#ifdef BOARD_ELECROW_P4_10
+#define SCREEN_ROTATION 0          // the panel is landscape already
+#define C6_ENABLE_PIN 32           // C6 reset, active high
+#define MIC_ENABLED 0
+#define SHOW_BATTERY 0
+#define BATTERY_SENSE_PIN -1
+#define CAMERA_ENABLED 0
+#define MOTION_TRIGGER_ENABLED 0
+#define LED_STRIP_ENABLED 0
+#define PHOTO_UPLOAD_ENABLED 0
+#define RTC_ENABLED 0
+#endif
 #ifdef BOARD_ELECROW_7
 #define SCREEN_ROTATION 0          // the panel is landscape already
 #define BUTTON_PIN -1              // GPIO35 is the S3's PSRAM bus

@@ -152,7 +152,9 @@ static uint32_t s_scanStartedAt = 0;
 static void task(void*) {
   // The core's variant has the Tab5's SDIO pins: point ESP-Hosted at this
   // board's C6 (CLK 18, CMD 19, D0-D3 14-17, reset 54) before BLE starts it.
-#if CONFIG_IDF_TARGET_ESP32P4
+#if defined(BOARD_ELECROW_P4_10)
+  hostedSetPins(18, 19, 17, 16, 15, 14, 32);   // Elecrow 10.1": D0-D3 reversed, reset 32
+#elif CONFIG_IDF_TARGET_ESP32P4
   hostedSetPins(18, 19, 14, 15, 16, 17, 54);
 #endif
   uint32_t t0 = millis();

@@ -32,6 +32,39 @@ static uint16_t* s_canvasBuf = nullptr;
 static void* s_fb = nullptr;
 static size_t s_fbBytes = 0;
 
+#ifdef BOARD_ELECROW_P4_10
+// Elecrow 10.1": a 1024x600 landscape panel. The canvas goes out at 3/4 scale
+// (960x600) between 32-pixel black bars, so nothing is stretched. Blocks are
+// widened to multiples of 4 pixels so 3/4 of each edge is a whole pixel.
+static constexpr int PW = 1024, PH = 600, PX0 = (PW - W * 3 / 4) / 2;
+
+static bool ppaPush(int x, int y, int w, int h, int) {
+  int x0 = x & ~3, y0 = y & ~3;
+  int x1 = min(W, (x + w + 3) & ~3), y1 = min(H, (y + h + 3) & ~3);
+  ppa_srm_oper_config_t op = {};
+  op.in.buffer = s_canvasBuf;
+  op.in.pic_w = W;
+  op.in.pic_h = H;
+  op.in.block_w = x1 - x0;
+  op.in.block_h = y1 - y0;
+  op.in.block_offset_x = x0;
+  op.in.block_offset_y = y0;
+  op.in.srm_cm = PPA_SRM_COLOR_MODE_RGB565;
+  op.out.buffer = s_fb;
+  op.out.buffer_size = s_fbBytes;
+  op.out.pic_w = PW;
+  op.out.pic_h = PH;
+  op.out.block_offset_x = PX0 + x0 * 3 / 4;
+  op.out.block_offset_y = y0 * 3 / 4;
+  op.out.srm_cm = PPA_SRM_COLOR_MODE_RGB565;
+  op.rotation_angle = PPA_SRM_ROTATION_ANGLE_0;
+  op.scale_x = 0.75f;
+  op.scale_y = 0.75f;
+  op.byte_swap = true;
+  op.mode = PPA_TRANS_MODE_BLOCKING;
+  return ppa_do_scale_rotate_mirror(s_ppa, &op) == ESP_OK;
+}
+#else
 static bool ppaPush(int x, int y, int w, int h, int rotation) {
   ppa_srm_oper_config_t op = {};
   op.in.buffer = s_canvasBuf;
@@ -64,6 +97,7 @@ static bool ppaPush(int x, int y, int w, int h, int rotation) {
   op.mode = PPA_TRANS_MODE_BLOCKING;
   return ppa_do_scale_rotate_mirror(s_ppa, &op) == ESP_OK;
 }
+#endif
 
 #ifdef GFX_PPA_SELFTEST
 // Boot-time check that ppaPush() writes exactly what LovyanGFX's own (slow,
@@ -175,7 +209,12 @@ bool begin() {
   if (!lcd.init()) return false;
   lcd.setBrightness(0);  // stays dark until the first frame is on screen
   lcd.setRotation(SCREEN_ROTATION);
-#if CONFIG_IDF_TARGET_ESP32P4
+#ifdef BOARD_ELECROW_P4_10
+  if (lcd.width() != PW || lcd.height() != PH) {
+    Serial.printf("[E][gfx] panel is %dx%d, expected %dx%d\n", (int)lcd.width(), (int)lcd.height(), PW, PH);
+    return false;
+  }
+#elif CONFIG_IDF_TARGET_ESP32P4
   if (lcd.width() != W || lcd.height() != H) {
     Serial.printf("[E][gfx] panel is %dx%d after rotation, expected %dx%d\n",
                   (int)lcd.width(), (int)lcd.height(), W, H);
@@ -211,7 +250,15 @@ bool begin() {
 #if CONFIG_IDF_TARGET_ESP32P4
   auto* panel = static_cast<lgfx::Panel_DSI*>(lcd.getPanel());
   s_fb = panel->config_detail().buffer;
+#ifdef BOARD_ELECROW_P4_10
+  s_fbBytes = PW * PH * 2;
+  if (s_fb) {
+    memset(s_fb, 0, s_fbBytes);  // the side bars stay black
+    esp_cache_msync(s_fb, s_fbBytes, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+  }
+#else
   s_fbBytes = W * H * 2;
+#endif
   ppa_client_config_t pc = {};
   pc.oper_type = PPA_OPERATION_SRM;
   pc.max_pending_trans_num = 1;
@@ -264,7 +311,10 @@ static float s_cal[4] = {1, 0, 1, 0};  // ax, bx, ay, by
 bool getTouch(int* x, int* y) {
   int32_t tx, ty;
   if (!lcd.getTouch(&tx, &ty)) return false;
-#if !CONFIG_IDF_TARGET_ESP32P4
+#ifdef BOARD_ELECROW_P4_10
+  tx = (tx - PX0) * 4 / 3;  // the panel's touch is 1024x600; the scenes think in 1280x800
+  ty = ty * 4 / 3;
+#elif !CONFIG_IDF_TARGET_ESP32P4
   tx = tx * W / PW;   // the panel's touch is 800x480; the scenes think in 1280x800
   ty = ty * H / PH;
 #endif
