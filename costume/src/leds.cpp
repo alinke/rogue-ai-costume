@@ -262,7 +262,9 @@ void tick(uint32_t now) {
   s_nextFrame = now + 33;
   float t = (now - s_modeSince) / 1000.0f, tAbs = now / 1000.0f;
   int i = 0;
-#if LED_TEST_COLOR
+#if LED_INDEX_TEST
+  for (; i < s_total; i++) setPixel(i, i % 50 == 0 ? 0xFF0000 : i % 10 == 0 ? 0xFFFFFF : 0);
+#elif LED_TEST_COLOR
   for (; i < s_total; i++) setPixel(i, LED_TEST_COLOR);
 #else
   eyeStep(now);

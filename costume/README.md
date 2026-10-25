@@ -359,14 +359,24 @@ of sight and kept dark (`LEDS_DARK`), so it costs no power.
 
 | | Strip | Where | LEDs (lit + dark) |
 |---|---|---|---|
-| A | lead | controller -> strip 1, up behind the chest screen | |
-| 1 | 1 m | left zipper edge, screen top -> collar (45); round the neck under the hood (40, dark); right zipper edge, collar -> screen top (45); the rest behind the screen (30, dark) | 90 + 70 |
-| B | lead | behind the screen -> along the right harness strap -> top of the right sleeve | |
-| 2 | 1 m | right sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) | 98 + 62 |
-| C | lead | inside the cuff, up inside the sleeve and the jacket, out at the back of the neck under the hood, down the right harness strap | |
-| 5 | matrix | on the harness cross between the shoulder blades | 64 |
-| D | lead | up the left harness strap -> top of the left sleeve | |
-| 4 | 31" | left sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (28, dark) | 98 + 28 |
+| 1 | 1 m | from the controller (CN2, on your right): up behind the screen (15, dark); right zipper edge, screen top -> collar (45); round the neck under the hood (40, dark); left zipper edge, collar -> screen top (45); behind the screen (15, dark). Ends on your left front, behind the screen | 90 + 70 |
+| A | lead | strip 1's end -> through hole **1** (left front, behind the screen) -> inside, over your left shoulder -> out through hole **2** (top of the left sleeve) | ~0.5 m |
+| 2 | 1 m | left sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) | 98 + 62 |
+| B | lead | inside the left cuff, up inside the sleeve, across inside the back -> out through hole **3** (under the matrix) | ~1 m |
+| 3 | matrix | on the harness cross; its three leads go straight into hole **3** | 64 |
+| C | lead | matrix out, inside the back, up to your right shoulder -> out through hole **4** (top of the right sleeve) | ~0.5 m |
+| 4 | 31" | right sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (28, dark) -- the last strip | 98 + 28 |
+
+Holes in the jacket's outer shell (the leads run between shell and lining):
+**1** left front behind the screen, where strip 1 ends; **2** top of the left
+sleeve's seam, where strip 2 starts; **3** the middle of the back, under the
+matrix base's lead holes (the base hides it); **4** top of the right sleeve's
+seam, where strip 4 starts. A 12 mm slit each is enough for a JST plug; melt
+the edges with a soldering iron or hot knife (or a dab of fray glue) so the
+fabric doesn't run. Strip ends cover holes 2 and 4.
+
+To set the dark/lit counts: `LED_INDEX_TEST 1` lights every 10th LED white and
+every 50th red; count along each strip and adjust `LED_CHAIN`'s numbers.
 
 The spare 1 m strip isn't used. Front strips flow up toward the collar,
 sleeves cuff to shoulder. The zipper edges below the screen stay dark: no

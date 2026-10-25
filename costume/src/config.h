@@ -270,16 +270,21 @@
 // The jacket: four uncut 1 m strips (WS2811 FCOB, 160 LEDs/m; the last one is
 // 31", 126 LEDs) plus the matrix, joined by ready-made 3-pin extension leads.
 // Strip that's longer than its run is tucked away and kept dark (LEDS_DARK).
-//   strip 1  left zipper edge, screen top -> collar (45), round the neck under
-//            the hood (40, dark), right zipper edge, collar -> screen top (45),
-//            the rest behind the screen (30, dark)
-//   strip 2  right sleeve, shoulder -> cuff (98), the rest tucked in the cuff (62, dark)
+//   strip 1  from the controller (CN2 is on your right): up behind the screen
+//            (15, dark), right zipper edge, screen top -> collar (45), round
+//            the neck under the hood (40, dark), left zipper edge, collar ->
+//            screen top (45), the rest behind the screen (15, dark)
+//   strip 2  left sleeve, shoulder -> cuff (98), the rest tucked in the cuff (62, dark)
 //   matrix   the eye on the back (64)
-//   strip 4  left sleeve, shoulder -> cuff (98), the rest tucked in the cuff (28, dark)
-// (strip 3, the spare 1 m, isn't used.)
-#define LED_CHAIN { {LEDS_TRIM, 45, false}, {LEDS_DARK, 40, false}, {LEDS_TRIM, 45, true}, \
-                    {LEDS_DARK, 30, false}, {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false}, \
-                    {LEDS_MATRIX, 64, false}, {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 28, false} }
+//   strip 4  right sleeve (the 31" one, last), shoulder -> cuff (98), the rest
+//            tucked in the cuff (28, dark)
+// (strip 3, the spare 1 m, isn't used.) LED_INDEX_TEST 1 shows where each LED
+// number falls, to set the dark/lit counts.
+#define LED_CHAIN { {LEDS_DARK, 15, false}, {LEDS_TRIM, 45, false}, {LEDS_DARK, 40, false}, \
+                    {LEDS_TRIM, 45, true}, {LEDS_DARK, 15, false}, \
+                    {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false}, \
+                    {LEDS_MATRIX, 64, false}, \
+                    {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 28, false} }
 // The 8x8 matrix ({LEDS_MATRIX, 64, false} in LED_CHAIN): the eye on the back.
 #ifndef MATRIX_SERPENTINE
 #define MATRIX_SERPENTINE 1     // flexible panels: every other row runs back (rigid ones: 0)
@@ -311,6 +316,11 @@
 #define LED_BRIGHTNESS_PERCENT 40
 // Wiring test: every LED in the chain one solid colour (e.g. 0x800080 purple)
 // instead of the show's effects. 0 = off (normal effects).
+// Counting test: every 10th LED white, every 50th red, the rest off -- count
+// along each strip to see which numbers land where, then set LED_CHAIN's counts.
+#ifndef LED_INDEX_TEST
+#define LED_INDEX_TEST 0
+#endif
 #ifndef LED_TEST_COLOR
 #define LED_TEST_COLOR 0
 #endif
