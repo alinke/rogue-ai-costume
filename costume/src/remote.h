@@ -31,6 +31,7 @@ namespace remote {
 enum Command : uint8_t {
   CMD_NONE, CMD_SCAN, CMD_KILL_SWITCH, CMD_QR, CMD_NEXT, CMD_COUNTDOWN, CMD_MIDNIGHT, CMD_BOOTH,
   CMD_GALLERY, CMD_PAUSE, CMD_RESUME, CMD_MUTE, CMD_UNMUTE, CMD_BRIGHT_DOWN, CMD_BRIGHT_UP,
+  CMD_VOICE_DOWN, CMD_VOICE_UP,
 };
 
 void run(uint8_t cmd, uint32_t now);  // from loop()

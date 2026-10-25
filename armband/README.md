@@ -27,7 +27,7 @@ commands from its operator console -- no pairing.
   in the chest screen's top-left corner, which you can't reach while wearing
   it; this one is on your arm. 16 buttons: SCAN, KILL SWITCH, QR CODE, NEXT
   SCENE, COUNTDOWN, MIDNIGHT, PHOTO BOOTH, GALLERY, PAUSE / RESUME SHOW, MUTE /
-  SOUND ON, BRIGHT - / +, ARM-7 OFF (tap twice), EXIT. A pressed button goes
+  SOUND ON, VOICE - / + (you hear the new level), ARM-7 OFF (tap twice), EXIT. A pressed button goes
   amber (sending), then green DONE when the costume confirms it, or red NO
   REPLY (out of range, or the costume is off). It closes itself after 20 s
   untouched. How it works: the armband advertises the command ("RCT1", with a

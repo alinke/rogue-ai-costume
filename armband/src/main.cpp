@@ -450,7 +450,7 @@ static const ConsoleBtn BTNS[16] = {
     {"PHOTO", "BOOTH", radio::CMD_BOOTH, C_GREEN},   {"GALLERY", "", radio::CMD_GALLERY, C_GREEN},
     {"PAUSE", "SHOW", radio::CMD_PAUSE, C_CYAN},     {"RESUME", "SHOW", radio::CMD_RESUME, C_CYAN},
     {"MUTE", "", radio::CMD_MUTE, C_AMBER},          {"SOUND", "ON", radio::CMD_UNMUTE, C_AMBER},
-    {"BRIGHT", "-", radio::CMD_BRIGHT_DOWN, C_CYAN}, {"BRIGHT", "+", radio::CMD_BRIGHT_UP, C_CYAN},
+    {"VOICE", "-", radio::CMD_VOICE_DOWN, C_AMBER},  {"VOICE", "+", radio::CMD_VOICE_UP, C_AMBER},
     {"ARM-7", "OFF", L_OFF, C_RED},                  {"EXIT", "", L_EXIT, C_RED},
 };
 static constexpr int CB_X0 = 4, CB_Y0 = 28, CB_GAP = 4;

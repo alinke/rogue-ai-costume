@@ -1,5 +1,6 @@
 #include "remote.h"
 
+#include "audio.h"
 #include "config.h"
 #include "gallery.h"
 #include "rtclock.h"
@@ -46,6 +47,12 @@ void run(uint8_t cmd, uint32_t now) {
     case CMD_UNMUTE: settings::setMuted(false); break;
     case CMD_BRIGHT_DOWN: settings::setBrightness(settings::brightness() - 10); break;
     case CMD_BRIGHT_UP: settings::setBrightness(settings::brightness() + 10); break;
+    case CMD_VOICE_DOWN:
+    case CMD_VOICE_UP:  // as the costume's own console: turns the voice back on, and you hear the new level
+      settings::setVoiceOn(true);
+      settings::setVoiceVolume(settings::voiceVolume() + (cmd == CMD_VOICE_UP ? 10 : -10));
+      audio::say("I HEARD THAT.");
+      break;
     default: break;
   }
 }
