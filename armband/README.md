@@ -87,7 +87,7 @@ cd armband && pio run -t upload
 | `LED_R_PIN`/`G`/`B`, `LED_ACTIVE_LOW` | 4, 16, 17, 1 | |
 | `BATTERY_SENSE_PIN`, `BATTERY_DIVIDER` | 35, 2.0 | the battery gauge mod; -1 = no gauge |
 | `CONSOLE_HOLD_MS` | 800 | hold the screen this long for the operator console |
-| `ARM_TARGET` | 0 | which costume the console runs: 0 any, 1 Guition, 2 Elecrow 10.1", 3 Elecrow 7", 4 Sunton 7" |
+| `ARM_TARGET` | 0 | which costume the console runs: 0 any, 1 Guition, 2 Elecrow 10.1", 3 Elecrow 7", 4 Sunton 7", 5 Sunton 5" |
 | `ARM_LINK_KEY` | 0x7A37 | must match the costume's `ARM_LINK_KEY` (`remote.h`) |
 
 ## Serial (115200)

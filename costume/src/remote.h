@@ -22,6 +22,8 @@
 #define COSTUME_ID 3
 #elif defined(BOARD_SUNTON_7)
 #define COSTUME_ID 4
+#elif defined(BOARD_SUNTON_5)
+#define COSTUME_ID 5
 #else
 #define COSTUME_ID 1  // the Guition (main costume)
 #endif
