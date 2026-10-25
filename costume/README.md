@@ -375,6 +375,11 @@ seam, where strip 4 starts. A 12 mm slit each is enough for a JST plug; melt
 the edges with a soldering iron or hot knife (or a dab of fray glue) so the
 fabric doesn't run. Strip ends cover holes 2 and 4.
 
+Inside, the leads snap into glue-on wire guides (`hardware/3dprint/wire_guide_*`,
+about every 10 cm and either side of the shoulder and armpit): 24 single, 6
+double where a power wire runs with a lead. If the lining is loose, glue them to
+the lining's inside face and poke the 4 holes through both layers.
+
 To set the dark/lit counts: `LED_INDEX_TEST 1` lights every 10th LED white and
 every 50th red; count along each strip and adjust `LED_CHAIN`'s numbers.
 
