@@ -372,8 +372,8 @@ Holes in the jacket's outer shell (the leads run between shell and lining):
 sleeve's seam, where strip 2 starts; **3** the middle of the back, under the
 matrix base's lead holes (the base hides it); **4** top of the right sleeve's
 seam, where strip 4 starts. Cut each hole 17.5 mm across and fit a grommet
-(`hardware/3dprint/grommet_*`: a hex bezel outside, a ring pressed on inside,
-a drop of super glue) -- except hole 3, which the matrix base already covers:
+(`hardware/3dprint/grommet.stl`: a hex bezel, hot-glued on from outside
+through its glue holes) -- except hole 3, which the matrix base already covers:
 there, melt the edges with a soldering iron (or a dab of fray glue) so the
 fabric doesn't run.
 
