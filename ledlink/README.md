@@ -27,4 +27,11 @@ Its USB-C port is power only. The first time, through WLED's own update page:
 
 After that it updates itself: at boot it joins the costume's `WIFI_NETWORKS`
 (`../costume/src/secrets.h`) and serves **http://rogue-leds.local/update** (or
-its IP, in the log). Back to WLED: upload a WLED release `.bin` there.
+its IP) -- in a browser, or
+`curl -H "Origin: http://<ip>" -F "update=@.pio/build/gledopto/firmware.bin" http://<ip>/update`.
+Back to WLED: upload a WLED release `.bin` there.
+
+**Status:** its address in a browser (http://rogue-leds.local/) shows whether it
+hears the costume, the effect and the matrix number it's showing, and its
+Bluetooth packet counts. Confirmed: it follows the costume's MIDNIGHT TEST
+countdown (10..1 on the matrix) and switches to the midnight chase with it.

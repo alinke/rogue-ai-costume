@@ -22,16 +22,27 @@
 #include "../../costume/src/secrets.h"
 #endif
 
+// The Arduino core frees the Bluetooth controller's memory at boot unless the
+// program says it uses Bluetooth (its own BLE library does; NimBLE didn't here:
+// init failed).
+extern "C" bool btInUse() { return true; }
+
 // ---- The costume's beacon ---------------------------------------------------------
 static const uint8_t TAG_AI[4] = {'R', 'A', 'I', '1'};
 static volatile uint32_t s_seen = 0;
 static volatile uint8_t s_mode = 0, s_number = 0;  // number + 1, 0 = none
-static volatile bool s_newCostume = true;
+static volatile uint32_t s_heard = 0, s_rai = 0, s_raiLen = 0;  // diagnostics (status page)
+static const char* volatile s_bleState = "starting";
 
 class ScanCB : public NimBLEScanCallbacks {
   void onResult(const NimBLEAdvertisedDevice* dev) override {
+    s_heard++;
     if (!dev->haveManufacturerData()) return;
     std::string m = dev->getManufacturerData();
+    if (m.size() >= 6 && !memcmp(m.data() + 2, TAG_AI, 4)) {
+      s_rai++;
+      s_raiLen = m.size();
+    }
     if (m.size() < 13 || (uint8_t)m[0] != 0xFF || (uint8_t)m[1] != 0xFF) return;
     if (memcmp(m.data() + 2, TAG_AI, 4) != 0) return;
     s_mode = (uint8_t)m[11];
@@ -41,14 +52,19 @@ class ScanCB : public NimBLEScanCallbacks {
 };
 
 static void radioTask(void*) {
-  NimBLEDevice::init("ROGUE-LEDS");
+  if (!NimBLEDevice::init("ROGUE-LEDS")) {
+    s_bleState = "init FAILED";
+    Serial.println("[ble] init failed");
+    vTaskDelete(nullptr);
+  }
+  s_bleState = "init ok";
   NimBLEScan* scan = NimBLEDevice::getScan();
   scan->setScanCallbacks(new ScanCB(), true);  // every packet, not just new devices
   scan->setActiveScan(false);
   scan->setInterval(100);
   scan->setWindow(80);
   scan->setMaxResults(0);                      // don't keep a list of everything heard
-  scan->start(0, false, true);
+  s_bleState = scan->start(0, false, true) ? "scanning" : "scan start FAILED";
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(1000));
     if (!scan->isScanning()) scan->start(0, false, true);
@@ -79,7 +95,15 @@ static void wifiBegin() {
   MDNS.begin("rogue-leds");
   s_updater.setup(&s_web, "/update");
   s_web.on("/", [] {
-    s_web.send(200, "text/plain", "ROGUE.AI LEDLINK -- firmware update at /update\n");
+    static const char* const MODES[] = {"idle", "alert", "scan", "breakout", "midnight", "noise", "off", "wary", "contain"};
+    uint32_t ago = s_seen ? millis() - s_seen : 0;
+    char b[300];
+    snprintf(b, sizeof(b),
+             "ROGUE.AI LEDLINK -- firmware update at /update\ncostume: %s\neffect: %s\nmatrix number: %d\nup %lu s\n"
+             "bluetooth: %s, %lu packets heard, %lu from the costume (%lu bytes)\n",
+             s_seen && ago < COSTUME_LOST_MS ? "seen" : "NOT SEEN", MODES[min<int>(s_mode, 8)], (int)s_number - 1,
+             (unsigned long)(millis() / 1000), s_bleState, (unsigned long)s_heard, (unsigned long)s_rai, (unsigned long)s_raiLen);
+    s_web.send(200, "text/plain", b);
   });
   s_web.begin();
   s_webUp = true;
