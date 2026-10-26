@@ -28,6 +28,10 @@ namespace researcher {
 static const uint8_t TAG_AI[4] = {'R', 'A', 'I', '1'};
 static const uint8_t TAG_SCANNER[4] = {'R', 'S', 'C', '1'};
 static const uint8_t TAG_REMOTE[4] = {'R', 'C', 'T', '1'};
+// With the AI signal off (decoration / out of the game) the same payload goes
+// out as "RLD1": the Gledopto and the armband's confirmations still work, but
+// the scanners, phones and iPads only know "RAI1", so the costume stays hidden.
+static const uint8_t TAG_LEDS_ONLY[4] = {'R', 'L', 'D', '1'};
 
 static volatile bool s_up = false;
 // Every scanner in range, tracked on its own (by Bluetooth address): with the
@@ -140,12 +144,8 @@ static volatile bool s_broadcast = true;   // see setBroadcast()
 static volatile bool s_broadcastDirty = false;
 
 static void setAdvert() {
-  if (!s_broadcast) {
-    BLEDevice::getAdvertising()->stop();
-    return;
-  }
   uint8_t data[2 + 4 + 4 + 6] = {0xFF, 0xFF};
-  memcpy(data + 2, TAG_AI, 4);
+  memcpy(data + 2, s_broadcast ? TAG_AI : TAG_LEDS_ONLY, 4);
   for (int i = 0; i < 4; i++) data[6 + i] = s_state[i];
   data[10] = s_ackSeq;  // readers check for at least 10 bytes, so these extra ones are safe
   data[11] = s_led[0];
@@ -216,10 +216,11 @@ static void task(void*) {
       vTaskDelete(nullptr);
     }
     if (s_stateDirty || s_broadcastDirty) {
+      if (s_broadcastDirty)
+        Serial.printf("[I][researcher] AI signal %s\n", s_broadcast ? "on" : "off: out of the game (LED link only)");
       s_stateDirty = false;
       s_broadcastDirty = false;
       setAdvert();
-      if (!s_broadcast) Serial.println("[I][researcher] AI signal off: not broadcasting");
     }
     if (s_scanPaused) {
       if (scan->isScanning()) scan->stop();

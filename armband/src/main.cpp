@@ -363,8 +363,8 @@ static void serialCommands() {
       Serial.printf("[demo] %s\n", s_demo ? "on" : "off");
     } else if (ch == 'p') {
       powerOff();
-    } else if (ch == 'n') {  // test the console link: NEXT SCENE, then watch for "acked"
-      uint8_t seq = radio::send(radio::CMD_NEXT);
+    } else if (ch == 'n' || ch == 'l' || ch == 'L') {  // test the console link: NEXT SCENE / LEDS - / LEDS +
+      uint8_t seq = radio::send(ch == 'n' ? radio::CMD_NEXT : ch == 'l' ? radio::CMD_LEDS_DOWN : radio::CMD_LEDS_UP);
       uint32_t t0 = millis();
       while (millis() - t0 < SEND_MS && !radio::acked(seq)) delay(20);
       Serial.printf("[console] seq %u %s after %u ms\n", (unsigned)seq, radio::acked(seq) ? "acked" : "NOT acked",

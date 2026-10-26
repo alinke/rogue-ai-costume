@@ -185,11 +185,12 @@ static float s_geiger = 0;          // 0..1, a click's flash, decaying
 static float s_talk = 0;            // 0..1, the voice's "loudness"
 static uint32_t s_nextClick = 0, s_nextSyllable = 0;
 
-// The idle colour: green, warming to amber and red as the threat level rises,
-// and toward amber/red as a scanner closes in.
+// The idle colour: green, a little warmer as the threat level rises, and
+// toward amber/red as a handheld scanner closes in.
 static uint32_t idleColor() {
-  float x = s_threat / 5.0f;
-  uint32_t c = x < 0.5f ? mix(gfx::C_GREEN, gfx::C_AMBER, x * 1.2f) : mix(gfx::C_AMBER, LED_RED, (x - 0.5f) * 2);
+  // Threat only warms the green a little (toward yellow-green at the top);
+  // red is for a scanner at arm's length.
+  uint32_t c = mix(gfx::C_GREEN, gfx::C_AMBER, s_threat / 5.0f * 0.45f);
   if (s_near >= 0) c = s_near < 0.5f ? mix(c, gfx::C_AMBER, s_near * 2) : mix(gfx::C_AMBER, LED_RED, (s_near - 0.5f) * 2);
   return c;
 }
@@ -381,7 +382,8 @@ void tick(uint32_t now) {
   float t = (s_m == OVERLOAD ? now - s_overloadStart : now - s_modeSince) / 1000.0f, tAbs = now / 1000.0f;
   // How close the nearest scanner is (0 far .. 1 at arm's length); the flow
   // speeds up with it, and close up the sleeves click like the scanner's Geiger counter.
-  s_near = s_prox > -127 ? constrain((s_prox + 95) / 45.0f, 0.0f, 1.0f) : -1;
+  // 0 at -82 dBm (~3 m) .. 1 at -58 (arm's length); further away: no glow.
+  s_near = s_prox > -82 ? constrain((s_prox + 82) / 24.0f, 0.0f, 1.0f) : -1;
   s_flow += dt * (0.9f + 2.6f * max(0.0f, s_near));
   if (s_prox >= -70 && (int32_t)(now - s_nextClick) >= 0) {
     s_geiger = 1;

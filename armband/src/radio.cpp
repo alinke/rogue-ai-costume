@@ -12,6 +12,7 @@ namespace radio {
 static const uint8_t TAG_AI[4] = {'R', 'A', 'I', '1'};
 static const uint8_t TAG_SCANNER[4] = {'R', 'S', 'C', '1'};
 static const uint8_t TAG_REMOTE[4] = {'R', 'C', 'T', '1'};
+static const uint8_t TAG_LEDS_ONLY[4] = {'R', 'L', 'D', '1'};  // the costume with its AI signal off
 
 // The operator console: one command at a time, advertised for SEND_MS or
 // until the costume's beacon carries its seq back.
@@ -81,6 +82,8 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
       for (int i = 0; i < 4; i++) s_state[i] = (uint8_t)m[6 + i];
       if (m.length() >= 11) s_ack = (uint8_t)m[10];  // the last console command it carried out
       portEXIT_CRITICAL(&s_mux);
+    } else if (m.length() >= 11 && !memcmp(m.c_str() + 2, TAG_LEDS_ONLY, 4)) {
+      s_ack = (uint8_t)m[10];  // out of the game, but still confirms console commands
     } else if (!memcmp(m.c_str() + 2, TAG_SCANNER, 4)) {
       BLEAddress ba = dev.getAddress();
       recordHunter((const uint8_t*)ba.getNative(), r, (uint8_t)m[6], (uint8_t)m[7]);
