@@ -359,28 +359,31 @@ costs no power.
 
 **Driven by the Gledopto** (`../ledlink`): it follows the costume over
 Bluetooth, and its output is a proper 5 V data signal (no level shifter or
-diode). It sits behind the chest screen on your right, powered from the power
-bank's second port (USB-C); its output lead is where strip 1 plugs in. The
-costume's own LED output stays off (`LED_STRIP_ENABLED 0`).
+diode). The power bank sits in the jacket's **right inside pocket** with the
+Gledopto: one port powers the costume (its USB up to the screen), the other the
+Gledopto, whose output lead comes out through hole **1** to start strip 1. The
+matrix gets its 5 V through the chain's leads. The costume's own LED output
+stays off (`LED_STRIP_ENABLED 0`).
 
 | | Strip | Where | LEDs (lit + dark) |
 |---|---|---|---|
-| 1 | 1 m | from the Gledopto (behind the screen, on your right): up behind the screen (15, dark); right zipper edge, screen top -> collar (45); round the neck under the hood (40, dark); left zipper edge, collar -> screen top (45); behind the screen (15, dark). Ends on your left front, behind the screen | 90 + 70 |
-| A | lead | strip 1's end -> through hole **1** (left front, behind the screen) -> inside, over your left shoulder -> out through hole **2** (top of the left sleeve) | ~0.5 m |
+| 1 | 1 m | from the Gledopto (right inside pocket) out through hole **1** (right front, behind the screen): up behind the screen (15, dark); right zipper edge, screen top -> collar (45); round the neck under the hood (40, dark); left zipper edge, collar -> screen top (45); behind the screen (15, dark). Ends at hole **2**, left front behind the screen | 90 + 70 |
+| A | lead | strip 1's end -> in through hole **2** (left front, behind the screen) -> inside, over your left shoulder -> out through hole **3** (top of the left sleeve) | ~0.5 m |
 | 2 | 1 m | left sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) | 98 + 62 |
-| B | lead | inside the left cuff, up inside the sleeve, across inside the back -> out through hole **3** (under the matrix) | ~1 m |
-| M | matrix | on the harness cross, connectors at the bottom; its three leads go straight into hole **3** (under the base's lower edge) | 64 |
-| C | lead | matrix out, inside the back, up to your right shoulder -> out through hole **4** (top of the right sleeve) | ~0.5 m |
+| B | lead | inside the left cuff, up inside the sleeve, across inside the back -> out through hole **4** (under the matrix) | ~1 m |
+| M | matrix | on the harness cross, connectors at the bottom; its three leads go straight into hole **4** (under the base's lower edge) | 64 |
+| C | lead | matrix out, inside the back, up to your right shoulder -> out through hole **5** (top of the right sleeve) | ~0.5 m |
 | 3 | 1 m | right sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) -- the last strip (its output plug stays tucked in the cuff, unused) | 98 + 62 |
 
 Holes in the jacket's outer shell (the leads run between shell and lining):
-**1** left front behind the screen, where strip 1 ends; **2** top of the left
-sleeve's seam, where strip 2 starts; **3** the middle of the back, under the
-matrix base's lead holes, near its lower edge (the matrix is mounted with its
-connectors at the bottom; the base hides the hole); **4** top of the right
-sleeve's seam, where strip 3 starts. Cut each hole 17.5 mm across and fit a grommet
+**1** right front behind the screen, the Gledopto's lead out; **2** left front
+behind the screen, where strip 1 ends; **3** top of the left sleeve's seam,
+where strip 2 starts; **4** the middle of the back, under the matrix base's
+lead holes near its lower edge (the matrix is mounted with its connectors at
+the bottom; the base hides the hole); **5** top of the right sleeve's seam,
+where strip 3 starts. Cut each hole 17.5 mm across and fit a grommet
 (`hardware/3dprint/grommet.stl`: a hex bezel, hot-glued on from outside
-through its glue holes) -- except hole 3, which the matrix base already covers:
+through its glue holes) -- except hole 4, which the matrix base already covers:
 there, melt the edges with a soldering iron (or a dab of fray glue) so the
 fabric doesn't run.
 
