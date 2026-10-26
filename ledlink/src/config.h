@@ -47,7 +47,7 @@
 #define ORDER_RBG 3
 #define ORDER_GBR 4
 #define ORDER_BGR 5
-#define LED_COLOR_ORDER ORDER_RGB     // the WS2811 FCOB strips (test: LED_TEST_COLOR 0xFF0000 shows red)
+#define LED_COLOR_ORDER ORDER_GRB     // the WS2811 FCOB strips (confirmed: RGB showed idle green as pink)
 #define MATRIX_COLOR_ORDER ORDER_GRB  // the WS2812B 8x8 panel
 
 #define LED_INDEX_TEST 0

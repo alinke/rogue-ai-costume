@@ -308,7 +308,7 @@
 #define ORDER_GBR 4
 #define ORDER_BGR 5
 #ifndef LED_COLOR_ORDER
-#define LED_COLOR_ORDER ORDER_RGB     // the strips: WS2811 FCOB (WS2812B 5050 strips: ORDER_GRB)
+#define LED_COLOR_ORDER ORDER_GRB     // the strips: WS2811 FCOB and WS2812B are both GRB (FCOB confirmed)
 #endif
 #ifndef MATRIX_COLOR_ORDER
 #define MATRIX_COLOR_ORDER ORDER_GRB  // the 8x8 panel: WS2812B

@@ -409,9 +409,9 @@ neck (2) and on the sleeves (5 each, none on the elbow). Print 8 x 60 mm and
 through a hole at each end of the clip holds better than glue alone (and comes
 off). On the left sleeve run beside the pocket, not over it.
 
-Colour order: the FCOB strips are `LED_COLOR_ORDER ORDER_RGB` and the matrix
-`MATRIX_COLOR_ORDER ORDER_GRB`. Check with `LED_TEST_COLOR 0xFF0000`: if the
-strips show green or blue, try `ORDER_GRB` / `ORDER_BRG`.
+Colour order: the FCOB strips and the matrix are both GRB (`LED_COLOR_ORDER`,
+`MATRIX_COLOR_ORDER`; confirmed -- with RGB the idle green showed pink). Check a
+new strip with `LED_TEST_COLOR 0xFF0000`: it should show red.
 
 Matrix orientation: set `MATRIX_ORIENT_TEST 1`, flash, and turn
 `MATRIX_ROTATION` (0-3) / `MATRIX_MIRROR` until the green "F" stands upright in
