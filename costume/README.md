@@ -369,15 +369,16 @@ costume's own LED output stays off (`LED_STRIP_ENABLED 0`).
 | A | lead | strip 1's end -> through hole **1** (left front, behind the screen) -> inside, over your left shoulder -> out through hole **2** (top of the left sleeve) | ~0.5 m |
 | 2 | 1 m | left sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) | 98 + 62 |
 | B | lead | inside the left cuff, up inside the sleeve, across inside the back -> out through hole **3** (under the matrix) | ~1 m |
-| 3 | matrix | on the harness cross; its three leads go straight into hole **3** | 64 |
+| M | matrix | on the harness cross, connectors at the bottom; its three leads go straight into hole **3** (under the base's lower edge) | 64 |
 | C | lead | matrix out, inside the back, up to your right shoulder -> out through hole **4** (top of the right sleeve) | ~0.5 m |
-| 4 | 1 m | right sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) -- the last strip (its output plug stays tucked in the cuff, unused) | 98 + 62 |
+| 3 | 1 m | right sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) -- the last strip (its output plug stays tucked in the cuff, unused) | 98 + 62 |
 
 Holes in the jacket's outer shell (the leads run between shell and lining):
 **1** left front behind the screen, where strip 1 ends; **2** top of the left
 sleeve's seam, where strip 2 starts; **3** the middle of the back, under the
-matrix base's lead holes (the base hides it); **4** top of the right sleeve's
-seam, where strip 4 starts. Cut each hole 17.5 mm across and fit a grommet
+matrix base's lead holes, near its lower edge (the matrix is mounted with its
+connectors at the bottom; the base hides the hole); **4** top of the right
+sleeve's seam, where strip 3 starts. Cut each hole 17.5 mm across and fit a grommet
 (`hardware/3dprint/grommet.stl`: a hex bezel, hot-glued on from outside
 through its glue holes) -- except hole 3, which the matrix base already covers:
 there, melt the edges with a soldering iron (or a dab of fray glue) so the
