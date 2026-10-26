@@ -187,8 +187,8 @@ static void task(void*) {
   }
   BLEAdvertising* adv = BLEDevice::getAdvertising();
   adv->setScanResponse(false);
-  adv->setMinInterval(160);  // 100 ms (0.625 ms units)
-  adv->setMaxInterval(240);  // 150 ms
+  adv->setMinInterval(80);   // 50 ms (0.625 ms units): state changes reach the Gledopto quickly
+  adv->setMaxInterval(120);  // 75 ms
   setAdvert();
   BLEScan* scan = BLEDevice::getScan();
   scan->setAdvertisedDeviceCallbacks(new ScanCB(), true);  // every packet: fresh RSSI
@@ -200,7 +200,7 @@ static void task(void*) {
   Serial.printf("[I][researcher] BLE up in %u ms: advertising as the AI, listening for the scanner\n",
                 (unsigned)(millis() - t0));
   for (;;) {
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(50));  // a new state goes out within 50 ms (was 500)
     if (s_stopReq) {
       s_up = false;
       scan->stop();

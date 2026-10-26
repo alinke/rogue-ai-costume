@@ -17,17 +17,24 @@
 //   matrix   (64)
 //   strip 3  right sleeve, shoulder -> cuff (98), tucked in the cuff (62, dark)
 // LED_INDEX_TEST 1 shows where each LED number falls, to set these.
+// LED_BENCH 1: the strips loose on the bench -- every LED lit, no hidden parts.
+#define LED_BENCH 1
+#if LED_BENCH
+#define LED_CHAIN { {LEDS_TRIM, 160, false}, {LEDS_SLEEVE, 160, true}, {LEDS_MATRIX, 64, false}, \
+                    {LEDS_SLEEVE, 160, true} }
+#else
 #define LED_CHAIN { {LEDS_DARK, 15, false}, {LEDS_TRIM, 45, false}, {LEDS_DARK, 40, false}, \
                     {LEDS_TRIM, 45, true}, {LEDS_DARK, 15, false}, \
                     {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false}, \
                     {LEDS_MATRIX, 64, false}, \
                     {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false} }
+#endif
 #define LED_BRIGHTNESS_PERCENT 40
 
 #define MATRIX_SERPENTINE 1
-#define MATRIX_ROTATION 0
+#define MATRIX_ROTATION 2         // mounted with its connectors at the bottom
 #define MATRIX_MIRROR 0
-#define MATRIX_ORIENT_TEST 0
+#define MATRIX_ORIENT_TEST 1
 #define MATRIX_BRIGHTNESS_PERCENT 20
 
 #define ORDER_RGB 0

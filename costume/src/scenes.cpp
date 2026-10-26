@@ -207,6 +207,7 @@ void contain(uint32_t now) {
     return;
   }
   Serial.println("[I][scene] containment attack");
+  leds::setMode(leds::CONTAIN);  // straight away: the strips (and the Gledopto) react before the screen does
   startTransition(&SCENE_RECONTAIN, C_CYAN, now);
 }
 
