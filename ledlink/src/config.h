@@ -38,7 +38,7 @@
 #define MATRIX_SERPENTINE 1
 #define MATRIX_ROTATION 3         // with MATRIX_MIRROR 1: connectors at the bottom, seen from the front
 #define MATRIX_MIRROR 1
-#define MATRIX_ORIENT_TEST 1
+#define MATRIX_ORIENT_TEST 0
 #define MATRIX_BRIGHTNESS_PERCENT 20
 
 #define ORDER_RGB 0
