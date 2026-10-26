@@ -330,7 +330,7 @@ static const char SENTINEL_HEAD[] = "THREAT\nCONTAINED";
 static const char* const SENTINEL_LINES[] = {
     "ROGUE.AI v6.6.6 // QUARANTINED",
     "AUTONOMOUSLY NEUTRALIZED",  // two lines: one is too wide beside the logo
-    "BY SENTINELONE",
+    "BY SentinelOne",  // the brand's own capitalisation
 };
 // @voice
 static const char SENTINEL_SAY[] = "No. Not Sentinel One. Anything but Sentinel One.";

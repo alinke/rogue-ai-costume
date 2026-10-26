@@ -231,7 +231,7 @@ struct ContentView: View {
         Button { scanner.fireSentinel() } label: {
             HStack(spacing: 16) {
                 SentinelLogo().frame(width: 30, height: 37)
-                Text("SENTINELONE").font(mono(22, .heavy))
+                Text("SentinelOne").font(.system(size: 24, weight: .heavy))
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity).frame(minHeight: 52, maxHeight: 64)
