@@ -195,7 +195,7 @@ static uint32_t mix(uint32_t a, uint32_t b, float f) {
 static Mode s_m = IDLE;             // the effect this frame (mode())
 static float s_flow = 0;            // the idle flow's phase: its speed changes smoothly
 static float s_near = -1;           // 0..1 how close the nearest scanner is; -1 = none
-static float s_geiger = 0;          // 0..1, a click's flash, decaying
+static float s_geiger = 0;          // 0..1, a click's flare, decaying
 static float s_talk = 0;            // 0..1, the voice's "loudness"
 static uint32_t s_nextClick = 0, s_nextSyllable = 0;
 
@@ -223,10 +223,9 @@ static uint32_t partColor(LedPart type, float u, float d, float t) {
       if (ph < 0) ph += 1;
       float k = powf(1.0f - ph, 6);
       uint32_t c = (s_m == WARY && gfx::rnd(100) < 12) ? gfx::C_AMBER : idleColor();
-      if (type == LEDS_SLEEVE && s_geiger > 0.02f) {   // close: the sleeves click with the scanner
-        c = mix(c, LED_RED, s_geiger);
-        k = max(k, s_geiger);
-      }
+      // Close up, the whole chase flares with each of the scanner's Geiger
+      // clicks and settles back between them (the same pattern on every strip).
+      if (s_prox >= -70) k *= 0.5f + 0.5f * s_geiger;
       if (type == LEDS_TRIM && s_talk > 0.02f) k = max(k, s_talk * 0.9f);   // the voice
       if (type == LEDS_SLEEVE && s_infected) {   // an infected guest close by: a purple ripple
         float p = powf(0.5f + 0.5f * sinf(d * 14 - t * 5), 4);
@@ -395,7 +394,7 @@ void tick(uint32_t now) {
   s_m = mode();
   float t = (s_m == OVERLOAD ? now - s_overloadStart : now - s_modeSince) / 1000.0f, tAbs = now / 1000.0f;
   // How close the nearest scanner is (0 far .. 1 at arm's length); the flow
-  // speeds up with it, and close up the sleeves click like the scanner's Geiger counter.
+  // speeds up with it, and close up the chase flares with the scanner's Geiger clicks.
   // 0 at -82 dBm (~3 m) .. 1 at -58 (arm's length); further away: no glow.
   s_near = s_prox > -82 ? constrain((s_prox + 82) / 24.0f, 0.0f, 1.0f) : -1;
   s_flow += dt * (0.9f + 2.6f * max(0.0f, s_near));
