@@ -76,10 +76,24 @@ static rmt_encoder_handle_t s_enc = nullptr;
 static bool s_busy = false;
 static uint32_t s_nextFrame = 0;
 
+// Brightness % -> output level (0..65025), on a squared curve: the eye sees
+// light logarithmically, so a straight percentage put 10% and 100% close
+// together. 10% -> 1% power, 20% -> 4%, 50% -> 25%, 100% -> 100%.
+static uint32_t levelFor(int pct) {
+  uint32_t p = constrain(pct, 0, 100) * 255 / 100;
+  return p * p;
+}
+
 static void setPixel(int i, uint32_t rgb, int pct = -1, int order = LED_COLOR_ORDER) {
   if (pct < 0) pct = s_bright;
-  int k = pct * 255 / 100;
-  uint8_t r = ((rgb >> 16) & 255) * k / 255, g = ((rgb >> 8) & 255) * k / 255, b = (rgb & 255) * k / 255;
+  uint32_t k = levelFor(pct);
+  // A channel that's clearly on never rounds down to off (dim colours stay
+  // colours); faint tails still fade to dark.
+  auto ch = [&](uint32_t v) -> uint8_t {
+    uint32_t o = v * k / 65025;
+    return (uint8_t)(o == 0 && v >= 64 ? 1 : o);
+  };
+  uint8_t r = ch((rgb >> 16) & 255), g = ch((rgb >> 8) & 255), b = ch(rgb & 255);
   uint8_t* p = s_px + i * 3;
   switch (order) {  // the byte order the LED chip expects
     case ORDER_GRB: p[0] = g; p[1] = r; p[2] = b; break;
