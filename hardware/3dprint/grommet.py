@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Cable grommet for the holes in the jacket (the LED leads pass through): a
 hexagonal "data port" bezel like the LAB-7 logo, in two parts that clamp the
-fabric round a 15 mm hole.
+fabric round a 17.5 mm hole.
 
   grommet_front.stl   outside: a hex plate (engraved rivets, chamfered
                       opening) with a tube that goes through the hole
   grommet_back.stl    inside: a round ring that presses onto the tube, the
                       fabric sandwiched between the two
 
-Cut the hole 15 mm across, push the front's tube through from outside, press
+Cut the hole 17.5 mm across, push the front's tube through from outside, press
 the back ring on from inside. A drop of super glue on the tube before pressing
-makes it permanent (keep it off the fabric's visible face). The 12 mm opening
-takes a JST plug.
+makes it permanent (keep it off the fabric's visible face). The 15 mm opening
+takes the strips' JST-SM plugs.
 
 Print both flat, no supports: the front FACE DOWN (the tube up), so the
 engraved face comes out smooth. PETG or PLA, black.
@@ -29,13 +29,13 @@ from manifold3d import CrossSection, JoinType, Manifold
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-HOLE = 15.0          # the hole in the jacket
-OPEN = 12.0          # the opening the cable goes through
-HEX = 28.0           # front plate, across the flats
+OPEN = 15.0          # the opening the plugs go through
+HOLE = OPEN + 2.5    # the hole in the jacket (the tube's 1.2 mm wall round the opening)
+HEX = 31.0           # front plate, across the flats
 PLATE = 2.0
 TUBE_OD = HOLE - 0.4 # goes through the hole
 FIT = 0.15           # the back ring's press fit on the tube (interference)
-RING_OD, RING_T = 24.0, 1.6
+RING_OD, RING_T = 27.0, 1.6
 RIVET_D, RIVET_DEPTH = 1.8, 0.5
 CHAMFER = 1.2
 
@@ -55,7 +55,8 @@ def front(fabric):
     m = m - Manifold.cylinder(PLATE + tube_len + 2, OPEN / 2, OPEN / 2, 72).translate((0, 0, -1))
     m = m - Manifold.cylinder(CHAMFER, OPEN / 2 + CHAMFER, OPEN / 2, 72).translate((0, 0, -0.001))
     # Engraved details on the face: a groove ring, and a rivet at each corner.
-    groove = Manifold.cylinder(0.4, 9.6, 9.6, 96) - Manifold.cylinder(0.4, 9.0, 9.0, 96)
+    g0 = OPEN / 2 + CHAMFER + 1.3
+    groove = Manifold.cylinder(0.4, g0 + 0.6, g0 + 0.6, 96) - Manifold.cylinder(0.4, g0, g0, 96)
     m = m - groove.translate((0, 0, -0.001))
     Rr = HEX / 2 / math.cos(math.pi / 6) - 3.2
     for k in range(6):
