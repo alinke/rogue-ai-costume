@@ -303,6 +303,7 @@ void loop() {
     }
     extern int g_timesContained;
     researcher::setState(header::threatLevel(), act, min(gallery::total(), 255), min(g_timesContained, 255));
+    researcher::setLedState(leds::mode(), leds::matrixNumberNow());  // for the Gledopto (ledlink)
   }
   rtclock::tick(start);
   if (rtclock::takeTargetEvent()) scenes::midnight(start);

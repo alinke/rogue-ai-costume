@@ -8,9 +8,14 @@
 #include "config.h"
 #include "gfx.h"
 
+#ifndef LED_ONBOARD_OFF_PIN
+#define LED_ONBOARD_OFF_PIN 26  // the Guition's own WS2812 (LED1); -1 = none
+#endif
+
 namespace leds {
 
 static Mode s_mode = IDLE;
+static int s_number = -1;  // see matrixNumber()
 static uint32_t s_modeSince = 0;
 
 void setMode(Mode m) {
@@ -18,6 +23,12 @@ void setMode(Mode m) {
   s_mode = m;
   s_modeSince = millis();
 }
+
+// Kept even without a strip: the beacon carries them to an external LED
+// controller (../../ledlink, the Gledopto) that runs this same code.
+void matrixNumber(int n) { s_number = n; }
+Mode mode() { return s_mode; }
+int matrixNumberNow() { return s_number; }
 
 #if LED_STRIP_ENABLED
 static const LedSegment CHAIN[] = LED_CHAIN;
@@ -102,8 +113,9 @@ void begin() {
   Serial.printf("[I][leds] RMT %s, %s\n", dma ? "DMA" : "no DMA", esp_err_to_name(err));
   // The board's own WS2812 (LED1, GPIO26) keeps whatever colour it last got
   // until power is removed: send it one "off" so it doesn't waste battery.
+#if LED_ONBOARD_OFF_PIN >= 0
   rmt_tx_channel_config_t bc = cfg;
-  bc.gpio_num = GPIO_NUM_26;
+  bc.gpio_num = (gpio_num_t)LED_ONBOARD_OFF_PIN;
   bc.flags.with_dma = 0;
   bc.mem_block_symbols = 48;
   rmt_channel_handle_t board = nullptr;
@@ -114,9 +126,10 @@ void begin() {
       rmt_tx_wait_all_done(board, 100);
     rmt_disable(board);
     rmt_del_channel(board);
-    pinMode(26, OUTPUT);  // hold its data line low so noise can't relight it
-    digitalWrite(26, LOW);
+    pinMode(LED_ONBOARD_OFF_PIN, OUTPUT);  // hold its data line low so noise can't relight it
+    digitalWrite(LED_ONBOARD_OFF_PIN, LOW);
   }
+#endif
   if (err != ESP_OK) s_chan = nullptr;
 }
 
@@ -184,8 +197,6 @@ static void matrixXY(int k, int* x, int* y) {
   }
 }
 
-static int s_number = -1;
-void matrixNumber(int n) { s_number = n; }
 
 // 5x7 digits (bit 4 = left column), and a narrow "10" for 8 columns.
 static const uint8_t DIGITS[10][7] = {
@@ -300,7 +311,6 @@ void tick(uint32_t now) {
 
 void begin() {}
 void tick(uint32_t) {}
-void matrixNumber(int) {}
 
 #endif
 

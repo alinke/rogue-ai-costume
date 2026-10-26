@@ -31,5 +31,7 @@ void tick(uint32_t now);  // ~30 fps from loop()
 // The matrix shows a big number instead of the eye (the midnight countdown);
 // -1 = back to the eye.
 void matrixNumber(int n);
+Mode mode();              // the effect running now (sent in the beacon)
+int matrixNumberNow();    // -1 = the eye
 
 }  // namespace leds

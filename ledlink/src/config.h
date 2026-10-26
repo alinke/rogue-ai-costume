@@ -1,0 +1,39 @@
+#pragma once
+// LEDLINK settings: the jacket's LED chain, as in the costume's config.h (the
+// costume's own strip output is off -- this board drives the strips now).
+
+#define LED_STRIP_ENABLED 1
+#define LED_DATA_PIN 16            // the Gledopto's output (5 V, level-shifted)
+#define LED_ONBOARD_OFF_PIN -1     // no on-board LED to switch off
+#define LED_PIN_FINDER 0
+#define BUTTON_PIN 17              // the Gledopto's button
+
+// The jacket (see ../costume/README.md, "The jacket"): four uncut strips + the
+// matrix. LED_INDEX_TEST 1 shows where each LED number falls, to set these.
+#define LED_CHAIN { {LEDS_DARK, 15, false}, {LEDS_TRIM, 45, false}, {LEDS_DARK, 40, false}, \
+                    {LEDS_TRIM, 45, true}, {LEDS_DARK, 15, false}, \
+                    {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false}, \
+                    {LEDS_MATRIX, 64, false}, \
+                    {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 28, false} }
+#define LED_BRIGHTNESS_PERCENT 40
+
+#define MATRIX_SERPENTINE 1
+#define MATRIX_ROTATION 0
+#define MATRIX_MIRROR 0
+#define MATRIX_ORIENT_TEST 0
+#define MATRIX_BRIGHTNESS_PERCENT 20
+
+#define ORDER_RGB 0
+#define ORDER_GRB 1
+#define ORDER_BRG 2
+#define ORDER_RBG 3
+#define ORDER_GBR 4
+#define ORDER_BGR 5
+#define LED_COLOR_ORDER ORDER_RGB     // the WS2811 FCOB strips (test: LED_TEST_COLOR 0xFF0000 shows red)
+#define MATRIX_COLOR_ORDER ORDER_GRB  // the WS2812B 8x8 panel
+
+#define LED_INDEX_TEST 0
+#define LED_TEST_COLOR 0
+
+// The costume's beacon: gone this long = show the idle effect on our own.
+#define COSTUME_LOST_MS 5000
