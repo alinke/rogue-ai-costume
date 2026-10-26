@@ -14,6 +14,8 @@ fabric), flat, no supports.
 
   python3 wire_guide.py                       -> both
   python3 wire_guide.py --width 5.4 --thick 1.75 --length 15
+  python3 wire_guide.py --width 4.5 --thick 4.5 --name wire_guide_round_4.5mm
+                                              -> a round 4.5 mm cable (the costume's USB)
 """
 import argparse
 import os
@@ -82,8 +84,9 @@ if __name__ == "__main__":
     ap.add_argument("--width", type=float, default=5.4, help="cable width, mm")
     ap.add_argument("--thick", type=float, default=1.75, help="cable thickness, mm")
     ap.add_argument("--length", type=float, default=15.0, help="guide length along the cable, mm")
+    ap.add_argument("--name", help="file name for a single guide (e.g. wire_guide_round_4.5mm); default: both standard ones")
     a = ap.parse_args()
-    for n, name in ((1, "wire_guide_single"), (2, "wire_guide_double")):
+    for n, name in (((1, a.name),) if a.name else ((1, "wire_guide_single"), (2, "wire_guide_double"))):
         m = guide(a.width, a.thick, a.length, n)
         write_stl(m, os.path.join(HERE, name + ".stl"), "ROGUE.AI " + name)
         b = m.bounding_box()
