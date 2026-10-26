@@ -211,6 +211,14 @@ void contain(uint32_t now) {
   startTransition(&SCENE_RECONTAIN, C_CYAN, now);
 }
 
+void sentinelOne(uint32_t now) {
+  if (s_current == &SCENE_MENU || s_current == &SCENE_TOUCHCAL || s_current == &SCENE_SENTINEL) return;
+  Serial.println("[I][scene] SentinelOne: contained");
+  s_paused = false;
+  leds::setMode(leds::SENTINEL);
+  startTransition(&SCENE_SENTINEL, 0x6100FF, now);
+}
+
 const Scene* current() { return s_transitioning ? s_next : s_current; }
 
 void clap(uint32_t now) {

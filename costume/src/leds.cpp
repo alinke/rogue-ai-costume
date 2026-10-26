@@ -184,6 +184,7 @@ void begin() {
 }
 
 static constexpr uint32_t LED_PURPLE = 0x8000FF;
+static constexpr uint32_t S1_PURPLE = 0x6100FF, S1_LAVENDER = 0xB080FF;  // SentinelOne
 
 static uint32_t mix(uint32_t a, uint32_t b, float f) {
   f = constrain(f, 0.0f, 1.0f);
@@ -272,11 +273,52 @@ static uint32_t partColor(LedPart type, float u, float d, float t) {
       return gfx::rnd(100) < 70 ? scale(LED_RED, 0.2f + 0.6f * left) : 0;
     }
     case OVERLOAD: return scale(LED_RED, 0.6f + 0.4f * sinf(t * 25));
+    case SENTINEL: {
+      // A purple victory: waves rush in from the cuffs to the chest, the whole
+      // jacket flashes three times, then a slow purple glow climbing toward the
+      // collar with the odd lavender sparkle.
+      if (t < 1.4f) {
+        float wave = 2.0f - t * 1.45f;
+        float k = 1 - fabsf(d - wave) / 0.3f;
+        return d > wave ? scale(S1_PURPLE, 0.25f) : (k > 0 ? scale(S1_PURPLE, k) : 0);
+      }
+      if (t < 2.4f) return ((int)(t * 6) & 1) ? S1_PURPLE : scale(S1_PURPLE, 0.15f);
+      if (gfx::rnd(1000) < 25) return S1_LAVENDER;
+      float ph = fmodf(u * 2.0f - t * 0.6f, 1.0f);
+      if (ph < 0) ph += 1;
+      return scale(S1_PURPLE, 0.35f + 0.45f * (0.5f + 0.5f * sinf(t * 2.2f)) + 0.2f * powf(1 - ph, 4));
+    }
   }
   return 0;
 }
 
+// The SentinelOne logo on the 8x8 matrix: its five parallelograms (1272 x 1588
+// box) sampled at each cell's centre, once.
+static bool s1Logo[8][8];
+static bool s1LogoReady = false;
+static bool inQuad(const int16_t* qx, const int16_t* qy, float x, float y) {
+  bool in = false;
+  for (int i = 0, j = 3; i < 4; j = i++)
+    if (((qy[i] > y) != (qy[j] > y)) && (x < (float)(qx[j] - qx[i]) * (y - qy[i]) / (qy[j] - qy[i]) + qx[i])) in = !in;
+  return in;
+}
+static void makeS1Logo() {
+  static const int16_t QX[5][4] = {{0, 635, 635, 0}, {635, 1270, 1270, 635}, {159, 477, 1111, 793},
+                                   {0, 635, 635, 0}, {635, 1270, 1270, 635}};
+  static const int16_t QY[5][4] = {{317, 0, 318, 635}, {0, 317, 635, 318}, {715, 556, 873, 1032},
+                                   {952, 1270, 1588, 1270}, {1270, 952, 1270, 1588}};
+  for (int y = 0; y < 8; y++)
+    for (int x = 0; x < 8; x++) {
+      float px = 60 + (x + 0.5f) * 1152 / 8.0f, py = (y + 0.5f) * 1588 / 8.0f;  // a touch narrower than square
+      bool on = false;
+      for (int q = 0; q < 5; q++) on |= inQuad(QX[q], QY[q], px, py);
+      s1Logo[y][x] = on;
+    }
+  s1LogoReady = true;
+}
+
 static uint32_t eyeColor(float t, float tAbs) {
+  if (s_m == SENTINEL) return scale(S1_PURPLE, 0.4f + 0.6f * (0.5f + 0.5f * sinf(tAbs * 3)));
   if (s_m == OFF || s_m == STEALTH || (s_m == SHUTDOWN && t > 2.4f)) return 0;
   if (s_m == ALERT || s_m == MIDNIGHT || s_m == CONTAIN || s_m == TOUCH || s_m == OVERLOAD)
     return ((int)(t * 8) & 1) ? LED_RED : 0;
@@ -355,6 +397,10 @@ static uint32_t matrixColor(int x, int y, float t) {
   uint32_t iris = s_talk > 0.02f ? scale(LED_RED, 0.35f + 0.65f * s_talk) : LED_RED;
   if (s_infected && gfx::rnd(100) < 8) iris = LED_PURPLE;
   switch (s_m) {
+    case SENTINEL:  // the SentinelOne logo, pulsing purple
+      if (!s1LogoReady) makeS1Logo();
+      if (t < 2.4f) return ((int)(t * 6) & 1) && s1Logo[y][x] ? S1_PURPLE : 0;
+      return s1Logo[y][x] ? scale(S1_PURPLE, 0.55f + 0.45f * sinf(t * 2.2f)) : 0;
     case SHUTDOWN:  // the eye goes last: dims, flickers, gone at 2.4 s
       if (t > 2.4f) return 0;
       return gfx::rnd(100) < 75 ? scale(eyePixel(x, y, LED_RED), 1 - t / 2.4f) : 0;

@@ -14,6 +14,7 @@ struct SettingsView: View {
                     Toggle("Sound", isOn: $s.soundOn)
                     Toggle("Vibrate as the AI gets closer", isOn: $s.hapticsOn)
                     Toggle("Demo mode (no costume nearby)", isOn: $s.demoMode)
+                    Toggle("SentinelOne", isOn: $s.sentinelOne)
                 } header: { Text("Scanner") } footer: {
                     Text("Demo mode simulates the entity's signal so you can try the scanner anywhere. Turn it off at the party.")
                 }

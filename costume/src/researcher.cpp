@@ -60,6 +60,9 @@ static volatile uint8_t s_remoteCmd = 0, s_ackSeq = 0;
 static volatile uint8_t s_led[5] = {0, 0, 0, 0, 0};  // LED effect, matrix number + 1, squad, flags, brightness %
 
 static Zone s_zone = NONE;
+// A phone's SentinelOne button: flag 4 in its beacon for a few seconds.
+static volatile uint32_t s_sentinelAt = 0;
+static uint32_t s_sentinelHandled = 0;
 
 // One beacon heard from a scanner: its key (Bluetooth address, or a stand-in),
 // signal, CONTAIN counter and session id.
@@ -115,6 +118,8 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
         if (u.length() == 36 && u.startsWith("52534331-") && u.substring(13, 24) == "-4c41-4237-") {
           int session = hexByte(u.c_str() + 9), trigger = hexByte(u.c_str() + 11);
           if (session < 0 || trigger < 0) return;
+          int flags = hexByte(u.c_str() + 34);
+          if (flags >= 0 && (flags & 4)) s_sentinelAt = millis();
           const uint8_t key[6] = {'i', 'O', 'S', 0, 0, (uint8_t)session};
           record(key, r, trigger, session);
           return;
@@ -321,6 +326,13 @@ Events poll(uint32_t now) {
   }
   for (auto& e : s_scanners) {
     if (e.used && e.firedMs && (int32_t)(now - e.firedMs) < SQUAD_WINDOW_MS) ev.squad++;
+  }
+  // SentinelOne: once per press (the phone holds the flag ~5 s; 20 s apart).
+  uint32_t s1 = s_sentinelAt;
+  if (s1 && (int32_t)(now - s1) < 2000 && (!s_sentinelHandled || (int32_t)(s1 - s_sentinelHandled) > 20000)) {
+    s_sentinelHandled = s1;
+    ev.sentinel = true;
+    Serial.println("[I][researcher] SentinelOne button");
   }
   return ev;
 }

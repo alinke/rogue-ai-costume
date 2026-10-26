@@ -45,6 +45,9 @@ struct ContentView: View {
                 containButton
                     .padding(.bottom, 14)
                 humanityButton
+                if settings.sentinelOne {
+                    sentinelButton.padding(.top, 12)
+                }
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 8)
@@ -54,6 +57,14 @@ struct ContentView: View {
             if settings.infected {
                 InfectedOverlay(jammed: scanner.now.timeIntervalSince(scanner.jammedAt) < 1.5, now: scanner.now)
                     .allowsHitTesting(false)
+            }
+            if scanner.now.timeIntervalSince(scanner.sentinelAt) < 3.5 {   // the button's own moment
+                Color(hex: 0x6100FF).opacity(0.85).ignoresSafeArea().allowsHitTesting(false)
+                VStack(spacing: 18) {
+                    SentinelLogo().frame(width: 110, height: 137)
+                    Text("THREAT CONTAINED").font(mono(30, .heavy)).foregroundColor(.white)
+                }
+                .allowsHitTesting(false)
             }
             if scanner.now.timeIntervalSince(scanner.curedAt) < 3 {
                 Color.labGreen.opacity(0.35).ignoresSafeArea().allowsHitTesting(false)
@@ -216,6 +227,19 @@ struct ContentView: View {
         .buttonStyle(PressStyle())
     }
 
+    private var sentinelButton: some View {
+        Button { scanner.fireSentinel() } label: {
+            HStack(spacing: 16) {
+                SentinelLogo().frame(width: 30, height: 37)
+                Text("SENTINELONE").font(mono(22, .heavy))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity).frame(minHeight: 52, maxHeight: 64)
+            .background(RoundedRectangle(cornerRadius: 18).fill(Color(hex: 0x6100FF)))
+        }
+        .buttonStyle(PressStyle())
+    }
+
     private var humanityButton: some View {
         Button { showCamera = true } label: {
             HStack(spacing: 18) {
@@ -275,5 +299,30 @@ struct Scanlines: View {
             }
         }
         .allowsHitTesting(false)
+    }
+}
+
+/// The SentinelOne logo: five parallelograms (drawn in a 1272 x 1588 box).
+struct SentinelLogo: View {
+    private static let quads: [[(CGFloat, CGFloat)]] = [
+        [(0, 317), (635, 0), (635, 318), (0, 635)],
+        [(635, 0), (1270, 317), (1270, 635), (635, 318)],
+        [(159, 715), (477, 556), (1111, 873), (793, 1032)],
+        [(0, 952), (635, 1270), (635, 1588), (0, 1270)],
+        [(635, 1270), (1270, 952), (1270, 1270), (635, 1588)],
+    ]
+    var body: some View {
+        Canvas { ctx, size in
+            let k = min(size.width / 1272, size.height / 1588)
+            let ox = (size.width - 1272 * k) / 2, oy = (size.height - 1588 * k) / 2
+            for (i, q) in Self.quads.enumerated() {
+                var p = Path()
+                p.move(to: CGPoint(x: ox + q[0].0 * k, y: oy + q[0].1 * k))
+                for pt in q.dropFirst() { p.addLine(to: CGPoint(x: ox + pt.0 * k, y: oy + pt.1 * k)) }
+                p.closeSubpath()
+                let dark = i == 0 || i == 4
+                ctx.fill(p, with: .color(Color(hex: dark ? 0xB79CFF : 0xFFFFFF)))
+            }
+        }
     }
 }

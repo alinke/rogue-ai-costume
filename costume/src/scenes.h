@@ -52,6 +52,7 @@ extern const Scene SCENE_CLAP;      // two claps heard
 extern const Scene SCENE_UPGRADE;   // after some scans: the photo, assimilated
 extern const Scene SCENE_RESEARCHER_ALERT;  // the researcher detected / near / gone
 extern const Scene SCENE_RECONTAIN;         // she pressed CONTAIN
+extern const Scene SCENE_SENTINEL;          // a phone's SentinelOne button: contained, for real
 bool scanHadPhoto();
 bool boothTriggered();              // the photo booth ended because someone stepped in / touched                // the last Human Scan used a camera photo
 
@@ -74,6 +75,7 @@ void clap(uint32_t now);           // the mic heard two claps
 // pressed CONTAIN (interrupts almost anything -- it's the story beat).
 void researcherAlert(int kind, uint32_t now);
 void contain(uint32_t now);
+void sentinelOne(uint32_t now);    // the app's SentinelOne button
 const Scene* current();
 void openMenu(uint32_t now);       // long press in the secret corner
 void jump(int sceneNumber, uint32_t now);  // debug: scene number over serial

@@ -72,6 +72,15 @@ final class Radio: NSObject, ObservableObject {
         tick = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.refreshSeen() }
     }
 
+    /// The SentinelOne button: flag 4 in the beacon for a few seconds; the costume
+    /// takes it as contained, for real (../../costume/src/researcher.cpp).
+    private(set) var sentinelUntil = Date.distantPast
+    func fireSentinel() {
+        sentinelUntil = Date().addingTimeInterval(5)
+        advertise()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.2) { [weak self] in self?.advertise() }
+    }
+
     func fireContain() {
         if Settings.shared.demoMode && demoContainAt == nil { demoContainAt = Date() }
         trigger &+= 1
@@ -80,9 +89,11 @@ final class Radio: NSObject, ObservableObject {
     }
 
     private var beaconUUID: CBUUID {
-        // Flags: 01 contagious (other phones catch it), 02 infected (the checkpoint sees it).
+        // Flags: 01 contagious (other phones catch it), 02 infected (the checkpoint sees it),
+        // 04 the SentinelOne button.
         CBUUID(string: String(format: "52534331-%02X%02X-4C41-4237-0000000000%02X", session, trigger,
-                              (contagious ? 1 : 0) | (showsInfected ? 2 : 0)))
+                              (contagious ? 1 : 0) | (showsInfected ? 2 : 0) |
+                              (Date() < sentinelUntil ? 4 : 0)))
     }
 
     private func advertise() {

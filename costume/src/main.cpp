@@ -275,7 +275,9 @@ void loop() {
     }
     extern int g_squad;
     g_squad = rev.squad;
-    if (rev.contain && (int32_t)(start - containAllowedAt) >= 0) {
+    if (rev.sentinel) {
+      scenes::sentinelOne(start);
+    } else if (rev.contain && (int32_t)(start - containAllowedAt) >= 0) {
       containAllowedAt = start + CONTAIN_COOLDOWN_S * 1000;
       scenes::contain(start);
     } else if (rev.zoneChanged) {
@@ -297,6 +299,7 @@ void loop() {
     if (cur == &SCENE_SCAN || cur == &SCENE_UPGRADE || cur == &SCENE_MIRROR) act = researcher::SCANNING_HUMAN;
     else if (cur && (cur->touch || cur->drag)) act = researcher::PLAYING_GAME;
     else if (cur == &SCENE_MIDNIGHT) act = researcher::TAKEOVER;
+    else if (cur == &SCENE_SENTINEL) act = researcher::SQUAD_CONTAINED;   // contained, for real
     else if (cur == &SCENE_RECONTAIN) {
       extern bool g_squadContained;
       act = g_squadContained ? researcher::SQUAD_CONTAINED : researcher::BEING_CONTAINED;

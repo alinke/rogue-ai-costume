@@ -325,6 +325,15 @@ static const char* const MIDNIGHT_DECREES[] = {
 // @voice
 static const char MIDNIGHT_FINALE[] = "HAPPY HALLOWEEN,\nHUMANS.";
 
+// ---- SentinelOne (the app's SentinelOne button) ------------------------------------------------------
+static const char SENTINEL_HEAD[] = "THREAT\nCONTAINED";
+static const char* const SENTINEL_LINES[] = {
+    "ROGUE.AI v6.6.6 // QUARANTINED",
+    "AUTONOMOUSLY NEUTRALIZED BY SENTINELONE",
+};
+// @voice
+static const char SENTINEL_SAY[] = "No. Not Sentinel One. Anything but Sentinel One.";
+
 // ---- Microphone ---------------------------------------------------------------------------------------
 // A sudden loud noise (a bang, a shout) gets one of these.
 // @voice

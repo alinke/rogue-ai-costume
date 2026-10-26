@@ -27,6 +27,7 @@ enum Mode : uint8_t {
   SHUTDOWN,   // the fake shutdown: the sleeves die, then the front, the eye last
   OVERLOAD,   // armband: a few seconds of full-chain red (current-limited)
   STEALTH,    // armband: everything dark until it's switched back
+  SENTINEL,   // SentinelOne: a purple victory -- converging waves, a flash, then a purple glow
 };
 
 void begin();

@@ -60,6 +60,15 @@ final class Scanner: ObservableObject {
     }
     var containingPercent: Int { min(97, Int(now.timeIntervalSince(containAt) * 97 / 4.3)) }
 
+    @Published private(set) var sentinelAt = Date.distantPast
+    /// The SentinelOne button: contains the AI for real.
+    func fireSentinel() {
+        radio.fireSentinel()
+        sentinelAt = now
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if settings.soundOn { Sound.shared.play(.lock) }
+    }
+
     func fire() {
         if settings.infected {        // an infected scanner's beam is jammed: get cured first
             jammedAt = now

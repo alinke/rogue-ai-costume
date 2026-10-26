@@ -177,14 +177,14 @@ static void wifiBegin() {
   s_updater.setup(&s_web, "/update");
   s_web.on("/", [] {
     static const char* const MODES[] = {"idle", "alert", "scan", "breakout", "midnight", "noise", "off", "wary",
-                                        "contain", "touch", "shutdown", "overload", "stealth"};
+                                        "contain", "touch", "shutdown", "overload", "stealth", "sentinelone"};
     uint32_t ago = s_seen ? millis() - s_seen : 0;
     char b[520];
     snprintf(b, sizeof(b),
              "ROGUE.AI LEDLINK -- firmware update at /update\ncostume: %s\neffect: %s\nmatrix number: %d\nup %lu s\n"
              "bluetooth: %s, %lu packets heard, %lu from the costume (%lu bytes)\nlast restart: %s\n"
              "threat %u, squad %u, talking %s; nearest handheld scanner %d dBm%s\nLED brightness %d%% (limit %d mA)\n",
-             s_seen && ago < COSTUME_LOST_MS ? "seen" : "NOT SEEN", MODES[min<int>(s_mode, 12)], (int)s_number - 1,
+             s_seen && ago < COSTUME_LOST_MS ? "seen" : "NOT SEEN", MODES[min<int>(s_mode, 13)], (int)s_number - 1,
              (unsigned long)(millis() / 1000), s_bleState, (unsigned long)s_heard, (unsigned long)s_rai, (unsigned long)s_raiLen, resetReason(), (unsigned)s_threat, (unsigned)s_squad,
              (s_flags & 1) ? "yes" : "no", s_nearestShown, s_infectedShown ? ", an infected phone close" : "",
              leds::brightness(), LED_MAX_MA);

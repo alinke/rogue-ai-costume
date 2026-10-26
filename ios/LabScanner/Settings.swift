@@ -16,6 +16,8 @@ final class Settings: ObservableObject {
     @Published var hapticsOn: Bool { didSet { d.set(hapticsOn, forKey: "hapticsOn") } }
     /// No costume around (App Review, trying it at home): a simulated AI signal.
     @Published var demoMode: Bool { didSet { d.set(demoMode, forKey: "demoMode") } }
+    /// A SentinelOne button on the scanner: it contains the AI for real (off by default).
+    @Published var sentinelOne: Bool { didSet { d.set(sentinelOne, forKey: "sentinelOne") } }
     // The humanity test's camera: rear by default (the researcher points the
     // phone at the guest); the viewfinder's flip button switches and remembers.
     @Published var frontCamera: Bool { didSet { d.set(frontCamera, forKey: "frontCamera") } }
@@ -76,6 +78,7 @@ final class Settings: ObservableObject {
         soundOn = d.bool(forKey: "soundOn")
         hapticsOn = d.bool(forKey: "hapticsOn")
         demoMode = d.bool(forKey: "demoMode")
+        sentinelOne = d.bool(forKey: "sentinelOne")
         frontCamera = d.bool(forKey: "frontCamera")
         researcherName = d.string(forKey: "researcherName") ?? ""
         compromisedPercent = d.integer(forKey: "compromisedPercent")

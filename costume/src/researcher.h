@@ -29,6 +29,7 @@ struct Events {
   Zone zone = NONE, previous = NONE;
   bool contain = false;  // she pressed CONTAIN
   int squad = 0;         // different scanners that fired CONTAIN in the last SQUAD_WINDOW_MS
+  bool sentinel = false; // a phone fired its SentinelOne button
 };
 
 void begin();                         // starts the radio in the background
