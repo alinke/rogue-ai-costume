@@ -30,6 +30,10 @@
                     {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false} }
 #endif
 #define LED_BRIGHTNESS_PERCENT 40
+// Current limit for the whole chain: frames that would draw more are dimmed to
+// fit (a white strobe on every LED is far over). 1000 on the bench (a Mac's USB
+// port), ~2000 on a 2-3 A power bank port.
+#define LED_MAX_MA 1000
 
 #define MATRIX_SERPENTINE 1
 #define MATRIX_ROTATION 2         // mounted with its connectors at the bottom

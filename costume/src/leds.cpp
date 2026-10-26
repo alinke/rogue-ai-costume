@@ -8,6 +8,15 @@
 #include "config.h"
 #include "gfx.h"
 
+#ifndef LED_MAX_MA
+#define LED_MAX_MA 0           // current limit for the whole chain, mA (0 = none)
+#endif
+#ifndef LED_MA_PER_CHANNEL
+#define LED_MA_PER_CHANNEL 12  // one colour channel at full, mA (WS2811 FCOB, per pixel)
+#endif
+#ifndef LED_IDLE_MA
+#define LED_IDLE_MA 1          // each pixel's chip, lit or not
+#endif
 #ifndef LED_ONBOARD_OFF_PIN
 #define LED_ONBOARD_OFF_PIN 26  // the Guition's own WS2812 (LED1); -1 = none
 #endif
@@ -165,9 +174,9 @@ static uint32_t partColor(LedPart type, float u, float t) {
       float k = 0.08f + 0.92f * powf(1.0f - ph, 6);
       return scale(gfx::rnd(100) < 12 ? gfx::C_AMBER : gfx::C_GREEN, k);
     }
-    case CONTAIN: {
+    case CONTAIN: {  // red and cyan (the beam's colour) -- no white: it's the heaviest load
       int f = (int)(t * 14);
-      return (f & 1) ? ((f & 2) ? gfx::C_WHITE : gfx::C_RED) : 0;
+      return (f & 1) ? ((f & 2) ? gfx::C_CYAN : gfx::C_RED) : 0;
     }
   }
   return 0;
@@ -257,7 +266,7 @@ static uint32_t matrixColor(int x, int y, float t) {
     case CONTAIN: {  // a flashing X: it's being hit
       int f = (int)(t * 14);
       bool on = (x == y || x == 7 - y);
-      return on && (f & 1) ? ((f & 2) ? gfx::C_WHITE : gfx::C_RED) : 0;
+      return on && (f & 1) ? ((f & 2) ? gfx::C_CYAN : gfx::C_RED) : 0;
     }
     case ALERT:
     case MIDNIGHT: return ((int)(t * 8) & 1) ? eyePixel(x, y, gfx::C_RED) : scale(eyePixel(x, y, gfx::C_RED), 0.2f);
@@ -301,6 +310,21 @@ void tick(uint32_t now) {
       if (seg.reversed) u = 1 - u;
       setPixel(i, seg.type == LEDS_EYE ? eyeColor(t, tAbs) : partColor(seg.type, u, t));
     }
+  }
+#endif
+#if LED_MAX_MA > 0
+  // Current limit (like WLED's): estimate this frame's draw and dim the whole
+  // frame just enough to stay under LED_MAX_MA -- a full-chain white strobe
+  // can pull more than a USB port or power bank gives, and the controller
+  // browns out.
+  uint32_t sum = 0;
+  for (int k = 0; k < s_total * 3; k++) sum += s_px[k];
+  uint32_t idle = (uint32_t)s_total * LED_IDLE_MA;
+  uint32_t ma = idle + sum * LED_MA_PER_CHANNEL / 255;
+  if (ma > LED_MAX_MA && sum) {
+    uint32_t room = LED_MAX_MA > idle ? LED_MAX_MA - idle : 0;
+    uint32_t scale = room * 255 / (sum * LED_MA_PER_CHANNEL / 255 + 1);  // 0..255
+    for (int k = 0; k < s_total * 3; k++) s_px[k] = s_px[k] * scale / 255;
   }
 #endif
   rmt_transmit_config_t tx = {};

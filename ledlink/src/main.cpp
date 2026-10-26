@@ -71,6 +71,17 @@ static void radioTask(void*) {
   }
 }
 
+static const char* resetReason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON: return "power on";
+    case ESP_RST_BROWNOUT: return "BROWNOUT (the supply sagged: too much LED current?)";
+    case ESP_RST_PANIC: return "CRASH";
+    case ESP_RST_INT_WDT: case ESP_RST_TASK_WDT: case ESP_RST_WDT: return "WATCHDOG (hung)";
+    case ESP_RST_SW: return "software (an update)";
+    default: return "other";
+  }
+}
+
 // ---- Wi-Fi updates ------------------------------------------------------------------
 static WebServer s_web(80);
 static HTTPUpdateServer s_updater;
@@ -97,12 +108,12 @@ static void wifiBegin() {
   s_web.on("/", [] {
     static const char* const MODES[] = {"idle", "alert", "scan", "breakout", "midnight", "noise", "off", "wary", "contain"};
     uint32_t ago = s_seen ? millis() - s_seen : 0;
-    char b[300];
+    char b[400];
     snprintf(b, sizeof(b),
              "ROGUE.AI LEDLINK -- firmware update at /update\ncostume: %s\neffect: %s\nmatrix number: %d\nup %lu s\n"
-             "bluetooth: %s, %lu packets heard, %lu from the costume (%lu bytes)\n",
+             "bluetooth: %s, %lu packets heard, %lu from the costume (%lu bytes)\nlast restart: %s\n",
              s_seen && ago < COSTUME_LOST_MS ? "seen" : "NOT SEEN", MODES[min<int>(s_mode, 8)], (int)s_number - 1,
-             (unsigned long)(millis() / 1000), s_bleState, (unsigned long)s_heard, (unsigned long)s_rai, (unsigned long)s_raiLen);
+             (unsigned long)(millis() / 1000), s_bleState, (unsigned long)s_heard, (unsigned long)s_rai, (unsigned long)s_raiLen, resetReason());
     s_web.send(200, "text/plain", b);
   });
   s_web.begin();
