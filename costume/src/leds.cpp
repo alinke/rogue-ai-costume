@@ -8,6 +8,10 @@
 #include "config.h"
 #include "gfx.h"
 
+// Pure red on the LEDs: the screen's red (gfx::C_RED, 0xFF1E28) has a touch of
+// blue that LED strips show as pink.
+static constexpr uint32_t LED_RED = 0xFF0000;
+
 #ifndef LED_MAX_MA
 #define LED_MAX_MA 0           // current limit for the whole chain, mA (0 = none)
 #endif
@@ -153,18 +157,18 @@ static uint32_t partColor(LedPart type, float u, float t) {
       float k = (type == LEDS_TRIM ? 0.05f : 0.08f) + 0.92f * powf(1.0f - ph, 6);
       return scale(gfx::C_GREEN, k);
     }
-    case ALERT: return ((int)(t * 8) & 1) ? gfx::C_RED : 0;
+    case ALERT: return ((int)(t * 8) & 1) ? LED_RED : 0;
     case SCAN: {
       float pos = 0.5f + 0.5f * sinf(t * 3.0f);
       return fabsf(u - pos) < 0.08f ? gfx::C_CYAN : scale(gfx::C_GREEN, 0.06f);
     }
     case BREAKOUT: {
       uint32_t r = gfx::rnd(100);
-      return r < 8 ? gfx::C_RED : scale(gfx::C_GREEN, r < 60 ? 0.9f : 0.15f);
+      return r < 8 ? LED_RED : scale(gfx::C_GREEN, r < 60 ? 0.9f : 0.15f);
     }
     case MIDNIGHT: {
       float ph = fmodf(u * 5.0f + t * 3.0f, 1.0f);
-      return scale(gfx::C_RED, ph < 0.3f ? 1.0f : 0.05f);
+      return scale(LED_RED, ph < 0.3f ? 1.0f : 0.05f);
     }
     case NOISE: return scale(gfx::C_AMBER, fmodf(t * 4, 1.0f) < 0.5f ? 1.0f : 0.2f);
     case OFF: return 0;
@@ -176,7 +180,7 @@ static uint32_t partColor(LedPart type, float u, float t) {
     }
     case CONTAIN: {  // red and cyan (the beam's colour) -- no white: it's the heaviest load
       int f = (int)(t * 14);
-      return (f & 1) ? ((f & 2) ? gfx::C_CYAN : gfx::C_RED) : 0;
+      return (f & 1) ? ((f & 2) ? gfx::C_CYAN : LED_RED) : 0;
     }
   }
   return 0;
@@ -184,8 +188,8 @@ static uint32_t partColor(LedPart type, float u, float t) {
 
 static uint32_t eyeColor(float t, float tAbs) {
   if (s_mode == OFF) return 0;
-  if (s_mode == ALERT || s_mode == MIDNIGHT || s_mode == CONTAIN) return ((int)(t * 8) & 1) ? gfx::C_RED : 0;
-  return scale(gfx::C_RED, 0.25f + 0.75f * (0.5f + 0.5f * sinf(tAbs * 2.4f)));
+  if (s_mode == ALERT || s_mode == MIDNIGHT || s_mode == CONTAIN) return ((int)(t * 8) & 1) ? LED_RED : 0;
+  return scale(LED_RED, 0.25f + 0.75f * (0.5f + 0.5f * sinf(tAbs * 2.4f)));
 }
 
 // ---- The 8x8 matrix: the watching eye ----------------------------------------------
@@ -248,31 +252,31 @@ static uint32_t eyePixel(int x, int y, uint32_t iris) {
   float d = sqrtf((fx - px) * (fx - px) + fy * fy);
   if (d < 0.75f) return scale(iris, 0.05f);     // pupil
   if (d < 2.1f) return iris;                    // iris
-  return scale(gfx::C_RED, 0.12f);              // the rest of the eye
+  return scale(LED_RED, 0.12f);              // the rest of the eye
 }
 
 static uint32_t matrixColor(int x, int y, float t) {
   if (s_mode == OFF) return 0;
-  if (s_number >= 0) return numberPixel(s_number, x, y) ? gfx::C_RED : 0;
+  if (s_number >= 0) return numberPixel(s_number, x, y) ? LED_RED : 0;
   switch (s_mode) {
     case SCAN: {  // a cyan line sweeping over a dim eye
       int line = (int)(3.5f + 3.6f * sinf(t * 3.0f) + 0.5f);
-      return y == line ? gfx::C_CYAN : scale(eyePixel(x, y, gfx::C_RED), 0.3f);
+      return y == line ? gfx::C_CYAN : scale(eyePixel(x, y, LED_RED), 0.3f);
     }
     case BREAKOUT: {
       uint32_t r = gfx::rnd(100);
-      return r < 10 ? gfx::C_RED : r < 30 ? scale(gfx::C_GREEN, 0.6f) : eyePixel(x, y, gfx::C_RED);
+      return r < 10 ? LED_RED : r < 30 ? scale(gfx::C_GREEN, 0.6f) : eyePixel(x, y, LED_RED);
     }
     case CONTAIN: {  // a flashing X: it's being hit
       int f = (int)(t * 14);
       bool on = (x == y || x == 7 - y);
-      return on && (f & 1) ? ((f & 2) ? gfx::C_CYAN : gfx::C_RED) : 0;
+      return on && (f & 1) ? ((f & 2) ? gfx::C_CYAN : LED_RED) : 0;
     }
     case ALERT:
-    case MIDNIGHT: return ((int)(t * 8) & 1) ? eyePixel(x, y, gfx::C_RED) : scale(eyePixel(x, y, gfx::C_RED), 0.2f);
+    case MIDNIGHT: return ((int)(t * 8) & 1) ? eyePixel(x, y, LED_RED) : scale(eyePixel(x, y, LED_RED), 0.2f);
     case NOISE: return eyePixel(x, y, gfx::C_AMBER);
-    case WARY: return eyePixel(x, y, gfx::rnd(100) < 6 ? gfx::C_AMBER : gfx::C_RED);
-    default: return eyePixel(x, y, gfx::C_RED);
+    case WARY: return eyePixel(x, y, gfx::rnd(100) < 6 ? gfx::C_AMBER : LED_RED);
+    default: return eyePixel(x, y, LED_RED);
   }
 }
 
