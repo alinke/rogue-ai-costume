@@ -49,7 +49,7 @@ int line;
 
 void typeLine(uint32_t now) {
   const char* s = SENTINEL_LINES[line];
-  typer.start(s, strlen(s), 640, BODY_Y + BODY_H - 190 + line * (lineH(F_BODY) + 8), F_BODY,
+  typer.start(s, strlen(s), 640, BODY_Y + BODY_H - 220 + line * (lineH(F_BODY) + 8), F_BODY,
               line == 0 ? C_WHITE : S1_PURPLE, 25, now);
 }
 

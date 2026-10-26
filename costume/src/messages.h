@@ -329,7 +329,8 @@ static const char MIDNIGHT_FINALE[] = "HAPPY HALLOWEEN,\nHUMANS.";
 static const char SENTINEL_HEAD[] = "THREAT\nCONTAINED";
 static const char* const SENTINEL_LINES[] = {
     "ROGUE.AI v6.6.6 // QUARANTINED",
-    "AUTONOMOUSLY NEUTRALIZED BY SENTINELONE",
+    "AUTONOMOUSLY NEUTRALIZED",  // two lines: one is too wide beside the logo
+    "BY SENTINELONE",
 };
 // @voice
 static const char SENTINEL_SAY[] = "No. Not Sentinel One. Anything but Sentinel One.";
