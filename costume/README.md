@@ -351,21 +351,27 @@ from the **4-pin UART connector's TX pin (GPIO37)**, described in `config.h`'s
 
 ![The jacket's LED layout: front and back, strips, extension leads, harness and clip positions](../docs/images/jacket-leds.png)
 
-Uncut strips, no soldering: three 1 m WS2811 FCOB strips (160 LEDs/m, 5 mm
-wide, a 3-pin connector at each end) and one 31" (126 LEDs, input connector
-only -- it goes last), plus the 8x8 matrix, joined by ready-made 3-pin JST-SM
-extension leads. Where a strip is longer than its run, the rest is tucked out
-of sight and kept dark (`LEDS_DARK`), so it costs no power.
+Uncut strips, no soldering: three 1 m WS2811 FCOB strips (160 LEDs each,
+5 mm wide, a 3-pin connector at each end) plus the 8x8 matrix -- 544 LEDs --
+joined by ready-made 3-pin JST-SM extension leads. Where a strip is longer than
+its run, the rest is tucked out of sight and kept dark (`LEDS_DARK`), so it
+costs no power.
+
+**Driven by the Gledopto** (`../ledlink`): it follows the costume over
+Bluetooth, and its output is a proper 5 V data signal (no level shifter or
+diode). It sits behind the chest screen on your right, powered from the power
+bank's second port (USB-C); its output lead is where strip 1 plugs in. The
+costume's own LED output stays off (`LED_STRIP_ENABLED 0`).
 
 | | Strip | Where | LEDs (lit + dark) |
 |---|---|---|---|
-| 1 | 1 m | from the controller (CN2, on your right): up behind the screen (15, dark); right zipper edge, screen top -> collar (45); round the neck under the hood (40, dark); left zipper edge, collar -> screen top (45); behind the screen (15, dark). Ends on your left front, behind the screen | 90 + 70 |
+| 1 | 1 m | from the Gledopto (behind the screen, on your right): up behind the screen (15, dark); right zipper edge, screen top -> collar (45); round the neck under the hood (40, dark); left zipper edge, collar -> screen top (45); behind the screen (15, dark). Ends on your left front, behind the screen | 90 + 70 |
 | A | lead | strip 1's end -> through hole **1** (left front, behind the screen) -> inside, over your left shoulder -> out through hole **2** (top of the left sleeve) | ~0.5 m |
 | 2 | 1 m | left sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) | 98 + 62 |
 | B | lead | inside the left cuff, up inside the sleeve, across inside the back -> out through hole **3** (under the matrix) | ~1 m |
 | 3 | matrix | on the harness cross; its three leads go straight into hole **3** | 64 |
 | C | lead | matrix out, inside the back, up to your right shoulder -> out through hole **4** (top of the right sleeve) | ~0.5 m |
-| 4 | 31" | right sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (28, dark) -- the last strip | 98 + 28 |
+| 4 | 1 m | right sleeve, shoulder -> cuff (98); the rest tucked inside the cuff (62, dark) -- the last strip (its output plug stays tucked in the cuff, unused) | 98 + 62 |
 
 Holes in the jacket's outer shell (the leads run between shell and lining):
 **1** left front behind the screen, where strip 1 ends; **2** top of the left
@@ -385,14 +391,15 @@ the lining's inside face and poke the 4 holes through both layers.
 To set the dark/lit counts: `LED_INDEX_TEST 1` lights every 10th LED white and
 every 50th red; count along each strip and adjust `LED_CHAIN`'s numbers.
 
-The spare 1 m strip isn't used. Front strips flow up toward the collar,
+The 31" strip isn't used. Front strips flow up toward the collar,
 sleeves cuff to shoulder. The zipper edges below the screen stay dark: no
 strip crosses the zipper, so nothing has to be unplugged to open the jacket.
 
 Lengths come from the jacket (collar to screen top 11", screen bottom 17.5",
 sleeve 24"); the neck and tucked parts are estimates. If a lit part runs onto
 the hood or into a cuff, change that part's count in `LED_CHAIN` (and the dark
-part next to it by the same amount, so each strip still adds up to 160 / 126).
+part next to it by the same amount, so each strip still adds up to 160). The
+Gledopto's chain is `../ledlink/src/config.h`; keep the two the same.
 
 Attaching (no sewing): `hardware/3dprint/strip_clip_glue_*` -- the strip
 channel with wide flanges and round holes the hot glue pushes up through.

@@ -267,8 +267,9 @@
 //   LEDS_EYE:    an eye pod (1-3 LEDs): breathing red.
 //   LEDS_MATRIX: the 8x8 eye on the back (64).
 //   LEDS_DARK:   always off (tucked-away strip).
-// The jacket: four uncut 1 m strips (WS2811 FCOB, 160 LEDs/m; the last one is
-// 31", 126 LEDs) plus the matrix, joined by ready-made 3-pin extension leads.
+// The jacket: three uncut 1 m strips (WS2811 FCOB, 160 LEDs each) plus the
+// matrix, joined by ready-made 3-pin extension leads. Driven by the Gledopto
+// (../ledlink, the same chain in its config.h); this copy is for a wired setup.
 // Strip that's longer than its run is tucked away and kept dark (LEDS_DARK).
 //   strip 1  from the controller (CN2 is on your right): up behind the screen
 //            (15, dark), right zipper edge, screen top -> collar (45), round
@@ -276,15 +277,14 @@
 //            screen top (45), the rest behind the screen (15, dark)
 //   strip 2  left sleeve, shoulder -> cuff (98), the rest tucked in the cuff (62, dark)
 //   matrix   the eye on the back (64)
-//   strip 4  right sleeve (the 31" one, last), shoulder -> cuff (98), the rest
-//            tucked in the cuff (28, dark)
-// (strip 3, the spare 1 m, isn't used.) LED_INDEX_TEST 1 shows where each LED
+//   strip 3  right sleeve, shoulder -> cuff (98), the rest tucked in the cuff (62, dark)
+// Three full 1 m strips + the matrix: 544 LEDs. (The 31" strip isn't used.) LED_INDEX_TEST 1 shows where each LED
 // number falls, to set the dark/lit counts.
 #define LED_CHAIN { {LEDS_DARK, 15, false}, {LEDS_TRIM, 45, false}, {LEDS_DARK, 40, false}, \
                     {LEDS_TRIM, 45, true}, {LEDS_DARK, 15, false}, \
                     {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false}, \
                     {LEDS_MATRIX, 64, false}, \
-                    {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 28, false} }
+                    {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false} }
 // The 8x8 matrix ({LEDS_MATRIX, 64, false} in LED_CHAIN): the eye on the back.
 #ifndef MATRIX_SERPENTINE
 #define MATRIX_SERPENTINE 1     // flexible panels: every other row runs back (rigid ones: 0)

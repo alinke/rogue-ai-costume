@@ -8,13 +8,20 @@
 #define LED_PIN_FINDER 0
 #define BUTTON_PIN 17              // the Gledopto's button
 
-// The jacket (see ../costume/README.md, "The jacket"): four uncut strips + the
-// matrix. LED_INDEX_TEST 1 shows where each LED number falls, to set these.
+// The jacket (see ../costume/README.md, "The jacket"): three uncut 1 m strips
+// (160 each) + the matrix, 544 LEDs:
+//   strip 1  front: up behind the screen (15, dark), right zipper edge to the
+//            collar (45), round the neck under the hood (40, dark), left zipper
+//            edge down to the screen (45), behind the screen (15, dark)
+//   strip 2  left sleeve, shoulder -> cuff (98), tucked in the cuff (62, dark)
+//   matrix   (64)
+//   strip 3  right sleeve, shoulder -> cuff (98), tucked in the cuff (62, dark)
+// LED_INDEX_TEST 1 shows where each LED number falls, to set these.
 #define LED_CHAIN { {LEDS_DARK, 15, false}, {LEDS_TRIM, 45, false}, {LEDS_DARK, 40, false}, \
                     {LEDS_TRIM, 45, true}, {LEDS_DARK, 15, false}, \
                     {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false}, \
                     {LEDS_MATRIX, 64, false}, \
-                    {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 28, false} }
+                    {LEDS_SLEEVE, 98, true}, {LEDS_DARK, 62, false} }
 #define LED_BRIGHTNESS_PERCENT 40
 
 #define MATRIX_SERPENTINE 1
