@@ -28,6 +28,7 @@ void setSirenEnabled(bool on);     // siren off: everything else still plays
 void setVoiceEnabled(bool on);     // voice off: effects and siren still play
 bool muted();
 bool busy();                  // something is playing (the mic ignores itself then)
+bool speaking();              // the robot voice is talking right now
 
 // Microphone (ES8311 input), if fitted -- see config MIC_ENABLED.
 bool micAvailable();

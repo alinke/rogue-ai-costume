@@ -31,14 +31,76 @@ extern "C" bool btInUse() { return true; }
 static const uint8_t TAG_AI[4] = {'R', 'A', 'I', '1'};
 static volatile uint32_t s_seen = 0;
 static volatile uint8_t s_mode = 0, s_number = 0;  // number + 1, 0 = none
+static volatile uint8_t s_threat = 0, s_squad = 0, s_flags = 0;
+
+// The scanners and guests' phones it hears itself (same as the costume:
+// researcher.cpp): the nearest one's signal for the proximity glow, and
+// whether an infected phone is close.
+static const uint8_t TAG_SCANNER[4] = {'R', 'S', 'C', '1'};
+struct Heard { uint8_t key[6]; float rssi; uint32_t seen; bool infected; bool used; };
+static constexpr int MAX_HEARD = 24;
+static Heard s_heardList[MAX_HEARD];
+static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
+static constexpr int INFECTED_DBM = -70;  // "close" for the purple ripple
+
+static void hear(const uint8_t* key, float r, bool infected) {
+  uint32_t now = millis();
+  portENTER_CRITICAL(&s_mux);
+  Heard* h = nullptr;
+  for (auto& e : s_heardList)
+    if (e.used && !memcmp(e.key, key, 6)) { h = &e; break; }
+  if (!h) {
+    h = &s_heardList[0];
+    for (auto& e : s_heardList) {
+      if (!e.used) { h = &e; break; }
+      if ((int32_t)(e.seen - h->seen) < 0) h = &e;
+    }
+    *h = Heard{};
+    memcpy(h->key, key, 6);
+    h->used = true;
+    h->rssi = r;
+  }
+  h->rssi = (now - h->seen > 3000) ? r : h->rssi + (r - h->rssi) * 0.25f;
+  h->seen = now;
+  h->infected = infected;
+  portEXIT_CRITICAL(&s_mux);
+}
+
+static int hexByte(const std::string& s, int at) {
+  if ((int)s.size() < at + 2) return -1;
+  char b[3] = {s[at], s[at + 1], 0};
+  char* end;
+  long v = strtol(b, &end, 16);
+  return *end ? -1 : (int)v;
+}
 static volatile uint32_t s_heard = 0, s_rai = 0, s_raiLen = 0;  // diagnostics (status page)
 static const char* volatile s_bleState = "starting";
+static volatile int s_nearestShown = -127;
+static volatile bool s_infectedShown = false;
 
 class ScanCB : public NimBLEScanCallbacks {
   void onResult(const NimBLEAdvertisedDevice* dev) override {
     s_heard++;
+    float r = dev->getRSSI();
+    // A guest's phone (the LAB-7 app): service UUID 52534331-SSTT-4C41-4237-...FF,
+    // the last two digits its flags (2 = visibly infected).
+    for (int i = (int)dev->getServiceUUIDCount() - 1; i >= 0; i--) {
+      std::string u = dev->getServiceUUID(i).toString();
+      for (auto& ch : u) ch = tolower(ch);
+      if (u.size() == 36 && !u.compare(0, 9, "52534331-") && !u.compare(13, 11, "-4c41-4237-")) {
+        int session = hexByte(u, 9), flags = hexByte(u, 34);
+        if (session < 0) return;
+        const uint8_t key[6] = {'i', 'O', 'S', 0, 0, (uint8_t)session};
+        hear(key, r, flags >= 0 && (flags & 2));
+        return;
+      }
+    }
     if (!dev->haveManufacturerData()) return;
     std::string m = dev->getManufacturerData();
+    if (m.size() >= 8 && (uint8_t)m[0] == 0xFF && (uint8_t)m[1] == 0xFF && !memcmp(m.data() + 2, TAG_SCANNER, 4)) {
+      hear(dev->getAddress().getVal(), r, false);   // an ESP32 scanner
+      return;
+    }
     if (m.size() >= 6 && !memcmp(m.data() + 2, TAG_AI, 4)) {
       s_rai++;
       s_raiLen = m.size();
@@ -47,6 +109,11 @@ class ScanCB : public NimBLEScanCallbacks {
     if (memcmp(m.data() + 2, TAG_AI, 4) != 0) return;
     s_mode = (uint8_t)m[11];
     s_number = (uint8_t)m[12];
+    s_threat = (uint8_t)m[6];
+    if (m.size() >= 15) {
+      s_squad = (uint8_t)m[13];
+      s_flags = (uint8_t)m[14];
+    }
     s_seen = millis();
   }
 };
@@ -106,14 +173,17 @@ static void wifiBegin() {
   MDNS.begin("rogue-leds");
   s_updater.setup(&s_web, "/update");
   s_web.on("/", [] {
-    static const char* const MODES[] = {"idle", "alert", "scan", "breakout", "midnight", "noise", "off", "wary", "contain"};
+    static const char* const MODES[] = {"idle", "alert", "scan", "breakout", "midnight", "noise", "off", "wary",
+                                        "contain", "touch", "shutdown", "overload", "stealth"};
     uint32_t ago = s_seen ? millis() - s_seen : 0;
-    char b[400];
+    char b[520];
     snprintf(b, sizeof(b),
              "ROGUE.AI LEDLINK -- firmware update at /update\ncostume: %s\neffect: %s\nmatrix number: %d\nup %lu s\n"
-             "bluetooth: %s, %lu packets heard, %lu from the costume (%lu bytes)\nlast restart: %s\n",
-             s_seen && ago < COSTUME_LOST_MS ? "seen" : "NOT SEEN", MODES[min<int>(s_mode, 8)], (int)s_number - 1,
-             (unsigned long)(millis() / 1000), s_bleState, (unsigned long)s_heard, (unsigned long)s_rai, (unsigned long)s_raiLen, resetReason());
+             "bluetooth: %s, %lu packets heard, %lu from the costume (%lu bytes)\nlast restart: %s\n"
+             "threat %u, squad %u, talking %s; nearest scanner %d dBm%s\n",
+             s_seen && ago < COSTUME_LOST_MS ? "seen" : "NOT SEEN", MODES[min<int>(s_mode, 12)], (int)s_number - 1,
+             (unsigned long)(millis() / 1000), s_bleState, (unsigned long)s_heard, (unsigned long)s_rai, (unsigned long)s_raiLen, resetReason(), (unsigned)s_threat, (unsigned)s_squad,
+             (s_flags & 1) ? "yes" : "no", s_nearestShown, s_infectedShown ? ", an infected phone close" : "");
     s_web.send(200, "text/plain", b);
   });
   s_web.begin();
@@ -145,12 +215,32 @@ void loop() {
     Serial.printf("[link] costume %s\n", costume ? "found" : "lost: idle on our own");
     wasCostume = costume;
   }
+  // Who's near: the nearest scanner/phone heard in the last 5 s, and any
+  // infected phone within INFECTED_DBM.
+  int nearest = -127;
+  bool infected = false;
+  portENTER_CRITICAL(&s_mux);
+  for (auto& e : s_heardList) {
+    if (!e.used || (int32_t)(now - e.seen) > COSTUME_LOST_MS) continue;
+    nearest = max(nearest, (int)e.rssi);
+    if (e.infected && e.rssi >= INFECTED_DBM) infected = true;
+  }
+  portEXIT_CRITICAL(&s_mux);
+  leds::setProximity(nearest);
+  leds::setInfectedNear(infected);
+  s_nearestShown = nearest;
+  s_infectedShown = infected;
   if (costume) {
     leds::setMode((leds::Mode)s_mode);
     leds::matrixNumber((int)s_number - 1);
+    leds::setThreat(s_threat);
+    leds::setSquad(s_squad);
+    leds::setSpeaking(s_flags & 1);
   } else {
     leds::setMode(leds::IDLE);
     leds::matrixNumber(-1);
+    leds::setSquad(0);
+    leds::setSpeaking(false);
   }
   leds::tick(now);
   static uint32_t nextLog = 0;

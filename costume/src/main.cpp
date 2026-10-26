@@ -303,7 +303,11 @@ void loop() {
     }
     extern int g_timesContained;
     researcher::setState(header::threatLevel(), act, min(gallery::total(), 255), min(g_timesContained, 255));
-    researcher::setLedState(leds::mode(), leds::matrixNumberNow());  // for the Gledopto (ledlink)
+    leds::setProximity(z == researcher::NONE ? -127 : researcher::rssi());
+    leds::setSquad(g_squad);
+    leds::setSpeaking(audio::speaking());
+    leds::setThreat(header::threatLevel());
+    researcher::setLedState(leds::mode(), leds::matrixNumberNow(), g_squad, audio::speaking());  // for the Gledopto
   }
   rtclock::tick(start);
   if (rtclock::takeTargetEvent()) scenes::midnight(start);

@@ -446,8 +446,8 @@ struct ConsoleBtn { const char* l1; const char* l2; uint8_t cmd; uint32_t col; }
 static const ConsoleBtn BTNS[16] = {
     {"SCAN", "", radio::CMD_SCAN, C_GREEN},          {"KILL", "SWITCH", radio::CMD_KILL_SWITCH, C_GREEN},
     {"QR", "CODE", radio::CMD_QR, C_GREEN},          {"NEXT", "SCENE", radio::CMD_NEXT, C_GREEN},
-    {"COUNT-", "DOWN", radio::CMD_COUNTDOWN, C_GREEN}, {"MID-", "NIGHT", radio::CMD_MIDNIGHT, C_RED},
-    {"PHOTO", "BOOTH", radio::CMD_BOOTH, C_GREEN},   {"GALLERY", "", radio::CMD_GALLERY, C_GREEN},
+    {"STEALTH", "ON/OFF", radio::CMD_STEALTH, C_CYAN}, {"MID-", "NIGHT", radio::CMD_MIDNIGHT, C_RED},
+    {"PHOTO", "BOOTH", radio::CMD_BOOTH, C_GREEN},   {"OVER-", "LOAD", radio::CMD_OVERLOAD, C_RED},
     {"PAUSE", "SHOW", radio::CMD_PAUSE, C_CYAN},     {"RESUME", "SHOW", radio::CMD_RESUME, C_CYAN},
     {"MUTE", "", radio::CMD_MUTE, C_AMBER},          {"SOUND", "ON", radio::CMD_UNMUTE, C_AMBER},
     {"VOICE", "-", radio::CMD_VOICE_DOWN, C_AMBER},  {"VOICE", "+", radio::CMD_VOICE_UP, C_AMBER},

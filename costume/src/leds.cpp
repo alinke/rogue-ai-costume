@@ -39,9 +39,28 @@ void setMode(Mode m) {
 
 // Kept even without a strip: the beacon carries them to an external LED
 // controller (../../ledlink, the Gledopto) that runs this same code.
+static int s_prox = -127, s_squad = 0, s_threat = 0;
+static bool s_speaking = false, s_infected = false, s_stealth = false;
+static uint32_t s_overloadStart = 0, s_overloadUntil = 0;
+
 void matrixNumber(int n) { s_number = n; }
-Mode mode() { return s_mode; }
+Mode mode() {
+  if (s_stealth) return STEALTH;
+  if (s_overloadUntil && (int32_t)(millis() - s_overloadUntil) < 0) return OVERLOAD;
+  return s_mode;
+}
 int matrixNumberNow() { return s_number; }
+void setProximity(int dbm) { s_prox = dbm; }
+void setSquad(int n) { s_squad = n; }
+void setSpeaking(bool on) { s_speaking = on; }
+void setThreat(int level) { s_threat = constrain(level, 0, 5); }
+void setInfectedNear(bool on) { s_infected = on; }
+void setStealth(bool on) { s_stealth = on; }
+bool stealth() { return s_stealth; }
+void overload(uint32_t ms) {
+  s_overloadStart = millis();
+  s_overloadUntil = s_overloadStart + ms;
+}
 
 #if LED_STRIP_ENABLED
 static const LedSegment CHAIN[] = LED_CHAIN;
@@ -146,21 +165,60 @@ void begin() {
   if (err != ESP_OK) s_chan = nullptr;
 }
 
+static constexpr uint32_t LED_PURPLE = 0x8000FF;
+
+static uint32_t mix(uint32_t a, uint32_t b, float f) {
+  f = constrain(f, 0.0f, 1.0f);
+  auto ch = [&](int sh) { return (uint32_t)(((a >> sh) & 255) * (1 - f) + ((b >> sh) & 255) * f) << sh; };
+  return ch(16) | ch(8) | ch(0);
+}
+
+// Per-frame state the effects share (tick() moves it on).
+static Mode s_m = IDLE;             // the effect this frame (mode())
+static float s_flow = 0;            // the idle flow's phase: its speed changes smoothly
+static float s_near = -1;           // 0..1 how close the nearest scanner is; -1 = none
+static float s_geiger = 0;          // 0..1, a click's flash, decaying
+static float s_talk = 0;            // 0..1, the voice's "loudness"
+static uint32_t s_nextClick = 0, s_nextSyllable = 0;
+
+// The idle colour: green, warming to amber and red as the threat level rises,
+// and toward amber/red as a scanner closes in.
+static uint32_t idleColor() {
+  float x = s_threat / 5.0f;
+  uint32_t c = x < 0.5f ? mix(gfx::C_GREEN, gfx::C_AMBER, x * 1.2f) : mix(gfx::C_AMBER, LED_RED, (x - 0.5f) * 2);
+  if (s_near >= 0) c = s_near < 0.5f ? mix(c, gfx::C_AMBER, s_near * 2) : mix(gfx::C_AMBER, LED_RED, (s_near - 0.5f) * 2);
+  return c;
+}
+
 // Colour of an LED at position u along its part (0 = fingertips / start,
-// 1 = collar / end) at time t (s since the mode started).
-static uint32_t partColor(LedPart type, float u, float t) {
-  switch (s_mode) {
-    case IDLE: {
-      // Pulses of green flowing toward the collar.
-      float ph = fmodf(u * 3.0f - t * 0.9f, 1.0f);
+// 1 = collar / end), d its distance out from the chest along the chain (front
+// 0 -> 1 at the collar, sleeves 1 at the shoulder -> 2 at the cuff), at time t
+// (s since the mode started).
+static uint32_t partColor(LedPart type, float u, float d, float t) {
+  switch (s_m) {
+    case IDLE:
+    case WARY: {
+      // Pulses flowing toward the collar, dark between them; faster as a
+      // scanner closes in.
+      float ph = fmodf(u * 3.0f - s_flow, 1.0f);
       if (ph < 0) ph += 1;
-      float k = (type == LEDS_TRIM ? 0.05f : 0.08f) + 0.92f * powf(1.0f - ph, 6);
-      return scale(gfx::C_GREEN, k);
+      float k = powf(1.0f - ph, 6);
+      uint32_t c = (s_m == WARY && gfx::rnd(100) < 12) ? gfx::C_AMBER : idleColor();
+      if (type == LEDS_SLEEVE && s_geiger > 0.02f) {   // close: the sleeves click with the scanner
+        c = mix(c, LED_RED, s_geiger);
+        k = max(k, s_geiger);
+      }
+      if (type == LEDS_TRIM && s_talk > 0.02f) k = max(k, s_talk * 0.9f);   // the voice
+      if (type == LEDS_SLEEVE && s_infected) {   // an infected guest close by: a purple ripple
+        float p = powf(0.5f + 0.5f * sinf(d * 14 - t * 5), 4);
+        if (p > k) { c = mix(c, LED_PURPLE, 0.85f); k = p * 0.7f; }
+      }
+      return scale(c, k);
     }
     case ALERT: return ((int)(t * 8) & 1) ? LED_RED : 0;
     case SCAN: {
       float pos = 0.5f + 0.5f * sinf(t * 3.0f);
-      return fabsf(u - pos) < 0.08f ? gfx::C_CYAN : scale(gfx::C_GREEN, 0.06f);
+      return fabsf(u - pos) < 0.08f ? gfx::C_CYAN : 0;
     }
     case BREAKOUT: {
       uint32_t r = gfx::rnd(100);
@@ -171,24 +229,39 @@ static uint32_t partColor(LedPart type, float u, float t) {
       return scale(LED_RED, ph < 0.3f ? 1.0f : 0.05f);
     }
     case NOISE: return scale(gfx::C_AMBER, fmodf(t * 4, 1.0f) < 0.5f ? 1.0f : 0.2f);
-    case OFF: return 0;
-    case WARY: {
-      float ph = fmodf(u * 3.0f - t * 1.4f, 1.0f);
-      if (ph < 0) ph += 1;
-      float k = 0.08f + 0.92f * powf(1.0f - ph, 6);
-      return scale(gfx::rnd(100) < 12 ? gfx::C_AMBER : gfx::C_GREEN, k);
-    }
-    case CONTAIN: {  // red and cyan (the beam's colour) -- no white: it's the heaviest load
+    case OFF:
+    case STEALTH: return 0;
+    case CONTAIN: {
+      // Red/cyan strobe; the sleeves fill cuff -> shoulder with each scanner
+      // firing (a third each), and lock solid cyan at a squad.
       int f = (int)(t * 14);
-      return (f & 1) ? ((f & 2) ? gfx::C_CYAN : LED_RED) : 0;
+      uint32_t strobe = (f & 1) ? ((f & 2) ? gfx::C_CYAN : LED_RED) : 0;
+      int n = max(1, s_squad);
+      if (n >= 3) return gfx::C_CYAN;
+      if (type == LEDS_SLEEVE) return (2 - d) < n / 3.0f ? gfx::C_CYAN : scale(strobe, 0.4f);
+      return strobe;
     }
+    case TOUCH: {  // red rings travelling out from the chest, one every 1.6 s
+      float wave = fmodf(t * 1.6f, 2.6f);
+      float k = 1 - fabsf(d - wave) / 0.2f;
+      return k > 0 ? scale(LED_RED, k) : 0;
+    }
+    case SHUTDOWN: {
+      // Cuffs die first, up to the shoulders; then the collar down to the chest.
+      float die = type == LEDS_SLEEVE ? (2 - d) * 0.8f : 1.0f + (1 - d) * 0.8f;
+      if (t >= die) return 0;
+      float left = (die - t) / die;  // flickers harder as it goes
+      return gfx::rnd(100) < 70 ? scale(LED_RED, 0.2f + 0.6f * left) : 0;
+    }
+    case OVERLOAD: return scale(LED_RED, 0.6f + 0.4f * sinf(t * 25));
   }
   return 0;
 }
 
 static uint32_t eyeColor(float t, float tAbs) {
-  if (s_mode == OFF) return 0;
-  if (s_mode == ALERT || s_mode == MIDNIGHT || s_mode == CONTAIN) return ((int)(t * 8) & 1) ? LED_RED : 0;
+  if (s_m == OFF || s_m == STEALTH || (s_m == SHUTDOWN && t > 2.4f)) return 0;
+  if (s_m == ALERT || s_m == MIDNIGHT || s_m == CONTAIN || s_m == TOUCH || s_m == OVERLOAD)
+    return ((int)(t * 8) & 1) ? LED_RED : 0;
   return scale(LED_RED, 0.25f + 0.75f * (0.5f + 0.5f * sinf(tAbs * 2.4f)));
 }
 
@@ -231,7 +304,7 @@ static float s_lookX = 0, s_lookTo = 0, s_open = 1;
 static uint32_t s_nextLook = 0, s_blinkAt = 0;
 
 static void eyeStep(uint32_t now) {
-  bool wary = s_mode == WARY;
+  bool wary = s_m == WARY || s_near > 0.3f;
   if ((int32_t)(now - s_nextLook) >= 0) {  // a new place to look
     s_lookTo = (gfx::rnd(100) < 25) ? 0 : ((int)gfx::rnd(200) - 100) / 100.0f;
     s_nextLook = now + (wary ? gfx::rnd(400, 1200) : gfx::rnd(1500, 4000));
@@ -240,7 +313,9 @@ static void eyeStep(uint32_t now) {
   if ((int32_t)(now - s_blinkAt) >= 0 && now - s_blinkAt > 220) s_blinkAt = now + gfx::rnd(2500, 7000);
   int32_t b = (int32_t)(now - s_blinkAt);
   float lid = (b >= 0 && b < 220) ? fabsf(b - 110) / 110.0f : 1.0f;  // closes and opens in 0.22 s
-  s_open = lid * (wary ? 0.6f : (s_mode == ALERT || s_mode == MIDNIGHT) ? 1.15f : 1.0f);
+  float open = wary ? 0.6f - 0.25f * max(0.0f, s_near) : 1.0f;   // narrows as a scanner closes in
+  if (s_m == ALERT || s_m == MIDNIGHT || s_m == TOUCH || s_m == OVERLOAD) open = 1.15f;
+  s_open = lid * open;
 }
 
 // The eye at (x, y): an almond of dim red, a bright iris, a dark pupil.
@@ -256,9 +331,17 @@ static uint32_t eyePixel(int x, int y, uint32_t iris) {
 }
 
 static uint32_t matrixColor(int x, int y, float t) {
-  if (s_mode == OFF) return 0;
+  if (s_m == OFF || s_m == STEALTH) return 0;
   if (s_number >= 0) return numberPixel(s_number, x, y) ? LED_RED : 0;
-  switch (s_mode) {
+  // Talking: the iris flickers with the voice.
+  uint32_t iris = s_talk > 0.02f ? scale(LED_RED, 0.35f + 0.65f * s_talk) : LED_RED;
+  if (s_infected && gfx::rnd(100) < 8) iris = LED_PURPLE;
+  switch (s_m) {
+    case SHUTDOWN:  // the eye goes last: dims, flickers, gone at 2.4 s
+      if (t > 2.4f) return 0;
+      return gfx::rnd(100) < 75 ? scale(eyePixel(x, y, LED_RED), 1 - t / 2.4f) : 0;
+    case OVERLOAD: return scale(LED_RED, 0.5f + 0.5f * sinf(t * 25));
+    case TOUCH: return ((int)(t * 10) & 1) ? eyePixel(x, y, LED_RED) : 0;
     case SCAN: {  // a cyan line sweeping over a dim eye
       int line = (int)(3.5f + 3.6f * sinf(t * 3.0f) + 0.5f);
       return y == line ? gfx::C_CYAN : scale(eyePixel(x, y, LED_RED), 0.3f);
@@ -275,16 +358,35 @@ static uint32_t matrixColor(int x, int y, float t) {
     case ALERT:
     case MIDNIGHT: return ((int)(t * 8) & 1) ? eyePixel(x, y, LED_RED) : scale(eyePixel(x, y, LED_RED), 0.2f);
     case NOISE: return eyePixel(x, y, gfx::C_AMBER);
-    case WARY: return eyePixel(x, y, gfx::rnd(100) < 6 ? gfx::C_AMBER : LED_RED);
-    default: return eyePixel(x, y, LED_RED);
+    case WARY: return eyePixel(x, y, gfx::rnd(100) < 6 ? gfx::C_AMBER : iris);
+    default: return eyePixel(x, y, iris);
   }
 }
 
 void tick(uint32_t now) {
   if (!s_chan || (int32_t)(now - s_nextFrame) < 0) return;
   if (s_busy && rmt_tx_wait_all_done(s_chan, 0) != ESP_OK) return;  // last frame still going out
+  static uint32_t last = now;
+  float dt = min(0.2f, (now - last) / 1000.0f);
+  last = now;
   s_nextFrame = now + 33;
-  float t = (now - s_modeSince) / 1000.0f, tAbs = now / 1000.0f;
+  s_m = mode();
+  float t = (s_m == OVERLOAD ? now - s_overloadStart : now - s_modeSince) / 1000.0f, tAbs = now / 1000.0f;
+  // How close the nearest scanner is (0 far .. 1 at arm's length); the flow
+  // speeds up with it, and close up the sleeves click like the scanner's Geiger counter.
+  s_near = s_prox > -127 ? constrain((s_prox + 95) / 45.0f, 0.0f, 1.0f) : -1;
+  s_flow += dt * (0.9f + 2.6f * max(0.0f, s_near));
+  if (s_prox >= -70 && (int32_t)(now - s_nextClick) >= 0) {
+    s_geiger = 1;
+    s_nextClick = now + (uint32_t)((1.6f - 1.45f * s_near) * 1000);
+  }
+  s_geiger *= 0.82f;
+  // The voice: a syllable-ish flicker while it talks.
+  if (s_speaking && (int32_t)(now - s_nextSyllable) >= 0) {
+    s_talk = 0.4f + 0.6f * gfx::rnd(100) / 100.0f;
+    s_nextSyllable = now + gfx::rnd(70, 160);
+  }
+  s_talk *= s_speaking ? 0.9f : 0.7f;
   int i = 0;
 #if LED_INDEX_TEST
   for (; i < s_total; i++) setPixel(i, i % 50 == 0 ? 0xFF0000 : i % 10 == 0 ? 0xFFFFFF : 0);
@@ -312,7 +414,8 @@ void tick(uint32_t now) {
       }
       float u = seg.count > 1 ? (float)k / (seg.count - 1) : 0;
       if (seg.reversed) u = 1 - u;
-      setPixel(i, seg.type == LEDS_EYE ? eyeColor(t, tAbs) : partColor(seg.type, u, t));
+      float d = seg.type == LEDS_SLEEVE ? 2 - u : u;  // out from the chest: front 0-1, sleeves 1-2
+      setPixel(i, seg.type == LEDS_EYE ? eyeColor(t, tAbs) : partColor(seg.type, u, d, t));
     }
   }
 #endif

@@ -130,7 +130,7 @@ bool containTick(uint32_t now) {
         canvas.fillRect(0, BODY_Y, W, BODY_H, C_WHITE);
         dirty(0, BODY_Y, W, BODY_H);
         audio::say(SQUAD_SEALED_SAY);
-        leds::setMode(leds::OFF);
+        leds::setMode(leds::SHUTDOWN);  // the strips die section by section
         Serial.printf("[I][researcher] SQUAD CONTAINMENT: %d scanners\n", g_squad);
         phase = SEALED;
         phaseStart = now;

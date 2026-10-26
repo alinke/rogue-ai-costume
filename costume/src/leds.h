@@ -22,7 +22,11 @@ enum Mode : uint8_t {
   NOISE,      // amber flash
   OFF,        // dark (fake shutdown)
   WARY,       // the researcher is around: amber creeping into the green flow
-  CONTAIN,    // containment beam: white/red strobe
+  CONTAIN,    // containment beam: red/cyan strobe; the sleeves fill with the squad count
+  TOUCH,      // a red ripple out from the chest: up the front, then down the sleeves
+  SHUTDOWN,   // the fake shutdown: the sleeves die, then the front, the eye last
+  OVERLOAD,   // armband: a few seconds of full-chain red (current-limited)
+  STEALTH,    // armband: everything dark until it's switched back
 };
 
 void begin();
@@ -31,7 +35,19 @@ void tick(uint32_t now);  // ~30 fps from loop()
 // The matrix shows a big number instead of the eye (the midnight countdown);
 // -1 = back to the eye.
 void matrixNumber(int n);
-Mode mode();              // the effect running now (sent in the beacon)
+Mode mode();              // the effect running now (sent in the beacon): stealth and
+                          // overload win over whatever the show set
 int matrixNumberNow();    // -1 = the eye
+
+// What colours the effects, updated from loop() (or, on the Gledopto, from the
+// costume's beacon and its own listening):
+void setProximity(int dbm);     // the nearest scanner, smoothed dBm; -127 = none in range
+void setSquad(int n);           // scanners that fired CONTAIN within the squad window
+void setSpeaking(bool on);      // the costume's voice is talking
+void setThreat(int level);      // 0..5: the idle colour warms with it
+void setInfectedNear(bool on);  // an infected guest's phone is close
+void setStealth(bool on);       // armband STEALTH
+bool stealth();
+void overload(uint32_t ms = 5000);  // armband OVERLOAD
 
 }  // namespace leds

@@ -227,7 +227,7 @@ bool tick(uint32_t now) {
         dirtyAll();
         header::setHidden(true);
         setBacklightPercent(0);
-        leds::setMode(leds::OFF);
+        leds::setMode(leds::SHUTDOWN);  // the sleeves die, then the front, the eye last
         phase = DARK;
         at = now + 4000;
       }

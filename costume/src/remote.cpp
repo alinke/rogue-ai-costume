@@ -3,6 +3,7 @@
 #include "audio.h"
 #include "config.h"
 #include "gallery.h"
+#include "leds.h"
 #include "rtclock.h"
 #include "scenes.h"
 #include "settings.h"
@@ -53,6 +54,8 @@ void run(uint8_t cmd, uint32_t now) {
       settings::setVoiceVolume(settings::voiceVolume() + (cmd == CMD_VOICE_UP ? 10 : -10));
       audio::say("I HEARD THAT.");
       break;
+    case CMD_STEALTH: leds::setStealth(!leds::stealth()); break;  // toggles: all LEDs dark / back
+    case CMD_OVERLOAD: leds::overload(5000); break;
     default: break;
   }
 }

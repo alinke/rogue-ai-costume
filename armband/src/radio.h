@@ -31,7 +31,7 @@ void shutdown();  // Bluetooth off (power-off); waits up to ~2 s
 enum Command : uint8_t {
   CMD_NONE, CMD_SCAN, CMD_KILL_SWITCH, CMD_QR, CMD_NEXT, CMD_COUNTDOWN, CMD_MIDNIGHT, CMD_BOOTH,
   CMD_GALLERY, CMD_PAUSE, CMD_RESUME, CMD_MUTE, CMD_UNMUTE, CMD_BRIGHT_DOWN, CMD_BRIGHT_UP,
-  CMD_VOICE_DOWN, CMD_VOICE_UP,
+  CMD_VOICE_DOWN, CMD_VOICE_UP, CMD_STEALTH, CMD_OVERLOAD,
 };
 uint8_t send(Command cmd);   // starts advertising it; returns its seq
 bool acked(uint8_t seq);     // the costume says it carried that one out

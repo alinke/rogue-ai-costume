@@ -153,7 +153,7 @@ static void react(uint32_t now, const char* why) {
   Serial.printf("[I][scene] %s\n", why);
   audio::siren();
   header::raiseThreat();
-  leds::setMode(leds::ALERT);
+  leds::setMode(leds::TOUCH);
   startTransition(&SCENE_TOUCH, C_RED, now);
 }
 

@@ -332,6 +332,7 @@ bool muted() { return s_muted; }
 // our own voice/siren (and its echo off the room) as a noise spike.
 bool busy() { return s_busy || millis() - s_quietSince < 1500; }
 
+bool speaking() { return s_clip != nullptr; }
 bool micAvailable() { return s_micAlive; }
 uint32_t onsetCount() { return s_onsets; }
 uint32_t lastOnsetMs() { return s_onsetMs; }
@@ -360,6 +361,7 @@ void setSirenEnabled(bool) {}
 void setVoiceEnabled(bool) {}
 bool muted() { return true; }
 bool busy() { return false; }
+bool speaking() { return false; }
 bool micAvailable() { return false; }
 uint32_t onsetCount() { return 0; }
 uint32_t lastOnsetMs() { return 0; }

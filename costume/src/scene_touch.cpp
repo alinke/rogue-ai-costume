@@ -59,7 +59,7 @@ void enter(uint32_t now) {
   bigtext::layout(headline, alertY() + lineH(F_BODY), footerY() - alertY() - lineH(F_BODY) - 10,
                   &head);
   footText = TOUCH_FOOTERS[footBag.next()];
-  leds::setMode(leds::ALERT);
+  leds::setMode(leds::TOUCH);  // a red ripple out from the chest
   audio::say(headline);
   audio::say(footText);
   start = now;
