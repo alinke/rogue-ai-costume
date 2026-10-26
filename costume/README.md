@@ -371,9 +371,11 @@ Holes in the jacket's outer shell (the leads run between shell and lining):
 **1** left front behind the screen, where strip 1 ends; **2** top of the left
 sleeve's seam, where strip 2 starts; **3** the middle of the back, under the
 matrix base's lead holes (the base hides it); **4** top of the right sleeve's
-seam, where strip 4 starts. A 12 mm slit each is enough for a JST plug; melt
-the edges with a soldering iron or hot knife (or a dab of fray glue) so the
-fabric doesn't run. Strip ends cover holes 2 and 4.
+seam, where strip 4 starts. Cut each hole 15 mm across and fit a grommet
+(`hardware/3dprint/grommet_*`: a hex bezel outside, a ring pressed on inside,
+a drop of super glue) -- except hole 3, which the matrix base already covers:
+there, melt the edges with a soldering iron (or a dab of fray glue) so the
+fabric doesn't run.
 
 Inside, the leads snap into glue-on wire guides (`hardware/3dprint/wire_guide_*`,
 about every 10 cm and either side of the shoulder and armpit): 24 single, 6
