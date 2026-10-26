@@ -443,7 +443,8 @@ static void powerOff() {
 // it never does (out of range, or the costume is off).
 enum Local : uint8_t { L_OFF = 100, L_EXIT };
 struct ConsoleBtn { const char* l1; const char* l2; uint8_t cmd; uint32_t col; };
-static const ConsoleBtn BTNS[16] = {
+static constexpr int NBTN = 20;  // 4 x 5
+static const ConsoleBtn BTNS[NBTN] = {
     {"SCAN", "", radio::CMD_SCAN, C_GREEN},          {"KILL", "SWITCH", radio::CMD_KILL_SWITCH, C_GREEN},
     {"QR", "CODE", radio::CMD_QR, C_GREEN},          {"NEXT", "SCENE", radio::CMD_NEXT, C_GREEN},
     {"STEALTH", "ON/OFF", radio::CMD_STEALTH, C_CYAN}, {"MID-", "NIGHT", radio::CMD_MIDNIGHT, C_RED},
@@ -451,10 +452,12 @@ static const ConsoleBtn BTNS[16] = {
     {"PAUSE", "SHOW", radio::CMD_PAUSE, C_CYAN},     {"RESUME", "SHOW", radio::CMD_RESUME, C_CYAN},
     {"MUTE", "", radio::CMD_MUTE, C_AMBER},          {"SOUND", "ON", radio::CMD_UNMUTE, C_AMBER},
     {"VOICE", "-", radio::CMD_VOICE_DOWN, C_AMBER},  {"VOICE", "+", radio::CMD_VOICE_UP, C_AMBER},
+    {"LEDS", "-", radio::CMD_LEDS_DOWN, C_CYAN},     {"LEDS", "+", radio::CMD_LEDS_UP, C_CYAN},
+    {"COUNT-", "DOWN", radio::CMD_COUNTDOWN, C_GREEN}, {"GALLERY", "", radio::CMD_GALLERY, C_GREEN},
     {"ARM-7", "OFF", L_OFF, C_RED},                  {"EXIT", "", L_EXIT, C_RED},
 };
 static constexpr int CB_X0 = 4, CB_Y0 = 28, CB_GAP = 4;
-static constexpr int CB_W = (W - 2 * CB_X0 - 3 * CB_GAP) / 4, CB_H = (H - CB_Y0 - 4 - 3 * CB_GAP) / 4;
+static constexpr int CB_W = (W - 2 * CB_X0 - 3 * CB_GAP) / 4, CB_H = (H - CB_Y0 - 4 - 4 * CB_GAP) / 5;
 static bool s_console = false;
 static uint32_t s_consoleTouch = 0;
 static int s_lastBtn = -1;
@@ -480,7 +483,7 @@ static void drawConsole(uint32_t now, const radio::Core& c) {
   g.setTextDatum(textdatum_t::middle_right);
   g.setTextColor(c.seen ? C_GREEN : C_RED);
   g.drawString(c.seen ? "CORE LINK" : "CORE LOST", W - 6, 11);
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < NBTN; i++) {
     const ConsoleBtn& b = BTNS[i];
     int x = CB_X0 + (i % 4) * (CB_W + CB_GAP), y = CB_Y0 + (i / 4) * (CB_H + CB_GAP);
     uint32_t col = b.col, fill = 0;
@@ -499,8 +502,8 @@ static void drawConsole(uint32_t now, const radio::Core& c) {
     g.setTextDatum(textdatum_t::middle_center);
     g.setTextColor(fill ? C_BG : col);
     if (*l2) {
-      g.drawString(l1, x + CB_W / 2, y + CB_H / 2 - 8);
-      g.drawString(l2, x + CB_W / 2, y + CB_H / 2 + 9);
+      g.drawString(l1, x + CB_W / 2, y + CB_H / 2 - 7);
+      g.drawString(l2, x + CB_W / 2, y + CB_H / 2 + 8);
     } else {
       g.drawString(l1, x + CB_W / 2, y + CB_H / 2);
     }
@@ -509,7 +512,7 @@ static void drawConsole(uint32_t now, const radio::Core& c) {
 
 static void consoleTap(int x, int y, uint32_t now) {
   s_consoleTouch = now;
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < NBTN; i++) {
     int bx = CB_X0 + (i % 4) * (CB_W + CB_GAP), by = CB_Y0 + (i / 4) * (CB_H + CB_GAP);
     if (x < bx || x >= bx + CB_W || y < by || y >= by + CB_H) continue;
     uint8_t cmd = BTNS[i].cmd;

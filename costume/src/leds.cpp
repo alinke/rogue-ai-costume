@@ -41,6 +41,7 @@ void setMode(Mode m) {
 // controller (../../ledlink, the Gledopto) that runs this same code.
 static int s_prox = -127, s_squad = 0, s_threat = 0;
 static bool s_speaking = false, s_infected = false, s_stealth = false;
+static int s_bright = LED_BRIGHTNESS_PERCENT;  // operator console / armband LEDS - +
 static uint32_t s_overloadStart = 0, s_overloadUntil = 0;
 
 void matrixNumber(int n) { s_number = n; }
@@ -56,6 +57,8 @@ void setSpeaking(bool on) { s_speaking = on; }
 void setThreat(int level) { s_threat = constrain(level, 0, 5); }
 void setInfectedNear(bool on) { s_infected = on; }
 void setStealth(bool on) { s_stealth = on; }
+void setBrightness(int pct) { s_bright = constrain(pct, 10, 100); }
+int brightness() { return s_bright; }
 bool stealth() { return s_stealth; }
 void overload(uint32_t ms) {
   s_overloadStart = millis();
@@ -73,7 +76,8 @@ static rmt_encoder_handle_t s_enc = nullptr;
 static bool s_busy = false;
 static uint32_t s_nextFrame = 0;
 
-static void setPixel(int i, uint32_t rgb, int pct = LED_BRIGHTNESS_PERCENT, int order = LED_COLOR_ORDER) {
+static void setPixel(int i, uint32_t rgb, int pct = -1, int order = LED_COLOR_ORDER) {
+  if (pct < 0) pct = s_bright;
   int k = pct * 255 / 100;
   uint8_t r = ((rgb >> 16) & 255) * k / 255, g = ((rgb >> 8) & 255) * k / 255, b = (rgb & 255) * k / 255;
   uint8_t* p = s_px + i * 3;
@@ -363,6 +367,9 @@ static uint32_t matrixColor(int x, int y, float t) {
   }
 }
 
+// The matrix's brightness follows the strips' in proportion.
+static int matrixPct() { return min(100, MATRIX_BRIGHTNESS_PERCENT * s_bright / LED_BRIGHTNESS_PERCENT); }
+
 void tick(uint32_t now) {
   if (!s_chan || (int32_t)(now - s_nextFrame) < 0) return;
   if (s_busy && rmt_tx_wait_all_done(s_chan, 0) != ESP_OK) return;  // last frame still going out
@@ -406,9 +413,9 @@ void tick(uint32_t now) {
 #if MATRIX_ORIENT_TEST
         // An "F" in the top-left, so the picture's turn/flip is easy to see.
         bool f = x == 1 || (y == 1 && x < 6) || (y == 4 && x < 4);
-        setPixel(i, f && y >= 1 && y <= 6 ? gfx::C_GREEN : 0, MATRIX_BRIGHTNESS_PERCENT, MATRIX_COLOR_ORDER);
+        setPixel(i, f && y >= 1 && y <= 6 ? gfx::C_GREEN : 0, matrixPct(), MATRIX_COLOR_ORDER);
 #else
-        setPixel(i, matrixColor(x, y, t), MATRIX_BRIGHTNESS_PERCENT, MATRIX_COLOR_ORDER);
+        setPixel(i, matrixColor(x, y, t), matrixPct(), MATRIX_COLOR_ORDER);
 #endif
         continue;
       }

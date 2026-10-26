@@ -25,10 +25,11 @@ commands from its operator console -- no pairing.
   The costume's midnight takeover gets its own screen too.
 - **Operator console: hold the screen (~1 s).** The costume's own console is
   in the chest screen's top-left corner, which you can't reach while wearing
-  it; this one is on your arm. 16 buttons: SCAN, KILL SWITCH, QR CODE, NEXT
+  it; this one is on your arm. 20 buttons: SCAN, KILL SWITCH, QR CODE, NEXT
   SCENE, STEALTH (all the jacket's LEDs dark, tap again for back), MIDNIGHT,
   PHOTO BOOTH, OVERLOAD (5 s of full red), PAUSE / RESUME SHOW, MUTE /
-  SOUND ON, VOICE - / + (you hear the new level), ARM-7 OFF (tap twice), EXIT. A pressed button goes
+  SOUND ON, VOICE - / + (you hear the new level), LEDS - / + (the jacket's
+  LEDs, 10% steps), COUNTDOWN, GALLERY, ARM-7 OFF (tap twice), EXIT. A pressed button goes
   amber (sending), then green DONE when the costume confirms it, or red NO
   REPLY (out of range, or the costume is off). It closes itself after 20 s
   untouched. How it works: the armband advertises the command ("RCT1", with a

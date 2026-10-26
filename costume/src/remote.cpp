@@ -56,6 +56,8 @@ void run(uint8_t cmd, uint32_t now) {
       break;
     case CMD_STEALTH: leds::setStealth(!leds::stealth()); break;  // toggles: all LEDs dark / back
     case CMD_OVERLOAD: leds::overload(5000); break;
+    case CMD_LEDS_DOWN: settings::setLedBrightness(settings::ledBrightness() - 10); break;
+    case CMD_LEDS_UP: settings::setLedBrightness(settings::ledBrightness() + 10); break;
     default: break;
   }
 }

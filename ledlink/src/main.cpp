@@ -31,7 +31,7 @@ extern "C" bool btInUse() { return true; }
 static const uint8_t TAG_AI[4] = {'R', 'A', 'I', '1'};
 static volatile uint32_t s_seen = 0;
 static volatile uint8_t s_mode = 0, s_number = 0;  // number + 1, 0 = none
-static volatile uint8_t s_threat = 0, s_squad = 0, s_flags = 0;
+static volatile uint8_t s_threat = 0, s_squad = 0, s_flags = 0, s_bright = 0;
 
 // The scanners and guests' phones it hears itself (same as the costume:
 // researcher.cpp): the nearest one's signal for the proximity glow, and
@@ -114,6 +114,7 @@ class ScanCB : public NimBLEScanCallbacks {
       s_squad = (uint8_t)m[13];
       s_flags = (uint8_t)m[14];
     }
+    if (m.size() >= 16) s_bright = (uint8_t)m[15];
     s_seen = millis();
   }
 };
@@ -236,6 +237,7 @@ void loop() {
     leds::setThreat(s_threat);
     leds::setSquad(s_squad);
     leds::setSpeaking(s_flags & 1);
+    if (s_bright) leds::setBrightness(s_bright);  // the costume's LEDS - + (operator console / armband)
   } else {
     leds::setMode(leds::IDLE);
     leds::matrixNumber(-1);

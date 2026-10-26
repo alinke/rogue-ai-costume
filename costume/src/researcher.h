@@ -38,7 +38,7 @@ int rssi();                           // smoothed, dBm (when seen)
 void setState(uint8_t threat, Activity activity, uint8_t scanned, uint8_t contained);
 // The LED effect running and the matrix's number (-1 = none), for an external
 // LED controller (../../ledlink) that mirrors them.
-void setLedState(uint8_t mode, int number, int squad, bool speaking);
+void setLedState(uint8_t mode, int number, int squad, bool speaking, int brightness);
 const char* zoneName(Zone z);
 bool radioUp();
 // Power off: stop Bluetooth and the ESP-Hosted link to the C6 (Wi-Fi must be

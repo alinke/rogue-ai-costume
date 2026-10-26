@@ -49,5 +49,7 @@ void setInfectedNear(bool on);  // an infected guest's phone is close
 void setStealth(bool on);       // armband STEALTH
 bool stealth();
 void overload(uint32_t ms = 5000);  // armband OVERLOAD
+void setBrightness(int pct);    // the strips, 10-100% (the matrix follows in proportion)
+int brightness();
 
 }  // namespace leds

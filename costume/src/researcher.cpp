@@ -23,7 +23,8 @@ namespace researcher {
 // The AI's beacon then carries: [10] the last armband command it carried out
 // (seq), [11] the LED effect running (leds::Mode), [12] the matrix's number + 1
 // (0 = none), [13] the squad count (scanners firing together), [14] flags (bit 0:
-// the voice is talking) -- for the Gledopto LED controller (../../ledlink).
+// the voice is talking), [15] the LEDs' brightness % -- for the Gledopto LED
+// controller (../../ledlink).
 static const uint8_t TAG_AI[4] = {'R', 'A', 'I', '1'};
 static const uint8_t TAG_SCANNER[4] = {'R', 'S', 'C', '1'};
 static const uint8_t TAG_REMOTE[4] = {'R', 'C', 'T', '1'};
@@ -52,7 +53,7 @@ static volatile bool s_stateDirty = true;
 static volatile int s_remoteSeq = -1;       // the last armband press heard
 static volatile bool s_remotePending = false;
 static volatile uint8_t s_remoteCmd = 0, s_ackSeq = 0;
-static volatile uint8_t s_led[4] = {0, 0, 0, 0};  // LED effect, matrix number + 1 (0 = none), squad, flags
+static volatile uint8_t s_led[5] = {0, 0, 0, 0, 0};  // LED effect, matrix number + 1, squad, flags, brightness %
 
 static Zone s_zone = NONE;
 
@@ -143,7 +144,7 @@ static void setAdvert() {
     BLEDevice::getAdvertising()->stop();
     return;
   }
-  uint8_t data[2 + 4 + 4 + 5] = {0xFF, 0xFF};
+  uint8_t data[2 + 4 + 4 + 6] = {0xFF, 0xFF};
   memcpy(data + 2, TAG_AI, 4);
   for (int i = 0; i < 4; i++) data[6 + i] = s_state[i];
   data[10] = s_ackSeq;  // readers check for at least 10 bytes, so these extra ones are safe
@@ -151,6 +152,7 @@ static void setAdvert() {
   data[12] = s_led[1];
   data[13] = s_led[2];
   data[14] = s_led[3];
+  data[15] = s_led[4];
   BLEAdvertisementData ad;
   ad.setFlags(0x06);
   ad.setManufacturerData(String((const char*)data, sizeof(data)));
@@ -333,10 +335,10 @@ bool takeCommand(uint8_t* cmd, uint8_t* seq) {
   return true;
 }
 
-void setLedState(uint8_t mode, int number, int squad, bool speaking) {
-  uint8_t n[4] = {mode, (uint8_t)(number < 0 ? 0 : min(number + 1, 255)), (uint8_t)constrain(squad, 0, 255),
-                  (uint8_t)(speaking ? 1 : 0)};
-  for (int i = 0; i < 4; i++) {
+void setLedState(uint8_t mode, int number, int squad, bool speaking, int brightness) {
+  uint8_t n[5] = {mode, (uint8_t)(number < 0 ? 0 : min(number + 1, 255)), (uint8_t)constrain(squad, 0, 255),
+                  (uint8_t)(speaking ? 1 : 0), (uint8_t)constrain(brightness, 0, 100)};
+  for (int i = 0; i < 5; i++) {
     if (s_led[i] != n[i]) {
       s_led[i] = n[i];
       s_stateDirty = true;
@@ -380,7 +382,7 @@ void setState(uint8_t, Activity, uint8_t, uint8_t) {}
 const char* zoneName(Zone) { return "off"; }
 bool takeCommand(uint8_t*, uint8_t*) { return false; }
 void ackCommand(uint8_t) {}
-void setLedState(uint8_t, int, int, bool) {}
+void setLedState(uint8_t, int, int, bool, int) {}
 }  // namespace researcher
 
 #endif

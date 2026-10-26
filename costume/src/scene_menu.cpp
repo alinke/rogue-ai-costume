@@ -31,7 +31,7 @@ enum Action {
   GO_SCAN, GO_KEYPAD, GO_CAPTCHA, GO_GALLERY,
   GO_QR, GO_COUNTDOWN, GO_MIDNIGHT, GO_TOUCHCAL,
   GO_BOOTH, LIGHT_DOWN, LIGHT_SHOW, LIGHT_UP,
-  CLEAR_PHOTOS, SIGNAL, COUNT
+  CLEAR_PHOTOS, SIGNAL, LEDS_DOWN, LEDS_UP, COUNT
 };
 
 // What this board can't do is left out (the Elecrow 7" backup: no speaker, no
@@ -72,7 +72,7 @@ void makeLabels() {
       "SCAN", "KILL SWITCH", "CAPTCHA", "GALLERY",
       "QR CODE", "COUNTDOWN", "MIDNIGHT TEST", "TOUCH CAL",
       "PHOTO BOOTH", "PHOTO -", "", "PHOTO +",
-      "CLEAR PHOTOS", ""};
+      "CLEAR PHOTOS", "", "LEDS -", ""};
   for (int i = 0; i < COUNT; i++) snprintf(labels[i], sizeof(labels[i]), "%s", FIXED[i]);
   snprintf(labels[BRIGHT_SHOW], sizeof(labels[0]), "LIGHT %d%%", settings::brightness());
   snprintf(labels[SOUND], sizeof(labels[0]), "SOUND: %s", settings::muted() ? "OFF" : "ON");
@@ -86,11 +86,13 @@ void makeLabels() {
   else if (uploader::clearPending()) snprintf(labels[CLEAR_PHOTOS], sizeof(labels[0]), "CLEARING WEB...");
   snprintf(labels[PAUSE], sizeof(labels[0]), "%s", scenes::paused() ? "RESUME SHOW" : "PAUSE SHOW");
   snprintf(labels[SIGNAL], sizeof(labels[0]), "AI SIGNAL: %s", settings::aiSignal() ? "ON" : "OFF");
+  snprintf(labels[LEDS_UP], sizeof(labels[0]), "LEDS + (%d%%)", settings::ledBrightness());
 }
 
 uint32_t colorOf(int i) {
   if (i == EXIT) return C_RED;
   if (i == SIGNAL) return settings::aiSignal() ? C_GREEN : C_RED;
+  if (i == LEDS_DOWN || i == LEDS_UP) return C_CYAN;
   if (i == SIREN_DOWN || i == SIREN_SHOW || i == SIREN_UP) return C_AMBER;
   if (i == CLEAR_PHOTOS) return C_RED;
   if (i >= LIGHT_DOWN) return C_AMBER;
@@ -213,6 +215,8 @@ void touch(int x, int y, uint32_t now) {
     case GO_TOUCHCAL: scenes::playScene(&SCENE_TOUCHCAL, now); return;
     case EXIT: scenes::leaveMenu(now); return;
     case SIGNAL: settings::setAiSignal(!settings::aiSignal()); break;
+    case LEDS_DOWN: settings::setLedBrightness(settings::ledBrightness() - 10); break;  // the jacket's LEDs
+    case LEDS_UP: settings::setLedBrightness(settings::ledBrightness() + 10); break;
     default: return;
   }
   drawButtons();  // brightness / sound labels changed

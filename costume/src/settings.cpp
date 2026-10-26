@@ -9,6 +9,7 @@
 #include "audio.h"
 #include "config.h"
 #include "gfx.h"
+#include "leds.h"
 
 namespace settings {
 
@@ -16,6 +17,7 @@ static Preferences s_prefs;
 static int s_photoLight = PHOTO_LIGHT_DEFAULT;
 static bool s_aiSignal = true;
 static int s_brightness = BACKLIGHT_PERCENT;
+static int s_ledBright = LED_BRIGHTNESS_PERCENT;
 static bool s_muted = false;
 static int s_siren = SIREN_VOLUME_PERCENT, s_voice = VOICE_VOLUME_PERCENT;
 static bool s_sirenOn = true, s_voiceOn = true;
@@ -33,6 +35,8 @@ void begin() {
   s_photoLight = constrain((int)s_prefs.getUChar("plight", PHOTO_LIGHT_DEFAULT), 0, 6);
   camera::setLight(s_photoLight);
   s_voiceOn = s_prefs.getBool("voiceon", true);
+  s_ledBright = constrain((int)s_prefs.getUChar("ledbright", LED_BRIGHTNESS_PERCENT), 10, 100);
+  leds::setBrightness(s_ledBright);
   s_aiSignal = s_prefs.getBool("aisignal", true);
   researcher::setBroadcast(s_aiSignal);
   audio::setSirenEnabled(s_sirenOn);
@@ -64,6 +68,13 @@ void setMuted(bool m) {
 }
 
 int photoLight() { return s_photoLight; }
+
+int ledBrightness() { return s_ledBright; }
+void setLedBrightness(int pct) {
+  s_ledBright = constrain(pct, 10, 100);
+  s_prefs.putUChar("ledbright", (uint8_t)s_ledBright);
+  leds::setBrightness(s_ledBright);
+}
 
 bool aiSignal() { return s_aiSignal; }
 void setAiSignal(bool on) {

@@ -307,7 +307,8 @@ void loop() {
     leds::setSquad(g_squad);
     leds::setSpeaking(audio::speaking());
     leds::setThreat(header::threatLevel());
-    researcher::setLedState(leds::mode(), leds::matrixNumberNow(), g_squad, audio::speaking());  // for the Gledopto
+    researcher::setLedState(leds::mode(), leds::matrixNumberNow(), g_squad, audio::speaking(),
+                            leds::brightness());  // for the Gledopto
   }
   rtclock::tick(start);
   if (rtclock::takeTargetEvent()) scenes::midnight(start);

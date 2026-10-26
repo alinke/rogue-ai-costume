@@ -19,6 +19,8 @@ bool voiceOn();
 void setVoiceOn(bool on);
 int photoLight();          // 0-6: how bright photos come out (camera exposure + midtone lift)
 void setPhotoLight(int level);
+int ledBrightness();       // the jacket LEDs, % (default LED_BRIGHTNESS_PERCENT)
+void setLedBrightness(int pct);
 bool aiSignal();           // the AI's Bluetooth signal on (default) or off (decoration)
 void setAiSignal(bool on);
 void saveTouchCal();       // stores gfx's current touch correction
