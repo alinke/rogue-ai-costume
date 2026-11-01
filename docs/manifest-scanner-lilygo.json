@@ -1,0 +1,2 @@
+{ "name": "LAB-7 scanner -- LilyGO T-Display-S3-Long", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32-S3", "parts": [ { "path": "firmware/scanner-lilygo.bin", "offset": 0 } ] } ] }

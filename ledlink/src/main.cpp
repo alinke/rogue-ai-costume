@@ -18,7 +18,8 @@
 #include "config.h"
 #include "gen/leds.h"
 
-#if __has_include("../../costume/src/secrets.h")
+// Not in a PUBLIC_BUILD (the web-flasher image): no Wi-Fi, so no self-update.
+#if !defined(PUBLIC_BUILD) && __has_include("../../costume/src/secrets.h")
 #include "../../costume/src/secrets.h"
 #endif
 

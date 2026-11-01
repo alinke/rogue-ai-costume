@@ -1,0 +1,2 @@
+{ "name": "ROGUE.AI costume -- Sunton ESP32-8048S050 5\"", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32-S3", "parts": [ { "path": "firmware/costume-sunton5.bin", "offset": 0 } ] } ] }

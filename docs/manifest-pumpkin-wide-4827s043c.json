@@ -1,0 +1,2 @@
+{ "name": "ROGUE.AI pumpkin -- Sunton ESP32-4827S043C 4.3\"", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32-S3", "parts": [ { "path": "firmware/pumpkin-wide-4827s043c.bin", "offset": 0 } ] } ] }

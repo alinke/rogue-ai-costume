@@ -1,0 +1,2 @@
+{ "name": "LAB-7 scanner -- Elecrow CrowPanel Advance 4.3\"", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32-S3", "parts": [ { "path": "firmware/scanner-advance43.bin", "offset": 0 } ] } ] }

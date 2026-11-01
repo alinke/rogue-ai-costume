@@ -1,0 +1,2 @@
+{ "name": "ROGUE.AI pumpkin eye -- Elecrow CrowPanel 2.1\" round", "version": "1.0.0", "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32-S3", "parts": [ { "path": "firmware/pumpkin-eye-round21.bin", "offset": 0 } ] } ] }

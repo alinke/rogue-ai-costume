@@ -18,3 +18,6 @@ monitor/**/xcuserdata/
 
 # The researcher badge with a real name and photo (hardware/badge/README.md)
 hardware/badge/private/
+
+# Instructables write-up drafts and images (not part of the repo)
+instructables/
