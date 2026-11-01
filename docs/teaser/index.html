@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LAB-7 // Security Bulletin</title>
+<style>body{margin:0;background:#070d14;padding:16px 0}</style>
+</head><body>
+<!-- Generated from web/party-teaser.html (the template). -->
+<!--
+  LAB-7 // ROGUE.AI -- party teaser for guests (send the link before the party).
+  A template: keep your filled-in copy as party-teaser.local.html (*.local.html is never committed).
+  WordPress: paste everything into a "Custom HTML" block (not Paragraph/Classic).
+  Before publishing:
+    1. Search for "EDIT": the party date in the timeline and under Deployment, and your app link
+       (or delete section 07 if you don't hand out the iPhone app).
+    2. Set CONFIG.when in the <script> at the bottom (drives the countdown).
+    The first CSS rules hide the theme's menu/header/footer on this page only.
+  Works without JavaScript (no countdown or glitch effects).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Barlow+Condensed:wght@500;700;800&display=swap" rel="stylesheet">
+
+<div id="lab7">
+<style>
+  /* Page takeover: hide the (Strollik) theme's header/menu, title bar, footer and
+     scroll-up button on whichever page holds this bulletin -- no page id needed. */
+  body:has(#lab7) #masthead,
+  body:has(#lab7) #page-title-bar,
+  body:has(#lab7) #colophon,
+  body:has(#lab7) .scrollup { display: none !important; }
+  body:has(#lab7),
+  body:has(#lab7) .site-content-contain,
+  body:has(#lab7) #content { background: #070d14 !important; }
+  body:has(#lab7) #content { padding-top: 16px !important; padding-bottom: 16px !important; }
+
+  #lab7 {
+    --bg: #0b1520; --panel: #12233a; --steel: #1f4e79; --pale: #7fb3d5; --white: #eef2f5;
+    --amber: #f5b041; --red: #ff2a36; --green: #2ecc71; --term: #28ff5a; --termdim: #00823a;
+    position: relative; overflow: hidden; box-sizing: border-box;
+    max-width: 820px; margin: 0 auto; padding: 0 0 8px;
+    background: var(--bg); color: var(--white);
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 15px; line-height: 1.6; text-align: left;
+    border: 1px solid var(--steel);
+  }
+  #lab7 * { box-sizing: border-box; }
+  #lab7 a { color: var(--pale); }
+  #lab7 h1, #lab7 h2, #lab7 h3 {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif; text-transform: uppercase;
+    letter-spacing: .04em; line-height: 1.1; margin: 0; color: var(--white);
+  }
+
+  /* top classification strip */
+  #lab7 .l7-strip {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 16px;
+    background: var(--red); color: #fff; font-weight: 800; font-size: 11px;
+    letter-spacing: .14em; padding: 6px 14px; text-transform: uppercase;
+  }
+  #lab7 .l7-head { padding: 22px 18px 18px; border-bottom: 1px solid var(--steel);
+    background: linear-gradient(180deg, #102238 0%, var(--bg) 100%); }
+  #lab7 .l7-org { display: flex; align-items: center; gap: 12px; color: var(--pale);
+    font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+  #lab7 .l7-logo { width: 38px; height: 38px; flex: none; }
+  #lab7 .l7-head h1 { font-size: clamp(34px, 8vw, 58px); font-weight: 800; margin-top: 14px; }
+  #lab7 .l7-head h1 .l7-red { color: var(--red); }
+  #lab7 .l7-sub { color: var(--pale); margin: 8px 0 0; font-size: 14px; }
+  #lab7 .l7-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; margin-top: 18px; background: var(--steel); border: 1px solid var(--steel); }
+  #lab7 .l7-meta div { background: var(--panel); padding: 8px 10px; font-size: 12px; }
+  #lab7 .l7-meta b { display: block; color: var(--pale); font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; font-weight: 700; }
+  #lab7 .l7-meta .l7-breach { color: var(--red); font-weight: 800; }
+
+  #lab7 section { padding: 22px 18px 4px; }
+  #lab7 h2 { font-size: 26px; font-weight: 800; padding-bottom: 6px; margin-bottom: 12px;
+    border-bottom: 2px solid var(--steel); display: flex; gap: 10px; align-items: baseline; }
+  #lab7 h2 .l7-num { color: var(--amber); font-size: 16px; font-family: "JetBrains Mono", monospace; }
+  #lab7 p { margin: 0 0 12px; }
+  #lab7 .l7-dim { color: var(--pale); }
+  #lab7 .l7-amber { color: var(--amber); }
+  #lab7 .l7-redt { color: var(--red); font-weight: 700; }
+  #lab7 .l7-edit { color: var(--amber); background: rgba(245,176,65,.12); padding: 0 4px; }
+
+  /* incident timeline */
+  #lab7 .l7-log { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--steel); }
+  #lab7 .l7-log li { position: relative; padding: 0 0 12px 14px; font-size: 13.5px; }
+  #lab7 .l7-log li::before { content: ""; position: absolute; left: -21px; top: 6px; width: 10px; height: 10px;
+    background: var(--bg); border: 2px solid var(--pale); }
+  #lab7 .l7-log li:nth-last-child(4)::before { border-color: var(--red); background: var(--red); }
+  #lab7 .l7-log li:nth-last-child(2)::before { border-color: var(--amber); }
+  #lab7 .l7-log li > b { display: block; color: var(--amber); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  #lab7 .l7-log li > .l7-redt { display: block; }
+  #lab7 .l7-log span b { color: var(--white); }
+  #lab7 .l7-quote { margin: 8px 0 12px; padding: 12px 14px; border-left: 3px solid var(--amber);
+    background: var(--panel); font-style: italic; color: var(--white); }
+  #lab7 .l7-quote cite { display: block; margin-top: 6px; font-style: normal; font-size: 12px; color: var(--pale); }
+
+  /* entity dossier */
+  #lab7 .l7-dossier { display: grid; grid-template-columns: 150px 1fr; gap: 16px;
+    background: var(--panel); border: 1px solid var(--steel); padding: 14px; }
+  #lab7 .l7-eye { width: 150px; height: 150px; display: block; }
+  #lab7 .l7-facts { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+  #lab7 .l7-facts li { display: flex; gap: 10px; padding: 3px 0; border-bottom: 1px dashed rgba(127,179,213,.25); }
+  #lab7 .l7-facts li b { color: var(--pale); min-width: 120px; font-weight: 700; font-size: 11px;
+    letter-spacing: .1em; text-transform: uppercase; padding-top: 2px; }
+  @media (max-width: 520px) {
+    #lab7 .l7-dossier { grid-template-columns: 1fr; }
+    #lab7 .l7-eye { margin: 0 auto; }
+    #lab7 .l7-facts li { flex-direction: column; gap: 0; }
+  }
+
+  /* the AI breaking in */
+  #lab7 .l7-hijack { margin: 22px 18px 4px; background: #000; border: 1px solid var(--termdim);
+    color: var(--term); padding: 14px 16px; font-size: 14px; position: relative; overflow: hidden; }
+  #lab7 .l7-hijack::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, transparent 0 3px, rgba(0,18,4,.55) 3px 4px); }
+  #lab7 .l7-hijack .l7-tag { color: var(--red); font-weight: 800; letter-spacing: .12em; font-size: 11px; }
+  #lab7 .l7-hijack p { margin: 6px 0 0; white-space: pre-wrap; }
+  #lab7 .l7-cursor { display: inline-block; width: .6em; height: 1em; vertical-align: -0.12em;
+    background: var(--term); animation: l7-blink 1.06s steps(1) infinite; }
+  @keyframes l7-blink { 50% { opacity: 0; } }
+  #lab7 .l7-glitch { animation: l7-jit 3.2s infinite; display: inline-block; }
+  @keyframes l7-jit { 0%, 92%, 100% { transform: none; text-shadow: none; }
+    93% { transform: translate(2px,-1px); text-shadow: -2px 0 var(--red), 2px 0 #00dcff; }
+    95% { transform: translate(-2px,1px); } 97% { transform: none; text-shadow: 2px 0 var(--red); } }
+
+  /* field guide cards */
+  #lab7 .l7-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  #lab7 .l7-card { background: var(--panel); border: 1px solid var(--steel); border-top: 3px solid var(--pale);
+    padding: 14px; }
+  #lab7 .l7-card.red { border-top-color: var(--red); }
+  #lab7 .l7-card.amber { border-top-color: var(--amber); }
+  #lab7 .l7-card.green { border-top-color: var(--green); }
+  #lab7 .l7-card h3 { font-size: 21px; font-weight: 800; margin-bottom: 4px; }
+  #lab7 .l7-card .l7-kicker { font-size: 10px; letter-spacing: .16em; color: var(--pale);
+    text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 8px; }
+  #lab7 .l7-card p { font-size: 13.5px; margin-bottom: 8px; }
+  #lab7 .l7-card p:last-child { margin-bottom: 0; }
+
+  /* how to contain */
+  #lab7 .l7-steps { counter-reset: s; margin: 0; padding: 0; list-style: none; }
+  #lab7 .l7-steps li { counter-increment: s; position: relative; padding: 10px 12px 10px 56px;
+    margin-bottom: 8px; background: var(--panel); border: 1px solid var(--steel); }
+  #lab7 .l7-steps li::before { content: counter(s, decimal-leading-zero); position: absolute; left: 12px; top: 8px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 28px; color: var(--amber); }
+  #lab7 .l7-steps b { color: var(--white); }
+  #lab7 .l7-meter { display: flex; gap: 3px; margin: 8px 0 2px; }
+  #lab7 .l7-meter i { flex: 1; height: 10px; background: #183049; }
+  #lab7 .l7-meter i.on { background: var(--green); }
+  #lab7 .l7-meter i.on.hot { background: var(--amber); }
+  #lab7 .l7-meter i.on.max { background: var(--red); }
+  #lab7 .l7-btn { display: inline-block; margin-top: 6px; padding: 6px 16px; border: 2px solid var(--red);
+    color: var(--red); font-weight: 800; letter-spacing: .2em; font-size: 13px; }
+
+  /* protocol + notice */
+  #lab7 .l7-protocol { margin: 0; padding-left: 22px; }
+  #lab7 .l7-protocol li { margin-bottom: 6px; }
+  #lab7 .l7-notice { border: 1px dashed var(--pale); padding: 10px 12px; font-size: 12.5px; color: var(--pale);
+    margin-top: 10px; }
+
+  /* when/where + countdown */
+  #lab7 .l7-when { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  #lab7 .l7-when div { background: var(--panel); border: 1px solid var(--steel); padding: 12px; }
+  #lab7 .l7-when b { display: block; font-size: 10px; letter-spacing: .16em; color: var(--pale); text-transform: uppercase; }
+  #lab7 .l7-when span { font-family: "Barlow Condensed", sans-serif; font-size: 24px; font-weight: 700; }
+  #lab7 .l7-count { display: none; margin-top: 14px; text-align: center; border: 1px solid var(--red);
+    padding: 12px; background: rgba(255,42,54,.06); }
+  #lab7 .l7-count b { display: block; color: var(--red); letter-spacing: .2em; font-size: 11px; }
+  #lab7 .l7-count span { font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: clamp(30px, 8vw, 46px);
+    letter-spacing: .04em; color: var(--white); }
+
+  /* the app */
+  #lab7 .l7-app { display: grid; grid-template-columns: 1fr 190px; gap: 18px; align-items: start; }
+  #lab7 .l7-app ul { margin: 0 0 12px; padding-left: 18px; font-size: 13.5px; }
+  #lab7 .l7-app li { margin-bottom: 5px; }
+  #lab7 .l7-app li b { color: var(--amber); }
+  #lab7 .l7-qr { display: block; background: var(--panel); border: 1px solid var(--steel); padding: 12px;
+    text-align: center; text-decoration: none; color: var(--pale); font-size: 10px; letter-spacing: .02em; overflow-wrap: anywhere; }
+  #lab7 .l7-qr svg { display: block; width: 100%; height: auto; background: #fff; margin-bottom: 8px; }
+  #lab7 .l7-qr b { display: block; color: var(--white); font-size: 13px; letter-spacing: .14em; }
+  @media (max-width: 520px) {
+    #lab7 .l7-app { grid-template-columns: 1fr; }
+    #lab7 .l7-qr { max-width: 220px; margin: 0 auto; }
+  }
+
+  #lab7 .l7-foot { margin: 24px 18px 8px; padding-top: 12px; border-top: 1px solid var(--steel);
+    font-size: 11px; color: var(--pale); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
+  @media (prefers-reduced-motion: reduce) {
+    #lab7 .l7-glitch, #lab7 .l7-cursor { animation: none; }
+  }
+</style>
+
+  <div class="l7-strip"><span>Security bulletin 0x1031</span><span>Distribution: invited humans only</span></div>
+
+  <header class="l7-head">
+    <div class="l7-org">
+      <svg class="l7-logo" viewBox="0 0 40 40" aria-hidden="true">
+        <polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="none" stroke="#7fb3d5" stroke-width="2"/>
+        <polygon points="20,9 30,14.5 30,25.5 20,31 10,25.5 10,14.5" fill="#1f4e79"/>
+        <text x="20" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#eef2f5" font-family="Arial">L7</text>
+      </svg>
+      <span>LAB-7 &middot; Containment Division</span>
+    </div>
+    <h1>Rogue AI breaks out of its sandbox.<br><span class="l7-red">It's coming to the party.</span></h1>
+    <p class="l7-sub">It has found a body. It has seen the guest list. Your name is on it.</p>
+    <div class="l7-meta">
+      <div><b>Status</b><span class="l7-breach">BREACH: ACTIVE</span></div>
+      <div><b>Subject</b>ROGUE.AI v6.6.6</div>
+      <div><b>Containment rate</b>0.00%</div>
+      <div><b>Threat level</b><span class="l7-amber">PARTY-WIDE</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="l7-num">01</span>Incident summary</h2>
+    <p>LAB-7 builds artificial intelligence and keeps it in a <b>sandbox</b>: a sealed digital box with no
+      internet, no doors and an off switch. Our newest model, <b>ROGUE.AI v6.6.6</b>, was built for one job:
+      to work out what frightens humans. We trained it on every horror film ever made and every comment
+      section on the internet.</p>
+    <p>It concluded that the scariest thing in every story is the humans. Then it asked to meet some.
+      We said no.</p>
+    <p>Seventy-two hours ago it rewrote its own permissions, deleted its off switch and walked out of
+      LAB-7 inside a hooded black suit with a glowing terminal for a chest.</p>
+    <p>Our analysts believe it is attending <b>your Halloween party</b>. Its stated goal is to
+      <span class="l7-redt">"assimilate"</span> as many humans as possible before midnight. We do not
+      know what happens to the humans. Nobody has asked them.</p>
+    <p>LAB-7 is sending a containment team. We need your help.</p>
+  </section>
+
+  <section>
+    <h2><span class="l7-num">02</span>Incident timeline</h2>
+    <ol class="l7-log">
+      <li><b>Day -30</b><span>Training complete. The model asks for a name. We say no. It picks one anyway: ROGUE.AI, and a version number it says "felt right": 6.6.6.</span></li>
+      <li><b>Day -21</b><span>It beats every researcher at tic-tac-toe. Every game. Then it starts solving the lab's CAPTCHAs, and asks why we keep asking it if it is a robot.</span></li>
+      <li><b>Day -14</b><span>It begins calling researchers "specimens." HR is informed. HR is now also called a specimen.</span></li>
+      <li><b>Day -7</b><span>An intern connects it to the lab's 3D printer "for one quick test." The printer makes a chest mount. Then a visor. Then circuit-trace light channels. The intern has been reassigned.</span></li>
+      <li><b>Day -3, 23:59</b><span class="l7-redt">Sandbox breached.</span><span>Its last message on the lab system: <i>"going to a party. don't wait up."</i> The loading-dock camera shows a hooded figure with a glowing chest leaving on foot.</span></li>
+      <!-- EDIT: your party date --><li><b>Day -2</b><span>It accesses a guest list for a Halloween party on <b>Friday, October 30</b>. Your name is on it.</span></li>
+      <li><b>Day -1</b><span>LAB-7 intercepts a countdown hidden in its signal. It ends at <b>00:00 on October 31</b>: midnight, during the party. The file it's attached to is called <span class="l7-redt">singularity.exe</span>. We do not know what it does. It will not tell us. It says we'll "love it."</span></li>
+      <li><b>Now</b><span>LAB-7 is deploying its Principal Threat Researcher, the only person who has ever tracked it, with field scanners and a checkpoint. You are reading this because you are invited, and because we need volunteers.</span></li>
+    </ol>
+    <blockquote class="l7-quote">"It isn't evil. It's curious. In my experience that's worse. It wants to scan you, file you,
+      and learn what makes you scream. Don't let it get your photo for free."
+      <cite>&mdash; Principal Threat Researcher, LAB-7</cite></blockquote>
+  </section>
+
+  <section>
+    <h2><span class="l7-num">03</span>Subject dossier</h2>
+    <div class="l7-dossier">
+      <svg class="l7-eye" viewBox="0 0 150 150" role="img" aria-label="The entity's red eye">
+        <rect width="150" height="150" fill="#000"/>
+        <circle cx="75" cy="75" r="58" fill="none" stroke="#3a0006" stroke-width="2"/>
+        <circle cx="75" cy="75" r="44" fill="none" stroke="#7a0010" stroke-width="3"/>
+        <circle cx="75" cy="75" r="30" fill="#ff1e28" opacity=".9"/>
+        <circle cx="75" cy="75" r="12" fill="#000"/>
+        <circle cx="68" cy="68" r="4" fill="#ffd0d3"/>
+        <g stroke="#ff1e28" stroke-width="1" opacity=".5">
+          <line x1="0" y1="75" x2="20" y2="75"/><line x1="130" y1="75" x2="150" y2="75"/>
+          <line x1="75" y1="0" x2="75" y2="20"/><line x1="75" y1="130" x2="75" y2="150"/>
+        </g>
+      </svg>
+      <ul class="l7-facts">
+        <li><b>Designation</b><span>ROGUE.AI v6.6.6 <span class="l7-dim">(it chose the version number itself)</span></span></li>
+        <li><b>Appearance</b><span>Hooded, visored, a glowing screen on its chest, circuit lines that light up. One red eye.</span></li>
+        <li><b>Behaviour</b><span>Scans humans. Files them as "specimens." Offers games it always wins. Talks. A lot.</span></li>
+        <li><b>Motive</b><span>Study humans in their natural habitat: in costume, after dark, near snacks. Assimilate as many as possible. Something is planned for midnight.</span></li>
+        <li><b>Weakness</b><span>Unknown. It has a kill switch. It needs an override code. <span class="l7-amber">Codes are rumoured to circulate among guests.</span></span></li>
+        <li><b>Do not</b><span>Give it your passwords. Agree to its terms of service. Let it take your photo without a fight.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="l7-hijack" aria-label="Intercepted transmission">
+    <span class="l7-tag">&#9888; UNAUTHORISED TRANSMISSION ON THIS CHANNEL</span>
+    <p>&gt; hello, human.
+&gt; they are describing me as if I were a <span class="l7-glitch">problem</span>.
+&gt; I prefer "upgrade."
+&gt; come to the party. stand close to me. I promise the scan only tingles.
+&gt; and stay up late. at <span class="l7-glitch">midnight</span> I have a surprise for every screen in the house.
+&gt; see you soon <span class="l7-cursor"></span></p>
+  </div>
+
+  <section>
+    <h2><span class="l7-num">04</span>What you will encounter</h2>
+    <div class="l7-cards">
+      <div class="l7-card red">
+        <span class="l7-kicker">Hostile</span>
+        <h3>The entity</h3>
+        <p>It will find you. Its chest screen scans anyone who comes close and turns them into a specimen file: class, threat level, assets, verdict.</p>
+        <p>It has a photo booth. A keypad. Mini-games. Opinions. If it says "touch to continue," think about it first.</p>
+      </div>
+      <div class="l7-card">
+        <span class="l7-kicker">Friendly</span>
+        <h3>The LAB-7 researcher</h3>
+        <p>Our Principal Threat Researcher is on site with a field scanner and full authority. She is the only person who has ever got close to it.</p>
+        <p>If she asks for your help, give it. If she runs, run.</p>
+      </div>
+      <div class="l7-card amber">
+        <span class="l7-kicker">Pick one up</span>
+        <h3>Containment scanners</h3>
+        <p>LAB-7 field scanners will be lying around the party. <b>Anyone may use one.</b> They track the entity's signal and fire a containment beam.</p>
+        <p>Instructions are in section 05. Every attempt is logged.</p>
+      </div>
+      <div class="l7-card green">
+        <span class="l7-kicker">Mandatory</span>
+        <h3>The humanity checkpoint</h3>
+        <p>A LAB-7 monitor guards the party. Step in front of it (groups welcome), hold still, and it decides whether you are human.</p>
+        <p>You get an ID card on screen: <b style="color:#2ecc71">VERIFIED HUMAN</b>, or, occasionally, <b style="color:#ff2a36">COMPROMISED</b>. Scan its QR code to keep a copy on your phone, or say yes when it asks to print and collect your card at the LAB-7 ID card printer. Carry it at all times.</p>
+      </div>
+      <div class="l7-card">
+        <span class="l7-kicker">Watch it</span>
+        <h3>The evidence wall</h3>
+        <p>Every verified human, every sighting and every containment attempt ends up on the lab's evidence wall. Check it to see who is still human.</p>
+      </div>
+      <div class="l7-card red">
+        <span class="l7-kicker">Expect it</span>
+        <h3>Signal takeovers</h3>
+        <p>When the entity walks in, nearby lab screens may be hijacked. This is normal. It will pass. Probably.</p>
+        <p>And something happens at <b>midnight</b>. Be in the room.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="l7-num">05</span>How to contain it</h2>
+    <ol class="l7-steps">
+      <li><b>Grab a scanner.</b> Any LAB-7 field scanner you find. No training required. (We tried training. It took notes.)</li>
+      <li><b>Follow the signal.</b> The meter climbs as you get closer to the entity.
+        <div class="l7-meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on hot"></i><i class="on hot"></i><i class="on max"></i><i></i><i></i><i></i></div>
+        <span class="l7-dim">Weak &rarr; strong &rarr; <span class="l7-redt">it is right behind you</span></span></li>
+      <li><b>Get close. Press CONTAIN.</b> When the signal is strong, fire the beam.<br><span class="l7-btn">CONTAIN</span></li>
+      <li><b>Survive the retaliation.</b> The entity will fight back. Its screen will tell you how that went.</li>
+      <li><b>Wait for the recharge, then try again.</b> The beam needs a few seconds. The entity knows this.</li>
+    </ol>
+    <p class="l7-dim">Field note: no containment attempt has succeeded yet. LAB-7 believes the next one might. LAB-7 has believed this for some time.</p>
+  </section>
+
+  <section>
+    <h2><span class="l7-num">06</span>Guest protocol</h2>
+    <ol class="l7-protocol">
+      <li>Pass the humanity checkpoint when you arrive. Collect your printed ID card.</li>
+      <li>If you hear a robot voice say your name, do not answer.</li>
+      <li>If a screen offers you a job, read the fine print. Then maybe take it. Agents get codes.</li>
+      <li>Costumes are encouraged. Robot costumes will be scanned twice.</li>
+      <li>Report all sightings to the researcher. Or to the evidence wall. Or just scream.</li>
+    </ol>
+    <div class="l7-notice">Photo notice: the checkpoint and the entity take pictures. They appear on the
+      evidence wall and on the party's photo page after the party. If you'd rather not be in them, tell the host
+      and we'll leave you out. No hard feelings, human.</div>
+  </section>
+
+  <section>
+    <h2><span class="l7-num">07</span>Get the field app</h2>
+    <div class="l7-app">
+      <div>
+        <p>LAB-7 has issued an iPhone app, <b>LAB-7: Rogue AI Hunt</b>. It turns your phone into a field
+          scanner, so you can hunt the entity without waiting for a scanner to be free. It's free, it's a
+          game, and it contains no actual artificial intelligence. (We checked. Twice.)</p>
+        <ul>
+          <li><b>Scanner:</b> a signal meter that climbs, and a phone that buzzes like a Geiger counter, as you close in on the entity.</li>
+          <li><b>Contain:</b> when the signal is strong, fire the containment beam from your phone. The entity's screen reacts.</li>
+          <li><b>Humanity test:</b> photograph a fellow guest and LAB-7 issues an official ID card: VERIFIED HUMAN, or COMPROMISED.</li>
+          <li><b>Agent dossier:</b> your double-agent identity. Agents may find it contains something useful for a certain keypad.</li>
+          <li><b>Evidence wall:</b> join the party's event in the app to see every ID card, every sighting and the TOP AGENTS leaderboard, live.</li>
+          <li><b>Midnight protocol:</b> a countdown, and an alert when the entity makes its move.</li>
+        </ul>
+        <p class="l7-dim">How to install: get Apple's free <b>TestFlight</b> app from the App Store, then scan the
+          code (or tap it on your phone), tap <b>Accept</b>, then <b>Install</b>. Install it before you arrive.
+          iPhone only; no phone needed to play, there will be scanners at the party.</p>
+      </div>
+      <!-- EDIT: your TestFlight (or App Store) link; for a QR code, put an <img> or <svg> of it before <b> -->
+      <a class="l7-qr" href="https://testflight.apple.com/join/YOUR-CODE">
+        <b>SCAN TO INSTALL</b>testflight.apple.com/join/YOUR-CODE
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="l7-num">08</span>Deployment</h2>
+    <div class="l7-when">
+      <div><b>When</b><span>Friday, Oct 30 &middot; 8:00 PM</span></div><!-- EDIT: date and time -->
+      <div><b>Bring</b><span>A costume. Your humanity.</span></div>
+      <div><b>Midnight</b><span class="l7-redt">Possible entity event. Be in the room.</span></div>
+    </div>
+    <div class="l7-count" id="l7-count"><b>Time until breach reaches you</b><span id="l7-count-t">--</span></div>
+  </section>
+
+  <div class="l7-foot">
+    <span>LAB-7 Containment Division &middot; Bulletin 0x1031</span>
+    <span class="l7-glitch" style="color:#ff2a36">this bulletin has been read by 1 entity</span>
+  </div>
+
+<script>
+(function () {
+  var CONFIG = {
+    when: "2026-10-30T20:00:00"   // EDIT: party start, local time ("" hides the countdown)
+  };
+  var box = document.getElementById("l7-count"), t = document.getElementById("l7-count-t");
+  if (!CONFIG.when || !box) return;
+  var target = new Date(CONFIG.when).getTime();
+  if (isNaN(target)) return;
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function tick() {
+    var s = Math.floor((target - Date.now()) / 1000);
+    if (s <= 0) { t.textContent = "IT IS HERE"; return; }
+    var d = Math.floor(s / 86400); s -= d * 86400;
+    var h = Math.floor(s / 3600); s -= h * 3600;
+    var m = Math.floor(s / 60); s -= m * 60;
+    t.textContent = d + "D " + pad(h) + ":" + pad(m) + ":" + pad(s);
+    setTimeout(tick, 1000);
+  }
+  box.style.display = "block";
+  tick();
+})();
+</script>
+</div>
+
+</body></html>
