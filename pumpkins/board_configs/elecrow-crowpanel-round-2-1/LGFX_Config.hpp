@@ -155,7 +155,7 @@ public:
             // 10MHz = 160MHz PLL / 16, an exact divide. Elecrow's 12MHz
             // (160/13.33, fractional) showed display noise with WiFi up --
             // same PSRAM-bandwidth problem as the other RGB boards (see
-            // pixelcadeusbtools CLAUDE.md "RGB panels + WiFi: display
+            // Pixelcade Sidekick notes, "RGB panels + WiFi: display
             // noise"); QIO flash alone wasn't enough. ~38Hz refresh.
             cfg.freq_write = 10000000;
 

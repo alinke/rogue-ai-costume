@@ -25,7 +25,7 @@ inline namespace v1 {
 // Panel_EK79007 plus the deferred setInvert() every new DSI panel here needs:
 // LGFX's Panel_FrameBufferBase::init() calls setInvert() before the panel's
 // reset and before the DPI panel handle exists, and on DSI that sends a real
-// DCS command that can hang boot solid (see pixelcadeusbtools' CLAUDE.md,
+// DCS command that can hang boot solid (a Pixelcade Sidekick finding,
 // "ESP32-P4 MIPI-DSI panels").
 struct Panel_EK79007_Deferred : public Panel_EK79007 {
     void setInvert(bool invert) override {
