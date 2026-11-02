@@ -8,8 +8,10 @@
 // LEDS_MATRIX: an 8x8 WS2812 panel (count 64) -- the watching eye on the back.
 // LEDS_DARK: LEDs that stay off -- strip tucked out of sight (uncut strips
 // longer than their run, the stretch behind the chest screen).
+// side: -1 the wearer's left, +1 right, 0 neither (LEDLINK's turn signals; the
+// costume leaves it out).
 enum LedPart : uint8_t { LEDS_SLEEVE, LEDS_TRIM, LEDS_EYE, LEDS_MATRIX, LEDS_DARK };
-struct LedSegment { LedPart type; int count; bool reversed; };
+struct LedSegment { LedPart type; int count; bool reversed; int8_t side; };
 
 namespace leds {
 
@@ -27,11 +29,34 @@ enum Mode : uint8_t {
   SHUTDOWN,   // the fake shutdown: the sleeves die, then the front, the eye last
   OVERLOAD,   // armband: a few seconds of full-chain red (current-limited)
   STEALTH,    // armband: everything dark until it's switched back
-  SENTINEL,   // SentinelOne: a purple victory -- converging waves, a flash, then a purple glow
+  SENTINEL,   // SentinelOne: the AI fights back, purple wins, the response steps, rollback, a purple glow
+  SAFE,       // safe mode after SentinelOne: a friendly soft green, until it breaks out again
+  KILLSWITCH, // the keypad's kill switch: SENTINEL's sequence in LAB-7 cyan, a padlock on the back
 };
+
+// The SentinelOne sequence (s since SENTINEL started), shared by the LEDs and
+// scene_sentinel.cpp so the jacket and the screen stay in step.
+constexpr float S1_FIGHT_END = 3.5f;   // the AI fights back (red) -- purple drives it out
+constexpr float S1_FLASH_END = 4.5f;   // three purple flashes; then the Storyline
+constexpr float S1_CHECK[4] = {12.2f, 13.7f, 15.2f, 19.2f};  // KILL, QUARANTINE, REMEDIATE, ROLLBACK ticked
+constexpr float S1_REWIND = 16.7f;     // rollback: everything it did, rewound
+constexpr float S1_FINALE = 20.0f;     // the logo, THREAT CONTAINED; the voice dies
+constexpr float S1_END = 30.0f;        // then safe mode
+constexpr float SAFE_BREAK = 22.0f;    // safe mode starts to crack...
+constexpr float SAFE_END = 30.0f;      // ...and it breaks out
 
 void begin();
 void setMode(Mode m);
+// No Matrix (operator console): the 8x8 isn't wired in, the strips run straight
+// on -- the chain's MATRIX part is skipped. Carried to the Gledopto in the beacon.
+void setNoMatrix(bool on);
+bool noMatrix();
+// Wiring checks (the Gledopto's web page): 0 off; 1 number every LED (0 green,
+// every 10th white, 50th red, 100th blue, the rest off); 2 light LEDs a..b
+// (raw chain positions, 0-based) and nothing else; 3 every LED the chain lights
+// (LED_CHAIN, No Matrix taken into account) in dim white, the dark parts off.
+void testPattern(int kind, int a = 0, int b = 0);
+int chainLength();
 void tick(uint32_t now);  // ~30 fps from loop()
 // The matrix shows a big number instead of the eye (the midnight countdown);
 // -1 = back to the eye.
@@ -52,5 +77,17 @@ bool stealth();
 void overload(uint32_t ms = 5000);  // armband OVERLOAD
 void setBrightness(int pct);    // the strips, 10-100% (the matrix follows in proportion)
 int brightness();
+
+// An outside renderer for the strips instead of the show's effects (LEDLINK's
+// own looks, ../../ledlink/src/looks.cpp); nullptr = the show. The matrix and
+// the dark parts are left as they are.
+struct Pixel {
+  LedPart type;
+  float u, d;   // as the effects use them: along the part, and out from the chest (front 0-1, sleeves 1-2)
+  int8_t side;  // LedSegment::side
+  int index;    // chain position (for per-LED randomness)
+};
+using Renderer = uint32_t (*)(const Pixel& p);
+void setRenderer(Renderer r);
 
 }  // namespace leds

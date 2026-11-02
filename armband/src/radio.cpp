@@ -6,6 +6,7 @@
 #include <esp_random.h>
 
 #include "config.h"
+#include "../../ledlink/src/jacket_link.h"
 
 namespace radio {
 
@@ -18,6 +19,13 @@ static const uint8_t TAG_LEDS_ONLY[4] = {'R', 'L', 'D', '1'};  // the costume wi
 // until the costume's beacon carries its seq back.
 static volatile uint8_t s_seq = 0, s_cmd = 0, s_ack = 0;
 static volatile bool s_sendReq = false;
+// The jacket's commands go out the same way, one at a time (a new press
+// replaces whatever was being sent).
+static volatile bool s_toJacket = false;
+static volatile uint8_t s_jArgs[3];
+static uint32_t s_jacketSeen = 0;
+static float s_jacketRssi = -100;
+static uint8_t s_jState[10];
 
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static uint32_t s_coreSeen = 0;
@@ -74,7 +82,14 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
     if (!dev.haveManufacturerData()) return;
     String m = dev.getManufacturerData();
     if (m.length() < 8 || (uint8_t)m[0] != 0xFF || (uint8_t)m[1] != 0xFF) return;
-    if (m.length() >= 10 && !memcmp(m.c_str() + 2, TAG_AI, 4)) {
+    if (m.length() >= 2 + jacket::STATUS_LEN && !memcmp(m.c_str() + 2, jacket::TAG_STATUS, 4)) {
+      uint32_t now = millis();
+      portENTER_CRITICAL(&s_mux);
+      s_jacketRssi = (now - s_jacketSeen > 3000) ? r : s_jacketRssi + (r - s_jacketRssi) * 0.25f;
+      s_jacketSeen = now;
+      memcpy(s_jState, m.c_str() + 6, 10);
+      portEXIT_CRITICAL(&s_mux);
+    } else if (m.length() >= 10 && !memcmp(m.c_str() + 2, TAG_AI, 4)) {
       uint32_t now = millis();
       portENTER_CRITICAL(&s_mux);
       s_coreRssi = (now - s_coreSeen > 3000) ? r : s_coreRssi + (r - s_coreRssi) * 0.25f;
@@ -94,16 +109,30 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
 static volatile bool s_stopReq = false, s_stopped = false;
 
 static void advertise(BLEAdvertising* adv) {
-  uint8_t data[2 + 4 + 5] = {0xFF, 0xFF};
-  memcpy(data + 2, TAG_REMOTE, 4);
-  data[6] = ARM_TARGET;
-  data[7] = s_seq;
-  data[8] = s_cmd;
-  data[9] = ARM_LINK_KEY & 0xFF;
-  data[10] = ARM_LINK_KEY >> 8;
+  uint8_t data[2 + 4 + 7] = {0xFF, 0xFF};
+  size_t len;
+  if (s_toJacket) {  // RJC1 seq cmd a b c key
+    memcpy(data + 2, jacket::TAG_COMMAND, 4);
+    data[6] = s_seq;
+    data[7] = s_cmd;
+    data[8] = s_jArgs[0];
+    data[9] = s_jArgs[1];
+    data[10] = s_jArgs[2];
+    data[11] = JACKET_LINK_KEY & 0xFF;
+    data[12] = JACKET_LINK_KEY >> 8;
+    len = 13;
+  } else {           // RCT1 target seq cmd key
+    memcpy(data + 2, TAG_REMOTE, 4);
+    data[6] = ARM_TARGET;
+    data[7] = s_seq;
+    data[8] = s_cmd;
+    data[9] = ARM_LINK_KEY & 0xFF;
+    data[10] = ARM_LINK_KEY >> 8;
+    len = 11;
+  }
   BLEAdvertisementData ad;
   ad.setFlags(0x06);
-  ad.setManufacturerData(String((const char*)data, sizeof(data)));
+  ad.setManufacturerData(String((const char*)data, len));
   adv->stop();
   adv->setAdvertisementData(ad);
   adv->start();
@@ -132,7 +161,7 @@ static void task(void*) {
       advertise(adv);
       sending = true;
       sendUntil = millis() + SEND_MS;
-    } else if (sending && ((int32_t)(millis() - sendUntil) >= 0 || s_ack == s_seq)) {
+    } else if (sending && ((int32_t)(millis() - sendUntil) >= 0 || (s_toJacket ? s_jState[4] == s_seq : s_ack == s_seq))) {
       adv->stop();
       sending = false;
     }
@@ -164,6 +193,7 @@ void begin() {
 }
 
 uint8_t send(Command cmd) {
+  s_toJacket = false;
   s_cmd = cmd;
   s_seq = s_seq + 1;
   s_sendReq = true;
@@ -172,6 +202,33 @@ uint8_t send(Command cmd) {
 }
 
 bool acked(uint8_t seq) { return s_ack == seq; }
+
+uint8_t sendJacket(uint8_t cmd, uint8_t a, uint8_t b, uint8_t c) {
+  s_toJacket = true;
+  s_cmd = cmd;
+  s_jArgs[0] = a;
+  s_jArgs[1] = b;
+  s_jArgs[2] = c;
+  s_seq = s_seq + 1;
+  s_sendReq = true;
+  Serial.printf("[jacket] send %u (%u %u %u) seq %u\n", (unsigned)cmd, (unsigned)a, (unsigned)b, (unsigned)c, (unsigned)s_seq);
+  return s_seq;
+}
+
+bool jacketAcked(uint8_t seq) { return s_jState[4] == seq; }
+
+Jacket jacket() {
+  Jacket j;
+  portENTER_CRITICAL(&s_mux);
+  uint32_t last = s_jacketSeen;
+  j.rssi = (int)s_jacketRssi;
+  j.look = s_jState[0]; j.bright = s_jState[1]; j.speed = s_jState[2]; j.flags = s_jState[3]; j.ack = s_jState[4];
+  j.color = ((uint32_t)s_jState[5] << 16) | ((uint32_t)s_jState[6] << 8) | s_jState[7];
+  j.turn = s_jState[8]; j.bpm = s_jState[9];
+  portEXIT_CRITICAL(&s_mux);
+  j.seen = last && (int32_t)(millis() - last) < LOST_MS;
+  return j;
+}
 
 Core core() {
   Core c;

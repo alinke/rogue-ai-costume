@@ -12,6 +12,28 @@ the LED effect it's running and the matrix's countdown number (bytes 11-12,
 and matrix behave exactly as they would wired to the costume. Costume out of
 range for 5 s: the idle effect on its own.
 
+## Without the costume: the jacket's own looks
+
+`src/looks.cpp`: 31 looks -- themes (Light Cycle, Cyberpunk, Code Rain, Fire,
+Aurora...), holidays (Christmas, New Year and July 4th fireworks,
+Thanksgiving...), bike (turn signals, brake light, Bike / Day Flash), and live
+(a music visualizer and a heartbeat, fed by the iPhone app). The look **ROGUE
+AI** is the costume's show exactly as above; any other look ignores the
+costume. The look, brightness, speed and colour are saved.
+
+Set from the armband's JACKET screen (advertised "RJC1" commands) or the
+iPhone app (`../ios-jacket`, a Bluetooth connection); LEDLINK advertises its
+status ("RJS1") so both show what it's really doing. Protocol:
+`src/jacket_link.h`; the look list: `src/looks.h`.
+
+`LED_NO_MATRIX 1` (`src/config.h`): the 8x8 is off the jacket. Each strip's
+4th `LED_CHAIN` number is its side (-1 the wearer's left, 1 right) for the
+turn signals.
+
+Testing over Wi-Fi: `/cmd?c=1&a=14` (CMD_LOOK 14, Christmas; the numbers are
+in `jacket_link.h`), `/cmd?c=5&a=1` (left turn signal), `/live?bpm=120`,
+`/live?bass=200&mid=120&treble=60&level=150&beat=1`.
+
 ## Settings
 
 `src/config.h`: the chain (`LED_CHAIN`, the same as the costume's), brightness,

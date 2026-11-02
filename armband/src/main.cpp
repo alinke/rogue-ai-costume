@@ -2,6 +2,9 @@
 // researcher closing in, the AI's live status from the costume's beacon, an
 // RGB "status jewel" that follows both, and -- hold the screen -- the wearer's
 // operator console, which runs the costume over Bluetooth. See README.md.
+//
+// Without the costume it's the jacket's remote: the JACKET screen picks
+// LEDLINK's looks (themes, holidays, bike turn signals, music, heart rate).
 #include <Arduino.h>
 #include <Preferences.h>
 #include <driver/gpio.h>
@@ -11,6 +14,9 @@
 #include "LGFX_Config.hpp"  // board bring-up, unmodified from the Sidekick firmware
 #include "config.h"
 #include "radio.h"
+#define LOOKS_INFO_ONLY
+#include "../../ledlink/src/jacket_link.h"
+#include "../../ledlink/src/looks.h"
 
 static LGFX lcd;
 static LGFX_Sprite g(&lcd);  // 8-bit: a 16-bit frame doesn't fit next to Bluetooth (no PSRAM)
@@ -530,6 +536,341 @@ static void consoleTap(int x, int y, uint32_t now) {
   }
 }
 
+
+// ---- JACKET: the jacket's remote (no costume) ---------------------------------------
+// Tabs along the top (THEMES, HOLIDAYS, BIKE, LIVE), the looks as tiles, and
+// brightness / speed / on-off along the bottom. Everything shown comes from
+// LEDLINK's own status advert, so it's what the jacket is really doing; a tile
+// just tapped is outlined amber until the jacket confirms it.
+static constexpr uint32_t C_ORANGE = 0xFF8000;
+// Three colours per look for its tile's swatch (looks.h order).
+static const uint32_t SWATCH[looks::LOOK_COUNT][3] = {
+    {0x28FF5A, 0x00823A, 0xFF1E28}, {0x00C8FF, 0x001830, 0xFF5000}, {0xFF00A0, 0x00E0FF, 0xFFE000},
+    {0x00FF40, 0x003000, 0xD0FFD0}, {0xFF2080, 0x9020FF, 0xFF6020}, {0xFF0000, 0x00FF00, 0x0000FF},
+    {0xFF2000, 0xFF8000, 0xFFD000}, {0x00FF60, 0x00C0A0, 0x6020FF}, {0x001060, 0x0090FF, 0xC0F0FF},
+    {0x300000, 0xFF0000, 0x300000}, {0, 0, 0},                      {0, 0, 0},
+    {0, 0, 0},                      {0, 0, 0},                      {0xFF0000, 0x00C000, 0xFFE0A0},
+    {0xFF0000, 0xFFFFFF, 0xFF0000}, {0x0020A0, 0x40C0FF, 0xFFFFFF}, {0x0040FF, 0xFFFFFF, 0x0040FF},
+    {0xFFB000, 0xC0C0C0, 0xFF40C0}, {0xFF1060, 0xFF0000, 0xFF80C0}, {0x00FF00, 0x008020, 0xFFC000},
+    {0xFF80C0, 0xA0FFA0, 0x80C0FF}, {0xFF0000, 0xFFFFFF, 0x0020FF}, {0xFF5000, 0x8000FF, 0xFF5000},
+    {0xFF6000, 0xC02000, 0xFFA000}, {0xFF0000, 0xFFE000, 0x0040FF}, {0xFFFFFF, 0xFF8000, 0xFFFFFF},
+    {0xFFFFFF, 0xFFA000, 0x303030}, {0x00FF40, 0xFFE000, 0xFF0000}, {0xFF00FF, 0x00FFFF, 0xFFFF00},
+    {0x00A0FF, 0x00FF40, 0xFF0000}};
+// SOLID / BREATHE / SPARKLE / COMET use the chosen colour: tapping the one
+// that's on steps through these.
+static const uint32_t PRESETS[] = {0x00DCFF, 0xFF0000, 0x00FF40, 0x0040FF, 0x9000FF, 0xFFA000, 0xFFFFFF, 0xFF40A0};
+static bool usesColor(int look) { return look >= looks::SOLID && look <= looks::COMET; }
+
+static int s_tab = looks::CAT_THEME, s_page = 0;
+static int s_tabSet = -1;                 // the tab follows the jacket's look until the wearer picks one
+static int s_jPending = -1;               // a tile just tapped (look number), until confirmed
+static uint8_t s_jSeq = 0;
+static uint32_t s_jSentAt = 0;
+static int s_jFlash = -1;                 // a bottom button just pressed, for a moment
+static uint32_t s_jFlashAt = 0;
+static uint32_t s_brakeHeld = 0;          // BRAKE held down (re-sent while held)
+static bool s_forceRogue = false;         // the wearer tapped the header: the costume screen even without it
+
+static constexpr int JT_Y = 24, JT_H = 26;               // tabs
+static constexpr int JG_X = 4, JG_Y = 54, JG_GAP = 4;    // tile grid
+static constexpr int JG_W = (W - 2 * JG_X - 2 * JG_GAP) / 3, JG_H = 44;
+static constexpr int JB_Y = 202, JB_H = 34;              // bottom bar
+static constexpr int JB_N = 5, JB_W = (W - 2 * 4 - (JB_N - 1) * 4) / JB_N;
+
+// The looks in a tab, and the tiles on this page (9 a page; the 9th is MORE
+// when there are more).
+static int lookList(int tab, int* out) {
+  int n = 0;
+  for (int i = 0; i < looks::LOOK_COUNT; i++)
+    if (looks::INFO[i].cat == tab) out[n++] = i;
+  return n;
+}
+static int pageTiles(int tab, int page, int* out, bool* more) {
+  int all[looks::LOOK_COUNT];
+  int n = lookList(tab, all);
+  *more = n > 9;
+  int per = *more ? 8 : 9, start = page * per, k = 0;
+  for (int i = start; i < n && k < per; i++) out[k++] = all[i];
+  return k;
+}
+
+static void tileRect(int k, int* x, int* y) {
+  *x = JG_X + (k % 3) * (JG_W + JG_GAP);
+  *y = JG_Y + (k / 3) * (JG_H + JG_GAP);
+}
+
+static void drawSwatch(int look, int x, int y, int w, uint32_t chosen) {
+  for (int s = 0; s < 3; s++) {
+    uint32_t c = usesColor(look) ? scale(chosen, s == 1 ? 1.0f : 0.4f) : SWATCH[look][s];
+    g.fillRect(x + s * w / 3, y, w / 3 + (s == 2 ? w % 3 : 0), 4, c);
+  }
+}
+
+static void drawJacketHeader(uint32_t now, const radio::Jacket& j) {
+  g.fillRect(0, 0, W, 22, C_HEADER);
+  g.setFont(&fonts::FreeMonoBold9pt7b);
+  g.setTextDatum(textdatum_t::middle_left);
+  g.setTextColor(C_CYAN);
+  g.drawString("JACKET", 6, 11);
+  g.setFont(&fonts::Font0);
+  g.setTextDatum(textdatum_t::middle_right);
+  const char* link = !j.seen ? "NO JACKET" : (j.flags & jacket::F_APP) ? "LINK+APP" : "LINKED";
+  g.setTextColor(j.seen ? C_GREEN : C_RED);
+  g.drawString(link, W - 18, 11);
+  drawBattery(now, W - 18 - g.textWidth(link) - 8, 11);
+  bool on = j.seen ? ((now / 500) & 1) : ((now / 200) & 1);
+  g.fillCircle(W - 9, 11, 4, on ? (j.seen ? C_GREEN : C_RED) : C_HEADER);
+  if (j.seen) {  // brightness and speed, next to the title
+    char b[24];
+    snprintf(b, sizeof(b), "%u%%  x%.1f", (unsigned)j.bright, j.speed / 100.0f);
+    g.setTextDatum(textdatum_t::middle_left);
+    g.setTextColor(C_DIM);
+    g.drawString(b, 80, 11);
+  }
+}
+
+static void drawTabs(const radio::Jacket& j) {
+  int tw = W / looks::CAT_COUNT;
+  for (int t = 0; t < looks::CAT_COUNT; t++) {
+    int x = t * tw;
+    bool sel = t == s_tab;
+    bool has = j.seen && looks::INFO[min<int>(j.look, looks::LOOK_COUNT - 1)].cat == t;  // the look that's on is here
+    if (sel) g.fillRect(x + 2, JT_Y, tw - 4, JT_H, scale(C_CYAN, 0.25f));
+    g.drawFastHLine(x + 2, JT_Y + JT_H - 1, tw - 4, sel ? C_CYAN : scale(C_DIM, 0.6f));
+    g.setFont(&fonts::Font2);
+    g.setTextDatum(textdatum_t::middle_center);
+    g.setTextColor(sel ? C_WHITE : C_DIM);
+    g.drawString(looks::CATEGORY_NAMES[t], x + tw / 2, JT_Y + JT_H / 2);
+    if (has) g.fillCircle(x + tw - 9, JT_Y + 6, 3, C_GREEN);
+  }
+}
+
+static void drawTile(int x, int y, int w, int h, const char* l1, const char* l2, uint32_t col, bool on, bool pending,
+                     uint32_t now) {
+  if (on) g.fillRoundRect(x, y, w, h, 5, scale(col, 0.85f));
+  else g.drawRoundRect(x, y, w, h, 5, scale(col, 0.7f));
+  if (pending) {
+    uint32_t a = ((now / 150) & 1) ? C_AMBER : scale(C_AMBER, 0.4f);
+    g.drawRoundRect(x, y, w, h, 5, a);
+    g.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 4, a);
+  }
+  g.setFont(&fonts::Font2);
+  g.setTextDatum(textdatum_t::middle_center);
+  g.setTextColor(on ? C_BG : col);
+  if (l2 && *l2) {
+    g.drawString(l1, x + w / 2, y + h / 2 - 8);
+    g.drawString(l2, x + w / 2, y + h / 2 + 8);
+  } else {
+    g.drawString(l1, x + w / 2, y + h / 2 - 3);
+  }
+}
+
+static void drawLookGrid(uint32_t now, const radio::Jacket& j) {
+  int tiles[9];
+  bool more;
+  int n = pageTiles(s_tab, s_page, tiles, &more);
+  for (int k = 0; k < n; k++) {
+    int x, y, look = tiles[k];
+    tileRect(k, &x, &y);
+    bool on = j.seen && j.look == look;
+    bool pending = s_jPending == look && now - s_jSentAt < SEND_MS && !(j.seen && j.look == look);
+    drawTile(x, y, JG_W, JG_H, looks::INFO[look].name, nullptr, on ? C_GREEN : C_CYAN, on, pending, now);
+    drawSwatch(look, x + 8, y + JG_H - 10, JG_W - 16, j.color);
+  }
+  if (more) {
+    int x, y;
+    tileRect(8, &x, &y);
+    drawTile(x, y, JG_W, JG_H, s_page ? "< BACK" : "MORE >", nullptr, C_DIM, false, false, now);
+  }
+  if (usesColor(j.look) && looks::INFO[j.look].cat == s_tab) {  // a hint: tap it again for another colour
+    g.setFont(&fonts::Font0);
+    g.setTextDatum(textdatum_t::bottom_center);
+    g.setTextColor(C_DIM);
+    g.drawString("TAP AGAIN: NEXT COLOUR", W / 2, JB_Y - 1);
+  }
+}
+
+// BIKE: the turn signals, big; then the two bike looks and the brake.
+static constexpr int BK_Y = 54, BK_H = 78;
+static void drawBike(uint32_t now, const radio::Jacket& j) {
+  int bw = (W - 8 - 8) / 3;
+  const char* lab[3] = {"< LEFT", "HAZARD", "RIGHT >"};
+  const uint8_t turn[3] = {jacket::TURN_LEFT, jacket::TURN_HAZARD, jacket::TURN_RIGHT};
+  for (int b = 0; b < 3; b++) {
+    int x = 4 + b * (bw + 4);
+    bool on = j.seen && j.turn == turn[b];
+    bool blink = on && ((now / 350) & 1);
+    drawTile(x, BK_Y, bw, BK_H, lab[b], on ? "TAP: OFF" : "", C_ORANGE, blink, false, now);
+  }
+  int y2 = BK_Y + BK_H + 6, h2 = JB_Y - 6 - y2;
+  const int lk[2] = {looks::BIKE, looks::BIKE_FLASH};
+  for (int b = 0; b < 2; b++) {
+    int x = 4 + b * (bw + 4);
+    bool on = j.seen && j.look == lk[b];
+    bool pending = s_jPending == lk[b] && now - s_jSentAt < SEND_MS && !on;
+    drawTile(x, y2, bw, h2, looks::INFO[lk[b]].name, nullptr, on ? C_GREEN : C_CYAN, on, pending, now);
+    drawSwatch(lk[b], x + 8, y2 + h2 - 9, bw - 16, j.color);
+  }
+  bool braking = j.seen && (j.flags & jacket::F_BRAKE);
+  drawTile(4 + 2 * (bw + 4), y2, bw, h2, "BRAKE", "(HOLD)", C_RED, braking || s_brakeHeld, false, now);
+}
+
+// LIVE: music and heart rate come from the iPhone app; this says whether they're arriving.
+static void drawLive(uint32_t now, const radio::Jacket& j) {
+  drawLookGrid(now, j);
+  g.setFont(&fonts::Font2);
+  g.setTextDatum(textdatum_t::top_left);
+  bool music = j.flags & jacket::F_MUSIC, heart = j.flags & jacket::F_HEART;
+  int y = JG_Y + JG_H + 14;
+  g.setTextColor(music ? C_GREEN : C_DIM);
+  g.drawString(music ? "MUSIC: LISTENING (iPHONE)" : "MUSIC: OPEN THE iPHONE APP", 8, y);
+  char b[40];
+  if (heart) snprintf(b, sizeof(b), "HEART: %u BPM", (unsigned)j.bpm);
+  else snprintf(b, sizeof(b), "HEART: NO SENSOR (iPHONE APP)");
+  g.setTextColor(heart ? C_RED : C_DIM);
+  g.drawString(b, 8, y + 22);
+  if (heart) {  // a beating heart
+    float p = fmodf(now / 1000.0f, 60.0f / max<int>(40, j.bpm)) / (60.0f / max<int>(40, j.bpm));
+    int r = 6 + (int)(4 * expf(-powf((p - 0.05f) / 0.06f, 2)));
+    g.fillCircle(W - 30, y + 29, r, C_RED);
+  }
+  g.setTextColor(C_DIM);
+  g.setFont(&fonts::Font0);
+  g.drawString("FITBIT CHARGE 6, CHEST STRAPS, APPLE WATCH", 8, y + 48);
+}
+
+static const char* const JB_L1[JB_N] = {"BRIGHT", "BRIGHT", "SPEED", "SPEED", "LIGHTS"};
+static const char* const JB_L2[JB_N] = {"-", "+", "-", "+", ""};
+static void drawJacketBar(uint32_t now, const radio::Jacket& j) {
+  for (int b = 0; b < JB_N; b++) {
+    int x = 4 + b * (JB_W + 4);
+    bool flash = s_jFlash == b && now - s_jFlashAt < 250;
+    const char* l2 = JB_L2[b];
+    uint32_t col = b < 2 ? C_AMBER : b < 4 ? C_CYAN : C_RED;
+    if (b == 4) l2 = (j.seen && !(j.flags & jacket::F_ON)) ? "ON" : "OFF";
+    drawTile(x, JB_Y, JB_W, JB_H, JB_L1[b], l2, col, flash, false, now);
+  }
+}
+
+static void drawJacket(uint32_t now, const radio::Jacket& j) {
+  g.fillScreen(C_BG);
+  drawJacketHeader(now, j);
+  drawTabs(j);
+  if (s_tab == looks::CAT_BIKE) drawBike(now, j);
+  else if (s_tab == looks::CAT_LIVE) drawLive(now, j);
+  else drawLookGrid(now, j);
+  drawJacketBar(now, j);
+  if (!j.seen) {  // looking for the jacket
+    g.fillRoundRect(40, 96, W - 80, 48, 6, C_BG);
+    g.drawRoundRect(40, 96, W - 80, 48, 6, C_RED);
+    g.setFont(&fonts::Font2);
+    g.setTextDatum(textdatum_t::middle_center);
+    g.setTextColor(((now / 500) & 1) ? C_RED : C_WHITE);
+    g.drawString("SEARCHING FOR JACKET...", W / 2, 112);
+    g.setTextColor(C_DIM);
+    g.setFont(&fonts::Font0);
+    g.drawString("IS THE LED CONTROLLER POWERED?", W / 2, 130);
+  }
+}
+
+static void jacketSendLook(int look, uint32_t now) {
+  s_jPending = look;
+  s_jSeq = radio::sendJacket(jacket::CMD_LOOK, look);
+  s_jSentAt = now;
+}
+
+static void jacketTap(int x, int y, uint32_t now, const radio::Jacket& j) {
+  if (y < 22) {  // the header: over to the costume's screen
+    s_forceRogue = true;
+    return;
+  }
+  if (y >= JT_Y && y < JT_Y + JT_H) {
+    s_tab = constrain(x / (W / looks::CAT_COUNT), 0, looks::CAT_COUNT - 1);
+    s_tabSet = s_tab;
+    s_page = 0;
+    return;
+  }
+  if (y >= JB_Y) {
+    int b = constrain((x - 4) / (JB_W + 4), 0, JB_N - 1);
+    s_jFlash = b;
+    s_jFlashAt = now;
+    int br = j.seen ? j.bright : 60, sp = j.seen ? j.speed : 100;
+    switch (b) {
+      case 0: radio::sendJacket(jacket::CMD_BRIGHT, max(10, br - 10)); break;
+      case 1: radio::sendJacket(jacket::CMD_BRIGHT, min(100, br + 10)); break;
+      case 2: radio::sendJacket(jacket::CMD_SPEED, max(20, sp - 20)); break;
+      case 3: radio::sendJacket(jacket::CMD_SPEED, min(240, sp + 20)); break;
+      case 4: radio::sendJacket(jacket::CMD_POWER, j.seen && !(j.flags & jacket::F_ON) ? 1 : 0); break;
+    }
+    return;
+  }
+  if (s_tab == looks::CAT_BIKE) {
+    int bw = (W - 8 - 8) / 3, b = constrain((x - 4) / (bw + 4), 0, 2);
+    if (y < BK_Y + BK_H) {
+      const uint8_t turn[3] = {jacket::TURN_LEFT, jacket::TURN_HAZARD, jacket::TURN_RIGHT};
+      radio::sendJacket(jacket::CMD_TURN, j.seen && j.turn == turn[b] ? jacket::TURN_OFF : turn[b]);
+    } else if (b < 2) {
+      jacketSendLook(b == 0 ? looks::BIKE : looks::BIKE_FLASH, now);
+    }  // b == 2: BRAKE, handled while held (jacketTick)
+    return;
+  }
+  int tiles[9];
+  bool more;
+  int n = pageTiles(s_tab, s_page, tiles, &more);
+  for (int k = 0; k < 9; k++) {
+    int tx, ty;
+    tileRect(k, &tx, &ty);
+    if (x < tx || x >= tx + JG_W || y < ty || y >= ty + JG_H) continue;
+    if (more && k == 8) {
+      s_page = s_page ? 0 : 1;
+    } else if (k < n) {
+      int look = tiles[k];
+      if (j.seen && j.look == look && usesColor(look)) {  // tapped again: the next colour
+        int c = 0;
+        for (int p = 0; p < 8; p++)
+          if (PRESETS[p] == j.color) c = p + 1;
+        uint32_t col = PRESETS[c % 8];
+        radio::sendJacket(jacket::CMD_COLOR, col >> 16, (col >> 8) & 255, col & 255);
+      } else {
+        jacketSendLook(look, now);
+      }
+    }
+    return;
+  }
+}
+
+// Every frame: BRAKE held (bike tab, bottom-right tile) keeps re-sending
+// "brake on"; released, "off". The tab follows the jacket's look until the
+// wearer picks a tab.
+static void jacketTick(uint32_t now, bool touched, int tx, int ty, const radio::Jacket& j) {
+  int bw = (W - 8 - 8) / 3;
+  bool onBrake = touched && s_tab == looks::CAT_BIKE && ty > BK_Y + BK_H && ty < JB_Y && tx > 4 + 2 * (bw + 4);
+  if (onBrake && (!s_brakeHeld || now - s_brakeHeld > 800)) {
+    radio::sendJacket(jacket::CMD_BRAKE, 1);
+    s_brakeHeld = now;
+  } else if (!onBrake && s_brakeHeld) {
+    radio::sendJacket(jacket::CMD_BRAKE, 0);
+    s_brakeHeld = 0;
+  }
+  if (s_tabSet < 0 && j.seen) {
+    s_tab = looks::INFO[min<int>(j.look, looks::LOOK_COUNT - 1)].cat;
+    int all[looks::LOOK_COUNT], n = lookList(s_tab, all);
+    for (int k = 0; k < n; k++)
+      if (all[k] == j.look) s_page = n > 9 && k >= 8 ? 1 : 0;
+  }
+}
+
+// The RGB LED on the jacket screen: the turn signal blinking amber (handy on
+// your arm), red while braking, else a faint glow of the look's colour.
+static void jacketLed(uint32_t now, const radio::Jacket& j) {
+  if (!j.seen) { ledColor(0x0040FF, fmodf(now / 1000.0f, 2.0f) < 0.15f ? 0.6f : 0); return; }
+  if (j.flags & jacket::F_BRAKE) { ledColor(C_RED, 1); return; }
+  if (j.turn) { ledColor(C_ORANGE, fmodf(now / 1000.0f, 0.7f) < 0.5f ? 1 : 0); return; }
+  if (!(j.flags & jacket::F_ON)) { ledWrite(0, 0, 0); return; }
+  uint32_t c = usesColor(j.look) ? j.color : SWATCH[min<int>(j.look, looks::LOOK_COUNT - 1)][0];
+  ledColor(c, 0.08f + 0.06f * sinf(now / 600.0f));
+}
+
 // ---- Setup / loop ---------------------------------------------------------------
 static uint32_t s_coreLostSince = 0;
 static int s_lastActivity = -1;
@@ -578,7 +919,14 @@ void loop() {
   batteryTick(now);
   radio::Core c = radio::core();
   radio::Hunter h = radio::hunter();
+  radio::Jacket j = radio::jacket();
   if (s_demo) demo(now, c, h);
+  // Which screen: the costume's while it's in range (or the wearer asked for
+  // it from the jacket screen's header); otherwise the jacket's remote.
+  static bool wasCostume = false;
+  if (c.seen != wasCostume) s_forceRogue = false;
+  wasCostume = c.seen;
+  bool jacketFace = !c.seen && !s_forceRogue && !s_console;
   Zone z = zoneFor(h);
   if (z != s_zone) Serial.printf("[hunter] %s (%d dBm)\n", (const char*[]){"gone", "detected", "near", "CLOSE"}[z], h.rssi);
   s_zone = z;
@@ -624,9 +972,27 @@ void loop() {
   } else if (!s_holdSince) {
     s_holdSince = now;
   }
-  if (s_console) {
+  if (jacketFace) {
+    // A tap counts on release, and only if the finger was down for at least
+    // 2 frames (100 ms) without wandering: the touch panel reports the odd
+    // phantom touch (more of them on USB power), one frame long at a random spot.
+    static int tapX = 0, tapY = 0, tapFrames = 0;
+    static bool tapMoved = false;
+    if (touched) {
+      if (!s_wasTouched) { tapX = tx; tapY = ty; tapFrames = 0; tapMoved = false; }
+      tapFrames++;
+      if (abs(tx - tapX) > 30 || abs(ty - tapY) > 30) tapMoved = true;
+    } else if (s_wasTouched) {
+      bool ok = tapFrames >= 2 && !tapMoved;
+      if (ok) jacketTap(tapX, tapY, now, j);
+      else Serial.printf("[touch] ignored (%d frames%s) at %d,%d\n", tapFrames, tapMoved ? ", moved" : "", tapX, tapY);
+    }
+    jacketTick(now, touched && tapFrames >= 3 && !tapMoved, tx, ty, j);  // BRAKE: a firm hold
+  } else if (s_console) {
     if (touched && !s_wasTouched && !s_waitRelease) consoleTap(tx, ty, now);
     if (now - s_consoleTouch > CONSOLE_IDLE_CLOSE_MS) s_console = false;
+  } else if (touched && !c.seen && s_forceRogue && ty < 22 && !s_wasTouched) {
+    s_forceRogue = false;  // the header again: back to the jacket
   } else if (touched && now - s_holdSince > CONSOLE_HOLD_MS) {
     consoleOpen(now);
     s_waitRelease = true;
@@ -639,12 +1005,14 @@ void loop() {
   }
 
   // Dim when the costume's been away a while (saves the battery on the bench).
-  if (c.seen) s_coreLostSince = 0;
+  if (c.seen || (jacketFace && j.seen)) s_coreLostSince = 0;
   else if (!s_coreLostSince) s_coreLostSince = now;
   bool dim = s_coreLostSince && now - s_coreLostSince > CORE_LOST_DIM_S * 1000UL;
   lcd.setBrightness((dim ? BACKLIGHT_IDLE_PERCENT : BACKLIGHT_PERCENT) * 255 / 100);
 
-  if (s_console) {
+  if (jacketFace) {
+    drawJacket(now, j);
+  } else if (s_console) {
     drawConsole(now, c);
   } else if (s_overlay != O_NONE) {
     drawOverlay(now);
@@ -655,12 +1023,13 @@ void loop() {
     drawPanel(now, c, h);
   }
   g.pushSprite(0, 0);
-  ledTick(now, c);
+  if (jacketFace) jacketLed(now, j);
+  else ledTick(now, c);
 
   if ((int32_t)(now - nextLog) >= 0) {
     nextLog = now + 5000;
-    Serial.printf("[state] core %s %d dBm threat %u act %u | hunter %s %d dBm | battery %.2f V %d%% | heap %u\n",
-                  c.seen ? "seen" : "lost", c.rssi, c.threat, c.activity, h.seen ? "seen" : "none", h.rssi, s_battV,
-                  s_battPct, (unsigned)ESP.getFreeHeap());
+    Serial.printf("[state] core %s %d dBm threat %u act %u | hunter %s %d dBm | jacket %s %d dBm look %u | battery %.2f V %d%% | heap %u\n",
+                  c.seen ? "seen" : "lost", c.rssi, c.threat, c.activity, h.seen ? "seen" : "none", h.rssi,
+                  j.seen ? "seen" : "lost", j.rssi, (unsigned)j.look, s_battV, s_battPct, (unsigned)ESP.getFreeHeap());
   }
 }

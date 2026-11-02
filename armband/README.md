@@ -56,6 +56,18 @@ At power-on the LED blinks red, green, blue once (a wiring check).
   screen, LED and Bluetooth off; a tap brings it back. Still draws a few mA --
   the slide switch in the battery wire is the real off.
 
+## Without the costume: the JACKET screen
+
+When the costume isn't in range, the armband is the jacket's remote (LEDLINK,
+`../ledlink`): tabs for THEMES, HOLIDAYS, BIKE and LIVE, the looks as tiles
+(tap SOLID / BREATHE / SPARKLE / COMET again for the next colour), big
+LEFT / HAZARD / RIGHT turn signals and a hold-to-brake button on BIKE, and
+BRIGHT / SPEED / LIGHTS along the bottom. Everything shown comes from
+LEDLINK's own status advert; a tile just tapped is outlined amber until the
+jacket confirms it. The RGB LED blinks amber with the turn signal, red while
+braking. Tap the header for the costume's screen (and again to come back);
+the costume's screen also comes back by itself whenever the costume is on.
+
 ## Hardware
 
 Sunton **ESP32-2432S024C**: 2.4" 320×240 ILI9341, CST820 capacitive touch,
@@ -89,7 +101,7 @@ cd armband && pio run -t upload
 | `LED_R_PIN`/`G`/`B`, `LED_ACTIVE_LOW` | 4, 16, 17, 1 | |
 | `BATTERY_SENSE_PIN`, `BATTERY_DIVIDER` | 35, 2.0 | the battery gauge mod; -1 = no gauge |
 | `CONSOLE_HOLD_MS` | 800 | hold the screen this long for the operator console |
-| `ARM_TARGET` | 0 | which costume the console runs: 0 any, 1 Guition, 2 Elecrow 10.1", 3 Elecrow 7", 4 Sunton 7", 5 Sunton 5" |
+| `ARM_TARGET` | 0 | which costume the console runs: 0 any, 1 Guition, 2 Elecrow 10.1", 3 Elecrow 7", 4 Sunton 7", 5 Sunton 5", 6 Tab5 |
 | `ARM_LINK_KEY` | 0x7A37 | must match the costume's `ARM_LINK_KEY` (`remote.h`) |
 
 ## Serial (115200)

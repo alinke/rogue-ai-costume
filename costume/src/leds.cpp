@@ -43,6 +43,16 @@ static int s_prox = -127, s_squad = 0, s_threat = 0;
 static bool s_speaking = false, s_infected = false, s_stealth = false;
 static int s_bright = LED_BRIGHTNESS_PERCENT;  // operator console / armband LEDS - +
 static uint32_t s_overloadStart = 0, s_overloadUntil = 0;
+static bool s_noMatrix = false;
+static int s_test = 0, s_testA = 0, s_testB = 0;
+
+void setNoMatrix(bool on) { s_noMatrix = on; }
+bool noMatrix() { return s_noMatrix; }
+void testPattern(int kind, int a, int b) {
+  s_test = kind;
+  s_testA = a;
+  s_testB = b;
+}
 
 void matrixNumber(int n) { s_number = n; }
 Mode mode() {
@@ -60,6 +70,8 @@ void setStealth(bool on) { s_stealth = on; }
 void setBrightness(int pct) { s_bright = constrain(pct, 10, 100); }
 int brightness() { return s_bright; }
 bool stealth() { return s_stealth; }
+static Renderer s_renderer = nullptr;
+void setRenderer(Renderer r) { s_renderer = r; }
 void overload(uint32_t ms) {
   s_overloadStart = millis();
   s_overloadUntil = s_overloadStart + ms;
@@ -185,6 +197,7 @@ void begin() {
 
 static constexpr uint32_t LED_PURPLE = 0x8000FF;
 static constexpr uint32_t S1_PURPLE = 0x6100FF, S1_LAVENDER = 0xB080FF;  // SentinelOne
+static constexpr uint32_t LAB_CYAN = 0x00A0FF, LAB_ICE = 0x30D8FF;     // LAB-7 (the kill switch)
 
 static uint32_t mix(uint32_t a, uint32_t b, float f) {
   f = constrain(f, 0.0f, 1.0f);
@@ -273,20 +286,44 @@ static uint32_t partColor(LedPart type, float u, float d, float t) {
       return gfx::rnd(100) < 70 ? scale(LED_RED, 0.2f + 0.6f * left) : 0;
     }
     case OVERLOAD: return scale(LED_RED, 0.6f + 0.4f * sinf(t * 25));
-    case SENTINEL: {
-      // A purple victory: waves rush in from the cuffs to the chest, the whole
-      // jacket flashes three times, then a slow purple glow climbing toward the
-      // collar with the odd lavender sparkle.
-      if (t < 1.4f) {
-        float wave = 2.0f - t * 1.45f;
-        float k = 1 - fabsf(d - wave) / 0.3f;
-        return d > wave ? scale(S1_PURPLE, 0.25f) : (k > 0 ? scale(S1_PURPLE, k) : 0);
+    case SENTINEL:
+    case KILLSWITCH: {
+      // (KILLSWITCH: the same, in LAB-7 cyan instead of SentinelOne purple.)
+      const uint32_t P = s_m == SENTINEL ? S1_PURPLE : LAB_CYAN, L = s_m == SENTINEL ? S1_LAVENDER : LAB_ICE;
+      // The AI fights back: red pushes out from the chest, then purple from
+      // the cuffs drives it back in, the front line crackling. Three purple
+      // flashes; a lavender flash as each response step ticks; the green data
+      // flow running backwards for the rollback; then a slow purple glow
+      // climbing toward the collar with the odd lavender sparkle.
+      if (t < S1_FIGHT_END) {
+        float b = t < 1.5f ? 0.3f + 1.2f * t / 1.5f : 1.5f * (1 - (t - 1.5f) / (S1_FIGHT_END - 1.5f));
+        if (fabsf(d - b) < 0.12f) return gfx::rnd(100) < 50 ? L : LED_RED;
+        if (d < b) return gfx::rnd(100) < 85 ? scale(LED_RED, 0.55f + 0.45f * sinf(t * 30 + d * 9)) : 0;
+        return scale(P, 0.7f);
       }
-      if (t < 2.4f) return ((int)(t * 6) & 1) ? S1_PURPLE : scale(S1_PURPLE, 0.15f);
-      if (gfx::rnd(1000) < 25) return S1_LAVENDER;
+      if (t < S1_FLASH_END) return ((int)((t - S1_FIGHT_END) * 6) & 1) ? P : scale(P, 0.15f);
+      for (float c : S1_CHECK)
+        if (t >= c && t < c + 0.3f) return L;
+      if (t >= S1_REWIND && t < S1_CHECK[3]) {
+        float ph = fmodf(u * 3.0f + (t - S1_REWIND) * 4.0f, 1.0f);
+        if (ph < 0) ph += 1;
+        return scale(gfx::C_GREEN, powf(1.0f - ph, 4));
+      }
+      if (gfx::rnd(1000) < 25) return L;
       float ph = fmodf(u * 2.0f - t * 0.6f, 1.0f);
       if (ph < 0) ph += 1;
-      return scale(S1_PURPLE, 0.35f + 0.45f * (0.5f + 0.5f * sinf(t * 2.2f)) + 0.2f * powf(1 - ph, 4));
+      return scale(P, 0.35f + 0.45f * (0.5f + 0.5f * sinf(t * 2.2f)) + 0.2f * powf(1 - ph, 4));
+    }
+    case SAFE: {
+      // Friendly: soft green drifting into teal, gently breathing -- never more
+      // than two colour channels lit, so no white (and little current). Near
+      // the end it cracks -- red, more and more of it.
+      if (t > SAFE_BREAK) {
+        float k = (t - SAFE_BREAK) / (SAFE_END - SAFE_BREAK);
+        if (gfx::rnd(100) < 10 + 60 * k) return gfx::rnd(2) ? LED_RED : 0;
+      }
+      uint32_t c = mix(0x00FF30, 0x00C890, 0.5f + 0.5f * sinf(u * 3 - t * 0.8f));
+      return scale(c, 0.28f + 0.12f * sinf(t * 1.3f));
     }
   }
   return 0;
@@ -319,6 +356,8 @@ static void makeS1Logo() {
 
 static uint32_t eyeColor(float t, float tAbs) {
   if (s_m == SENTINEL) return scale(S1_PURPLE, 0.4f + 0.6f * (0.5f + 0.5f * sinf(tAbs * 3)));
+  if (s_m == KILLSWITCH) return scale(LAB_CYAN, 0.4f + 0.6f * (0.5f + 0.5f * sinf(tAbs * 3)));
+  if (s_m == SAFE) return scale(0x00FF30, 0.28f + 0.12f * sinf(tAbs * 1.3f));
   if (s_m == OFF || s_m == STEALTH || (s_m == SHUTDOWN && t > 2.4f)) return 0;
   if (s_m == ALERT || s_m == MIDNIGHT || s_m == CONTAIN || s_m == TOUCH || s_m == OVERLOAD)
     return ((int)(t * 8) & 1) ? LED_RED : 0;
@@ -397,10 +436,24 @@ static uint32_t matrixColor(int x, int y, float t) {
   uint32_t iris = s_talk > 0.02f ? scale(LED_RED, 0.35f + 0.65f * s_talk) : LED_RED;
   if (s_infected && gfx::rnd(100) < 8) iris = LED_PURPLE;
   switch (s_m) {
-    case SENTINEL:  // the SentinelOne logo, pulsing purple
+    case SENTINEL:  // the red eye fights, then the SentinelOne logo, pulsing purple
       if (!s1LogoReady) makeS1Logo();
-      if (t < 2.4f) return ((int)(t * 6) & 1) && s1Logo[y][x] ? S1_PURPLE : 0;
+      if (t < S1_FIGHT_END) return gfx::rnd(100) < 70 ? eyePixel(x, y, LED_RED) : (s1Logo[y][x] ? S1_PURPLE : 0);
+      if (t < S1_FLASH_END) return ((int)((t - S1_FIGHT_END) * 6) & 1) && s1Logo[y][x] ? S1_PURPLE : 0;
       return s1Logo[y][x] ? scale(S1_PURPLE, 0.55f + 0.45f * sinf(t * 2.2f)) : 0;
+    case KILLSWITCH: {  // the red eye fights, then a padlock, pulsing cyan
+      static const uint8_t LOCK[8] = {0x3C, 0x42, 0x42, 0xFF, 0xE7, 0xE7, 0xFF, 0xFF};
+      bool on = (LOCK[y] >> (7 - x)) & 1;
+      if (t < S1_FIGHT_END) return gfx::rnd(100) < 70 ? eyePixel(x, y, LED_RED) : (on ? LAB_CYAN : 0);
+      if (t < S1_FLASH_END) return ((int)((t - S1_FIGHT_END) * 6) & 1) && on ? LAB_CYAN : 0;
+      return on ? scale(LAB_CYAN, 0.55f + 0.45f * sinf(t * 2.2f)) : 0;
+    }
+    case SAFE: {  // a smiley, soft green -- red and glitching as safe mode cracks
+      static const uint8_t SMILE[8] = {0x3C, 0x42, 0xA5, 0x81, 0xA5, 0x99, 0x42, 0x3C};
+      bool on = (SMILE[y] >> (7 - x)) & 1;
+      if (t > SAFE_BREAK && gfx::rnd(100) < 10 + 6 * (t - SAFE_BREAK)) return on ? LED_RED : 0;
+      return on ? scale(0x00FF30, 0.45f + 0.15f * sinf(t * 1.3f)) : 0;
+    }
     case SHUTDOWN:  // the eye goes last: dims, flickers, gone at 2.4 s
       if (t > 2.4f) return 0;
       return gfx::rnd(100) < 75 ? scale(eyePixel(x, y, LED_RED), 1 - t / 2.4f) : 0;
@@ -426,6 +479,8 @@ static uint32_t matrixColor(int x, int y, float t) {
     default: return eyePixel(x, y, iris);
   }
 }
+
+int chainLength() { return s_total; }
 
 // The matrix's brightness follows the strips' in proportion.
 static int matrixPct() { return min(100, MATRIX_BRIGHTNESS_PERCENT * s_bright / LED_BRIGHTNESS_PERCENT); }
@@ -456,13 +511,27 @@ void tick(uint32_t now) {
   }
   s_talk *= s_speaking ? 0.9f : 0.7f;
   int i = 0;
+  memset(s_px, 0, s_total * 3);  // anything past the end (No Matrix: the last 64) stays dark
 #if LED_INDEX_TEST
   for (; i < s_total; i++) setPixel(i, i % 50 == 0 ? 0xFF0000 : i % 10 == 0 ? 0xFFFFFF : 0);
 #elif LED_TEST_COLOR
   for (; i < s_total; i++) setPixel(i, LED_TEST_COLOR);
 #else
+  if (s_test == 1) {
+    for (; i < s_total; i++)
+      setPixel(i, i == 0 ? 0x00FF00 : i % 100 == 0 ? 0x0000FF : i % 50 == 0 ? 0xFF0000 : i % 10 == 0 ? 0xFFFFFF : 0);
+  } else if (s_test == 2) {
+    for (i = max(0, s_testA); i <= min(s_total - 1, s_testB); i++) setPixel(i, i == s_testA ? 0x00FF00 : 0xFFFFFF);
+  } else if (s_test == 3) {
+    for (const auto& seg : CHAIN) {
+      if (seg.type == LEDS_MATRIX && s_noMatrix) continue;
+      for (int k = 0; k < seg.count; k++, i++)
+        if (seg.type != LEDS_DARK) setPixel(i, seg.type == LEDS_MATRIX ? 0x00FF00 : 0xFFFFFF, 25);
+    }
+  } else {
   eyeStep(now);
   for (const auto& seg : CHAIN) {
+    if (seg.type == LEDS_MATRIX && s_noMatrix) continue;  // not wired in: the next strip follows on
     for (int k = 0; k < seg.count; k++, i++) {
       if (seg.type == LEDS_DARK) {
         setPixel(i, 0);
@@ -483,8 +552,10 @@ void tick(uint32_t now) {
       float u = seg.count > 1 ? (float)k / (seg.count - 1) : 0;
       if (seg.reversed) u = 1 - u;
       float d = seg.type == LEDS_SLEEVE ? 2 - u : u;  // out from the chest: front 0-1, sleeves 1-2
-      setPixel(i, seg.type == LEDS_EYE ? eyeColor(t, tAbs) : partColor(seg.type, u, d, t));
+      if (s_renderer) setPixel(i, s_renderer(Pixel{seg.type, u, d, seg.side, i}));
+      else setPixel(i, seg.type == LEDS_EYE ? eyeColor(t, tAbs) : partColor(seg.type, u, d, t));
     }
+  }
   }
 #endif
 #if LED_MAX_MA > 0
@@ -510,6 +581,7 @@ void tick(uint32_t now) {
 
 void begin() {}
 void tick(uint32_t) {}
+int chainLength() { return 0; }
 
 #endif
 

@@ -4,6 +4,9 @@
 // 52534331-SSTT-4C41-4237-... service UUID. Formats as in
 // ../costume/src/researcher.cpp. Sends only the operator console's commands
 // ("RCT1", ../costume/src/remote.h), for a few seconds per press.
+//
+// Also the jacket's remote, for wearing it without the costume: LEDLINK's
+// status advert ("RJS1") and its commands ("RJC1"), ../../ledlink/src/jacket_link.h.
 #include <Arduino.h>
 
 namespace radio {
@@ -35,5 +38,16 @@ enum Command : uint8_t {
 };
 uint8_t send(Command cmd);   // starts advertising it; returns its seq
 bool acked(uint8_t seq);     // the costume says it carried that one out
+
+// The jacket (LEDLINK, the Gledopto driving the LED strips).
+struct Jacket {
+  bool seen = false;
+  int rssi = -100;
+  uint8_t look = 0, bright = 0, speed = 100, flags = 0, ack = 0, turn = 0, bpm = 0;
+  uint32_t color = 0;
+};
+Jacket jacket();
+uint8_t sendJacket(uint8_t cmd, uint8_t a = 0, uint8_t b = 0, uint8_t c = 0);  // jacket_link.h; returns its seq
+bool jacketAcked(uint8_t seq);
 
 }  // namespace radio
