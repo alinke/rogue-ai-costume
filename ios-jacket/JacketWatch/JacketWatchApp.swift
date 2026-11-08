@@ -1,7 +1,7 @@
-// JACKET on the Apple Watch: a live heart rate for the jacket's HEARTBEAT look.
+// Arcade Jacket on the Apple Watch: a live heart rate for the jacket's HEARTBEAT look.
 // An Apple Watch doesn't share its heart rate over Bluetooth like a chest strap
 // does, so this runs a workout session (the watch then measures continuously)
-// and sends each reading to the JACKET app on the iPhone, which passes it to
+// and sends each reading to the Arcade Jacket app on the iPhone, which passes it to
 // the jacket. The workout isn't saved to Health.
 import SwiftUI
 
@@ -21,7 +21,7 @@ struct WatchView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("JACKET").font(.system(.headline, design: .monospaced).weight(.black)).foregroundStyle(.cyan)
+            Text("ARCADE JACKET").font(.system(.headline, design: .monospaced).weight(.black)).foregroundStyle(.cyan)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Image(systemName: "heart.fill").foregroundStyle(.red)
                 Text(heart.bpm > 0 ? "\(heart.bpm)" : "--").font(.system(size: 44, weight: .bold).monospacedDigit())
@@ -29,6 +29,7 @@ struct WatchView: View {
             }
             Text(heart.running ? (heart.phoneReachable ? "Sending to iPhone" : "iPhone not reachable") : "Pulse the jacket with your heart rate")
                 .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Button(heart.running ? "Stop" : "Start") {
                 heart.running ? heart.stop() : heart.start()
             }

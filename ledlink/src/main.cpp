@@ -17,6 +17,7 @@
 #include <NimBLEDevice.h>
 #include <ESPmDNS.h>
 #include <HTTPUpdateServer.h>
+#include <Preferences.h>
 #include <WebServer.h>
 #include <WiFi.h>
 
@@ -112,6 +113,8 @@ static void jacketCommand(const uint8_t* b) {  // seq cmd a b c keyLo keyHi
 // The iPhone app connects instead (it can't advertise manufacturer data).
 static NimBLECharacteristic* s_statusChar = nullptr;
 static volatile int s_appConns = 0;
+static volatile bool s_layoutSaved = false;  // the LED layout is the app's, not config.h's
+static volatile bool s_appTest = false;      // the app started a test pattern
 
 class ServerCB : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer* srv, NimBLEConnInfo& info) override {
@@ -122,6 +125,10 @@ class ServerCB : public NimBLEServerCallbacks {
   void onDisconnect(NimBLEServer* srv, NimBLEConnInfo& info, int reason) override {
     s_appConns = srv->getConnectedCount();
     Serial.printf("[app] disconnected (%d), reason %d\n", (int)s_appConns, reason);
+    if (s_appTest) {  // a test pattern left on: back to the looks
+      leds::testPattern(0);
+      s_appTest = false;
+    }
   }
 };
 
@@ -132,6 +139,92 @@ class CommandCB : public NimBLECharacteristicCallbacks {
     const uint8_t* d = v.data();
     s_cmds++;
     looks::command(d[0], v.size() > 1 ? d[1] : 0, v.size() > 2 ? d[2] : 0, v.size() > 3 ? d[3] : 0);
+  }
+};
+
+// The LED layout (the app's settings page, jacket_link.h LAYOUT): config.h's
+// LED_CHAIN until the app saves another, kept in flash ("jacket" / "layout").
+
+static void saveLayout(const LedSegment* segs, int n) {
+  uint8_t b[1 + LED_MAX_SEGMENTS * jacket::LAYOUT_PART_LEN];
+  b[0] = n;
+  for (int k = 0; k < n; k++) {
+    uint8_t* p = b + 1 + k * jacket::LAYOUT_PART_LEN;
+    p[0] = segs[k].type;
+    p[1] = (uint8_t)segs[k].side;
+    p[2] = segs[k].reversed;
+    p[3] = segs[k].count & 255;
+    p[4] = segs[k].count >> 8;
+  }
+  Preferences pr;
+  pr.begin("jacket", false);
+  if (n) pr.putBytes("layout", b, 1 + n * jacket::LAYOUT_PART_LEN);
+  else pr.remove("layout");
+  pr.end();
+}
+
+static int parseParts(const uint8_t* p, int n, LedSegment* out) {  // 0: not a layout
+  if (n < 1 || n > LED_MAX_SEGMENTS) return 0;
+  for (int k = 0; k < n; k++, p += jacket::LAYOUT_PART_LEN) {
+    if (p[0] > LEDS_DARK) return 0;
+    out[k] = LedSegment{(LedPart)p[0], p[3] | (p[4] << 8), p[2] != 0, (int8_t)p[1]};
+  }
+  return n;
+}
+
+static void loadLayout() {
+  Preferences pr;
+  pr.begin("jacket", true);
+  uint8_t b[1 + LED_MAX_SEGMENTS * jacket::LAYOUT_PART_LEN];
+  size_t len = pr.getBytesLength("layout");
+  if (len && len <= sizeof(b)) pr.getBytes("layout", b, len);
+  pr.end();
+  LedSegment segs[LED_MAX_SEGMENTS];
+  int n = len ? parseParts(b + 1, b[0], segs) : 0;
+  if (n && len == 1 + (size_t)n * jacket::LAYOUT_PART_LEN && leds::setChain(segs, n)) {
+    s_layoutSaved = true;
+    Serial.printf("[layout] saved layout, %d parts\n", n);
+  }
+}
+
+static std::string layoutBytes() {
+  LedSegment segs[LED_MAX_SEGMENTS];
+  int n = leds::chain(segs, LED_MAX_SEGMENTS), total = 0;
+  for (int k = 0; k < n; k++) total += segs[k].count;
+  std::string o = {'L', 1, (char)((s_layoutSaved ? jacket::LAYOUT_SAVED : 0) | (leds::noMatrix() ? jacket::LAYOUT_NO_MATRIX : 0)),
+                   (char)n, (char)(total & 255), (char)(total >> 8), (char)(LED_MAX_LEDS & 255), (char)(LED_MAX_LEDS >> 8),
+                   (char)LED_DATA_PIN, (char)(LED_MAX_MA & 255), (char)(LED_MAX_MA >> 8)};
+  for (int k = 0; k < n; k++)
+    o += {(char)segs[k].type, (char)segs[k].side, (char)segs[k].reversed, (char)(segs[k].count & 255), (char)(segs[k].count >> 8)};
+  if (WiFi.status() == WL_CONNECTED) o += WiFi.localIP().toString().c_str();
+  return o;
+}
+
+class LayoutCB : public NimBLECharacteristicCallbacks {
+  void onRead(NimBLECharacteristic* c, NimBLEConnInfo&) override { c->setValue(layoutBytes()); }
+  void onWrite(NimBLECharacteristic* c, NimBLEConnInfo&) override {
+    NimBLEAttValue v = c->getValue();
+    const uint8_t* d = v.data();
+    if (v.size() >= 3 && d[0] == 'L' && d[1] == 1) {
+      LedSegment segs[LED_MAX_SEGMENTS];
+      int n = d[2];
+      if (v.size() != 3 + (size_t)n * jacket::LAYOUT_PART_LEN || !parseParts(d + 3, n, segs) || !leds::setChain(segs, n)) {
+        Serial.println("[layout] rejected");
+        return;
+      }
+      saveLayout(segs, n);
+      s_layoutSaved = true;
+      Serial.printf("[layout] new layout from the app, %d parts\n", n);
+    } else if (v.size() >= 1 && d[0] == 'D') {
+      LedSegment segs[LED_MAX_SEGMENTS];
+      leds::setChain(segs, leds::defaultChain(segs, LED_MAX_SEGMENTS));
+      saveLayout(segs, 0);
+      s_layoutSaved = false;
+      Serial.println("[layout] back to config.h's");
+    } else if (v.size() >= 6 && d[0] == 'T') {
+      leds::testPattern(d[1], d[2] | (d[3] << 8), d[4] | (d[5] << 8));
+      s_appTest = d[1] != 0;
+    }
   }
 };
 
@@ -217,6 +310,8 @@ static void radioTask(void*) {
   svc->createCharacteristic(JACKET_LIVE_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR)
       ->setCallbacks(new LiveCB());
   s_statusChar = svc->createCharacteristic(JACKET_STATUS_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+  svc->createCharacteristic(JACKET_LAYOUT_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE, 512)
+      ->setCallbacks(new LayoutCB());
   svc->start();
   // Now, before the scan starts: NimBLE won't register services while it's
   // scanning or advertising (it would wait for the first advert, after the
@@ -358,6 +453,7 @@ void setup() {
   delay(200);
   Serial.println("\n[boot] ROGUE.AI LEDLINK (Gledopto)");
   wifiBegin();  // before Bluetooth: the radio's first connect is quicker alone
+  loadLayout();  // the app's layout, if it saved one (else config.h's LED_CHAIN)
   leds::begin();
   leds::setMode(leds::IDLE);
   leds::setNoMatrix(LED_NO_MATRIX);

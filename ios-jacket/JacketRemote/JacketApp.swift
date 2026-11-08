@@ -1,4 +1,4 @@
-// JACKET -- the remote for the LED jacket (LEDLINK, ../../ledlink): pick a
+// Arcade Jacket -- the remote for the LED jacket (LEDLINK, ../../ledlink): pick a
 // look, run the bike turn signals and an automatic brake light, light it to
 // the music around you, or pulse it with your heart rate.
 import SwiftUI

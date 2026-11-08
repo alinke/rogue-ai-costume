@@ -8,6 +8,13 @@
 #include "config.h"
 #include "gfx.h"
 
+#ifndef LED_MAX_SEGMENTS
+#define LED_MAX_SEGMENTS 16  // parts a run-time layout (setChain) may have
+#endif
+#ifndef LED_MAX_LEDS
+#define LED_MAX_LEDS 0       // LEDs a run-time layout may grow to (0: LED_CHAIN's own length)
+#endif
+
 // Pure red on the LEDs: the screen's red (gfx::C_RED, 0xFF1E28) has a touch of
 // blue that LED strips show as pink.
 static constexpr uint32_t LED_RED = 0xFF0000;
@@ -78,8 +85,17 @@ void overload(uint32_t ms) {
 }
 
 #if LED_STRIP_ENABLED
-static const LedSegment CHAIN[] = LED_CHAIN;
-static constexpr int SEGMENTS = sizeof(CHAIN) / sizeof(CHAIN[0]);
+// The chain: LED_CHAIN from config.h, unless the layout was changed at run time
+// (setChain: LEDLINK's settings in the app). A new layout is taken at the start
+// of the next frame.
+static const LedSegment DEFAULT_CHAIN[] = LED_CHAIN;
+static LedSegment s_chain[LED_MAX_SEGMENTS];
+static int s_segments = 0;
+static LedSegment s_next[LED_MAX_SEGMENTS];
+static volatile int s_nextN = -1;  // a new layout waiting, or -1
+static portMUX_TYPE s_chainLock = portMUX_INITIALIZER_UNLOCKED;
+static int s_cap = 0;              // LEDs the buffer holds
+static int s_clearN = 0;           // the chain just got shorter: blank this many once
 
 static int s_total = 0;
 static uint8_t* s_px = nullptr;  // 3 bytes per LED in wire order, internal RAM
@@ -140,10 +156,18 @@ void begin() {
   digitalWrite(37, LOW);
   digitalWrite(38, LOW);
 #endif
-  for (const auto& seg : CHAIN) s_total += seg.count;
-  s_px = (uint8_t*)heap_caps_calloc(s_total, 3, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  if (s_nextN >= 0) {  // a saved layout (setChain before begin)
+    s_segments = s_nextN;
+    memcpy(s_chain, s_next, sizeof(LedSegment) * s_segments);
+    s_nextN = -1;
+  } else {
+    s_segments = defaultChain(s_chain, LED_MAX_SEGMENTS);
+  }
+  for (int k = 0; k < s_segments; k++) s_total += s_chain[k].count;
+  s_cap = max(s_total, LED_MAX_LEDS);
+  s_px = (uint8_t*)heap_caps_calloc(s_cap, 3, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
   Serial.printf("[I][leds] %d LEDs in %d parts on GPIO%d -- log output stops here if that's the TX pin\n",
-                s_total, SEGMENTS, LED_DATA_PIN);
+                s_total, s_segments, LED_DATA_PIN);
   Serial.flush();
   if (!s_px) return;
   // The RMT peripheral holds only 48 symbols (2 LEDs) per block and refills
@@ -482,6 +506,36 @@ static uint32_t matrixColor(int x, int y, float t) {
 
 int chainLength() { return s_total; }
 
+int defaultChain(LedSegment* out, int max) {
+  int n = min<int>(max, sizeof(DEFAULT_CHAIN) / sizeof(DEFAULT_CHAIN[0]));
+  memcpy(out, DEFAULT_CHAIN, sizeof(LedSegment) * n);
+  return n;
+}
+
+int chain(LedSegment* out, int max) {
+  portENTER_CRITICAL(&s_chainLock);
+  bool pending = s_nextN >= 0;
+  int n = min(max, pending ? (int)s_nextN : s_segments);
+  memcpy(out, pending ? s_next : s_chain, sizeof(LedSegment) * n);
+  portEXIT_CRITICAL(&s_chainLock);
+  return n;
+}
+
+bool setChain(const LedSegment* segs, int n) {
+  if (n < 1 || n > LED_MAX_SEGMENTS) return false;
+  int total = 0;
+  for (int k = 0; k < n; k++) {
+    if (segs[k].count < 0 || segs[k].count > LED_MAX_LEDS) return false;
+    total += segs[k].count;
+  }
+  if (total > (s_px ? s_cap : max(total, LED_MAX_LEDS))) return false;
+  portENTER_CRITICAL(&s_chainLock);
+  memcpy(s_next, segs, sizeof(LedSegment) * n);
+  s_nextN = n;
+  portEXIT_CRITICAL(&s_chainLock);
+  return true;
+}
+
 // The matrix's brightness follows the strips' in proportion.
 static int matrixPct() { return min(100, MATRIX_BRIGHTNESS_PERCENT * s_bright / LED_BRIGHTNESS_PERCENT); }
 
@@ -492,6 +546,20 @@ void tick(uint32_t now) {
   float dt = min(0.2f, (now - last) / 1000.0f);
   last = now;
   s_nextFrame = now + 33;
+  if (s_nextN >= 0) {  // a new layout (the app's settings)
+    int old = s_total;
+    portENTER_CRITICAL(&s_chainLock);
+    s_segments = s_nextN;
+    memcpy(s_chain, s_next, sizeof(LedSegment) * s_segments);
+    s_nextN = -1;
+    portEXIT_CRITICAL(&s_chainLock);
+    s_total = 0;
+    for (int k = 0; k < s_segments; k++) s_total += s_chain[k].count;
+    if (s_total < old) s_clearN = old;  // LEDs no longer in the chain: blank them once
+    Serial.printf("[I][leds] layout: %d LEDs in %d parts\n", s_total, s_segments);
+  }
+  const int sendN = max(s_total, s_clearN);
+  s_clearN = 0;
   s_m = mode();
   float t = (s_m == OVERLOAD ? now - s_overloadStart : now - s_modeSince) / 1000.0f, tAbs = now / 1000.0f;
   // How close the nearest scanner is (0 far .. 1 at arm's length); the flow
@@ -511,7 +579,7 @@ void tick(uint32_t now) {
   }
   s_talk *= s_speaking ? 0.9f : 0.7f;
   int i = 0;
-  memset(s_px, 0, s_total * 3);  // anything past the end (No Matrix: the last 64) stays dark
+  memset(s_px, 0, sendN * 3);  // anything past the end (No Matrix: the last 64) stays dark
 #if LED_INDEX_TEST
   for (; i < s_total; i++) setPixel(i, i % 50 == 0 ? 0xFF0000 : i % 10 == 0 ? 0xFFFFFF : 0);
 #elif LED_TEST_COLOR
@@ -523,14 +591,16 @@ void tick(uint32_t now) {
   } else if (s_test == 2) {
     for (i = max(0, s_testA); i <= min(s_total - 1, s_testB); i++) setPixel(i, i == s_testA ? 0x00FF00 : 0xFFFFFF);
   } else if (s_test == 3) {
-    for (const auto& seg : CHAIN) {
+    for (int si = 0; si < s_segments; si++) {
+      const LedSegment& seg = s_chain[si];
       if (seg.type == LEDS_MATRIX && s_noMatrix) continue;
       for (int k = 0; k < seg.count; k++, i++)
         if (seg.type != LEDS_DARK) setPixel(i, seg.type == LEDS_MATRIX ? 0x00FF00 : 0xFFFFFF, 25);
     }
   } else {
   eyeStep(now);
-  for (const auto& seg : CHAIN) {
+  for (int si = 0; si < s_segments; si++) {
+    const LedSegment& seg = s_chain[si];
     if (seg.type == LEDS_MATRIX && s_noMatrix) continue;  // not wired in: the next strip follows on
     for (int k = 0; k < seg.count; k++, i++) {
       if (seg.type == LEDS_DARK) {
@@ -552,7 +622,7 @@ void tick(uint32_t now) {
       float u = seg.count > 1 ? (float)k / (seg.count - 1) : 0;
       if (seg.reversed) u = 1 - u;
       float d = seg.type == LEDS_SLEEVE ? 2 - u : u;  // out from the chest: front 0-1, sleeves 1-2
-      if (s_renderer) setPixel(i, s_renderer(Pixel{seg.type, u, d, seg.side, i}));
+      if (s_renderer) setPixel(i, s_renderer(Pixel{seg.type, u, d, seg.side, i, seg.count}));
       else setPixel(i, seg.type == LEDS_EYE ? eyeColor(t, tAbs) : partColor(seg.type, u, d, t));
     }
   }
@@ -564,17 +634,17 @@ void tick(uint32_t now) {
   // can pull more than a USB port or power bank gives, and the controller
   // browns out.
   uint32_t sum = 0;
-  for (int k = 0; k < s_total * 3; k++) sum += s_px[k];
+  for (int k = 0; k < sendN * 3; k++) sum += s_px[k];
   uint32_t idle = (uint32_t)s_total * LED_IDLE_MA;
   uint32_t ma = idle + sum * LED_MA_PER_CHANNEL / 255;
   if (ma > LED_MAX_MA && sum) {
     uint32_t room = LED_MAX_MA > idle ? LED_MAX_MA - idle : 0;
     uint32_t scale = room * 255 / (sum * LED_MA_PER_CHANNEL / 255 + 1);  // 0..255
-    for (int k = 0; k < s_total * 3; k++) s_px[k] = s_px[k] * scale / 255;
+    for (int k = 0; k < sendN * 3; k++) s_px[k] = s_px[k] * scale / 255;
   }
 #endif
   rmt_transmit_config_t tx = {};
-  s_busy = rmt_transmit(s_chan, s_enc, s_px, s_total * 3, &tx) == ESP_OK;
+  s_busy = rmt_transmit(s_chan, s_enc, s_px, sendN * 3, &tx) == ESP_OK;
 }
 
 #else  // no strip
@@ -582,6 +652,9 @@ void tick(uint32_t now) {
 void begin() {}
 void tick(uint32_t) {}
 int chainLength() { return 0; }
+int defaultChain(LedSegment*, int) { return 0; }
+int chain(LedSegment*, int) { return 0; }
+bool setChain(const LedSegment*, int) { return false; }
 
 #endif
 

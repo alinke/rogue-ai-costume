@@ -57,6 +57,12 @@ bool noMatrix();
 // (LED_CHAIN, No Matrix taken into account) in dim white, the dark parts off.
 void testPattern(int kind, int a = 0, int b = 0);
 int chainLength();
+// The layout at run time (LEDLINK's settings, from the app): LED_CHAIN until
+// setChain() gives another, which takes effect at the next frame (call it before
+// begin() to start with a saved one). false: too many parts or LEDs.
+int chain(LedSegment* out, int max);         // the layout now; returns the part count
+int defaultChain(LedSegment* out, int max);  // LED_CHAIN
+bool setChain(const LedSegment* segs, int n);
 void tick(uint32_t now);  // ~30 fps from loop()
 // The matrix shows a big number instead of the eye (the midnight countdown);
 // -1 = back to the eye.
@@ -86,6 +92,7 @@ struct Pixel {
   float u, d;   // as the effects use them: along the part, and out from the chest (front 0-1, sleeves 1-2)
   int8_t side;  // LedSegment::side
   int index;    // chain position (for per-LED randomness)
+  int count;    // LEDs in this part (u steps 1/(count-1) from one to the next)
 };
 using Renderer = uint32_t (*)(const Pixel& p);
 void setRenderer(Renderer r);

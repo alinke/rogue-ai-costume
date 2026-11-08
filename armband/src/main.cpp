@@ -538,7 +538,7 @@ static void consoleTap(int x, int y, uint32_t now) {
 
 
 // ---- JACKET: the jacket's remote (no costume) ---------------------------------------
-// Tabs along the top (THEMES, HOLIDAYS, BIKE, LIVE), the looks as tiles, and
+// Tabs along the top (THEMES, HOLIDAYS, BIKE, LIVE, ARCADE), the looks as tiles, and
 // brightness / speed / on-off along the bottom. Everything shown comes from
 // LEDLINK's own status advert, so it's what the jacket is really doing; a tile
 // just tapped is outlined amber until the jacket confirms it.
@@ -555,7 +555,38 @@ static const uint32_t SWATCH[looks::LOOK_COUNT][3] = {
     {0xFF80C0, 0xA0FFA0, 0x80C0FF}, {0xFF0000, 0xFFFFFF, 0x0020FF}, {0xFF5000, 0x8000FF, 0xFF5000},
     {0xFF6000, 0xC02000, 0xFFA000}, {0xFF0000, 0xFFE000, 0x0040FF}, {0xFFFFFF, 0xFF8000, 0xFFFFFF},
     {0xFFFFFF, 0xFFA000, 0x303030}, {0x00FF40, 0xFFE000, 0xFF0000}, {0xFF00FF, 0x00FFFF, 0xFFFF00},
-    {0x00A0FF, 0x00FF40, 0xFF0000}};
+    {0x00A0FF, 0x00FF40, 0xFF0000},
+    // ARCADE (the Pixelcade LED firmware's console and game effects)
+    {0xFFDC78, 0x3C2D0A, 0xFFDC78}, {0xC80000, 0xB4B4B4, 0xC80000}, {0x7800B4, 0xFFFF00, 0x7800B4},
+    {0xFFDC00, 0x005AFF, 0x00C83C}, {0x8A2BE2, 0x660099, 0x46006E}, {0x145ADC, 0x78BEFF, 0x145ADC},
+    {0x00C8DC, 0x0A1E50, 0x00C8DC}, {0xFFDC00, 0xDC0000, 0xFFDC00}, {0x280000, 0xFF0000, 0x280000},
+    {0xC80000, 0x000000, 0xC80000}, {0xDC0000, 0x008CFF, 0xDC0000}, {0x008CFF, 0x000000, 0x008CFF},
+    {0x003C32, 0x00FFD2, 0x003C32}, {0xFF8C00, 0x000000, 0xFF8C00}, {0xE61E3C, 0xFFDC00, 0x008CFF},
+    {0xFF6600, 0x000000, 0xFF6600}, {0x00C85A, 0xE6003C, 0x006EFF}, {0x0000FF, 0x000000, 0x0000FF},
+    {0x00C85A, 0xFFFFFF, 0xE6003C}, {0x00143C, 0xFFFFFF, 0x00143C}, {0x147814, 0x28C828, 0x50FF50},
+    {0x001400, 0x00C800, 0x001400}, {0x8B4513, 0xFF8C00, 0x8B4513}, {0x28282D, 0xFFAA00, 0xE61E1E},
+    {0xC80000, 0x000000, 0xC80000}, {0xFF0000, 0x640000, 0xFF0000}, {0x5A5A5F, 0xFF0000, 0x5A5A5F},
+    {0xFFFFFF, 0xFF8C00, 0xDC0000}, {0xFF8C00, 0xFFFFFF, 0xFF8C00}, {0xFFFFFF, 0xFF8C00, 0xC80000},
+    {0xE6001E, 0xFFD200, 0x00C83C}, {0x0078C8, 0xFFFFFF, 0x0078C8}, {0x0F6423, 0x28FF5A, 0x0F6423},
+    {0xDC0000, 0xFF7800, 0xFFDC00}, {0x8B4513, 0xFFD700, 0x8B4513}, {0xFF0000, 0xFFFFFF, 0xFF0000},
+    {0xFF8C00, 0x000000, 0xFF8C00}, {0xFF7800, 0xDC0000, 0xFF7800}, {0x0F380F, 0x8BAC0F, 0x9BBC0F},
+    {0xFF0000, 0x00FF00, 0x0000FF}, {0x5A288C, 0xDCDCDC, 0x5A288C}, {0xC8C8D2, 0x0078FF, 0xC8C8D2},
+    {0x00D2C8, 0xFFFFFF, 0x00D2C8}, {0xC80000, 0x000000, 0xC80000}, {0xFFC800, 0x232326, 0xFFC800},
+    {0x000000, 0xFFFF00, 0x646464}, {0x960000, 0x8B4513, 0xFF0000}, {0xFFDC00, 0x00DCFF, 0xE61E28},
+    {0x006400, 0x323232, 0x003264}, {0xFFFF00, 0xFF6496, 0x966496}, {0x3C1E0F, 0xFFFFFF, 0xFF0000},
+    {0xFF8C00, 0xFFFF00, 0x800080}, {0x646464, 0xFF0000, 0xC8C8C8}, {0xFFA500, 0x00FF00, 0xFF0000},
+    {0xFFFF00, 0xFF0000, 0xFF6400}, {0x00FFFF, 0xFF0000, 0xFF00FF}, {0x646496, 0xFFFFFF, 0xFF0000},
+    {0x003250, 0x00FFFF, 0xFF6400}, {0x001A3C, 0xC8C8C8, 0x648000}, {0x000050, 0xFF0000, 0x96B400},
+    {0xC86432, 0xFF0000, 0x6496C8}, {0x1E0032, 0xFF8C00, 0x00C800}, {0xFF0000, 0x0000FF, 0xFFFF00},
+    {0x003200, 0x648000, 0xC80000}, {0x646464, 0x8B4513, 0x00C800}, {0x00FF00, 0xC8C8FF, 0x0000FF},
+    {0xFF0000, 0xFFFF00, 0x00FF00}, {0xFF9600, 0xFF0000, 0x9B6464}, {0x646450, 0x8B4513, 0xFFD700},
+    {0x3C3C3C, 0x0000FF, 0xFF0000}, {0x280028, 0x0096FF, 0xFF8C00}, {0x14003C, 0xFFFFFF, 0xC80000},
+    {0x002800, 0x0000FF, 0xFF0000}, {0x8B4513, 0xFFFFFF, 0xFF0000}, {0x007800, 0xFF0000, 0xFFFF00},
+    {0x0064C8, 0x969696, 0xFF6400}, {0xFF0000, 0x14003C, 0x0000FF}, {0x1E0000, 0xFFFFFF, 0x009600},
+    {0x64461E, 0x005000, 0xFFD700}, {0x464646, 0x0000C8, 0x009600}, {0x0000FF, 0x800080, 0xFF8C00},
+    {0xFFFF00, 0xFF0000, 0x00FFFF}, {0x00FF00, 0xFFFF00, 0xD2B48C}, {0xFF00FF, 0xFFFF00, 0x00FF00},
+    {0x64503C, 0xFFFFFF, 0x00FFFF}, {0x00FF00, 0xFF0000, 0x503C28}, {0x1A2A64, 0x00FFFF, 0xFFFFFF},
+    {0xFF0000, 0x0064FF, 0xFFFF00}, {0x0000C8, 0xFFFF00, 0xFF0000}};
 // SOLID / BREATHE / SPARKLE / COMET use the chosen colour: tapping the one
 // that's on steps through these.
 static const uint32_t PRESETS[] = {0x00DCFF, 0xFF0000, 0x00FF40, 0x0040FF, 0x9000FF, 0xFFA000, 0xFFFFFF, 0xFF40A0};
@@ -578,12 +609,24 @@ static constexpr int JB_Y = 202, JB_H = 34;              // bottom bar
 static constexpr int JB_N = 5, JB_W = (W - 2 * 4 - (JB_N - 1) * 4) / JB_N;
 
 // The looks in a tab, and the tiles on this page (9 a page; the 9th is MORE
-// when there are more).
+// when there are more, stepping through the pages -- ARCADE has 12).
 static int lookList(int tab, int* out) {
   int n = 0;
   for (int i = 0; i < looks::LOOK_COUNT; i++)
     if (looks::INFO[i].cat == tab) out[n++] = i;
+  if (tab == looks::CAT_ARCADE) {  // the consoles A-Z, then the games A-Z
+    auto byName = [](int a, int b) {
+      bool ga = a >= looks::ARCADE_GAMES, gb = b >= looks::ARCADE_GAMES;
+      return ga != gb ? gb : strcmp(looks::INFO[a].name, looks::INFO[b].name) < 0;
+    };
+    std::sort(out, out + n, byName);
+  }
   return n;
+}
+static int pageCount(int tab) {
+  int all[looks::LOOK_COUNT];
+  int n = lookList(tab, all);
+  return n > 9 ? (n + 7) / 8 : 1;
 }
 static int pageTiles(int tab, int page, int* out, bool* more) {
   int all[looks::LOOK_COUNT];
@@ -638,6 +681,7 @@ static void drawTabs(const radio::Jacket& j) {
     if (sel) g.fillRect(x + 2, JT_Y, tw - 4, JT_H, scale(C_CYAN, 0.25f));
     g.drawFastHLine(x + 2, JT_Y + JT_H - 1, tw - 4, sel ? C_CYAN : scale(C_DIM, 0.6f));
     g.setFont(&fonts::Font2);
+    if (g.textWidth(looks::CATEGORY_NAMES[t]) > tw - 8) g.setFont(&fonts::Font0);  // five tabs: HOLIDAYS is tight
     g.setTextDatum(textdatum_t::middle_center);
     g.setTextColor(sel ? C_WHITE : C_DIM);
     g.drawString(looks::CATEGORY_NAMES[t], x + tw / 2, JT_Y + JT_H / 2);
@@ -655,6 +699,7 @@ static void drawTile(int x, int y, int w, int h, const char* l1, const char* l2,
     g.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 4, a);
   }
   g.setFont(&fonts::Font2);
+  if (g.textWidth(l1) > w - 6) g.setFont(&fonts::Font0);  // long names (GHOSTS'N GOBLINS)
   g.setTextDatum(textdatum_t::middle_center);
   g.setTextColor(on ? C_BG : col);
   if (l2 && *l2) {
@@ -680,7 +725,9 @@ static void drawLookGrid(uint32_t now, const radio::Jacket& j) {
   if (more) {
     int x, y;
     tileRect(8, &x, &y);
-    drawTile(x, y, JG_W, JG_H, s_page ? "< BACK" : "MORE >", nullptr, C_DIM, false, false, now);
+    char pg[8];
+    snprintf(pg, sizeof(pg), "%d/%d", s_page + 1, pageCount(s_tab));
+    drawTile(x, y, JG_W, JG_H, "MORE >", pg, C_DIM, false, false, now);
   }
   if (usesColor(j.look) && looks::INFO[j.look].cat == s_tab) {  // a hint: tap it again for another colour
     g.setFont(&fonts::Font0);
@@ -822,7 +869,7 @@ static void jacketTap(int x, int y, uint32_t now, const radio::Jacket& j) {
     tileRect(k, &tx, &ty);
     if (x < tx || x >= tx + JG_W || y < ty || y >= ty + JG_H) continue;
     if (more && k == 8) {
-      s_page = s_page ? 0 : 1;
+      s_page = (s_page + 1) % pageCount(s_tab);
     } else if (k < n) {
       int look = tiles[k];
       if (j.seen && j.look == look && usesColor(look)) {  // tapped again: the next colour
@@ -856,7 +903,7 @@ static void jacketTick(uint32_t now, bool touched, int tx, int ty, const radio::
     s_tab = looks::INFO[min<int>(j.look, looks::LOOK_COUNT - 1)].cat;
     int all[looks::LOOK_COUNT], n = lookList(s_tab, all);
     for (int k = 0; k < n; k++)
-      if (all[k] == j.look) s_page = n > 9 && k >= 8 ? 1 : 0;
+      if (all[k] == j.look) s_page = n > 9 ? k / 8 : 0;
   }
 }
 

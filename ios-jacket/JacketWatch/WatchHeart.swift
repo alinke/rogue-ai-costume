@@ -21,6 +21,9 @@ final class WatchHeart: NSObject, ObservableObject {
             WCSession.default.delegate = self
             WCSession.default.activate()
         }
+        // Screenshots: -demoBpm 72 shows a running session with that reading.
+        let demo = UserDefaults.standard.integer(forKey: "demoBpm")
+        if demo > 0 { bpm = demo; running = true; phoneReachable = true }
     }
 
     func start() {

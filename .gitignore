@@ -21,3 +21,5 @@ hardware/badge/private/
 
 # Instructables write-up drafts and images (not part of the repo)
 instructables/
+ios-jacket/**/xcuserdata/
+ios-jacket/JacketRemote.xcodeproj/project.xcworkspace/

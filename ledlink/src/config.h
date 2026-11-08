@@ -34,6 +34,10 @@
 // strip plugged straight into the left's: its 64 LEDs are skipped. With the
 // costume on, its beacon says whether the 8x8 is wired (operator console: NO MATRIX).
 #define LED_NO_MATRIX 1
+// The layout above is the default: the app's settings page can change it (saved
+// in flash, see jacket_link.h LAYOUT) up to these sizes.
+#define LED_MAX_SEGMENTS 16
+#define LED_MAX_LEDS 1200
 #define LED_BRIGHTNESS_PERCENT 40
 // Current limit for the whole chain: frames that would draw more are dimmed to
 // fit (a white strobe on every LED is far over). 1000 on the bench (a Mac's USB

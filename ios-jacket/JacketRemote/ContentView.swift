@@ -1,5 +1,5 @@
-// The one screen: the jacket's link and power along the top, the four
-// categories (Themes, Holidays, Bike, Live), and brightness / speed along the
+// The one screen: the jacket's link and power along the top, the five
+// categories (Themes, Holidays, Bike, Live, Arcade), and brightness / speed along the
 // bottom. What's shown follows the jacket's own status, so it matches the
 // armband too.
 import SwiftUI
@@ -16,16 +16,20 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             Header()
+            if link.demo { DemoBanner() }
             CategoryBar(category: $category, current: Look.of(link.status.look).category) { pickedCategory = true }
-            ScrollView {
-                Group {
-                    switch category {
-                    case .themes, .holidays: LookGrid(looks: Look.in(category))
-                    case .bike: BikePanel()
-                    case .live: LivePanel()
+            ScrollViewReader { scroll in
+                ScrollView {
+                    Group {
+                        switch category {
+                        case .themes, .holidays: LookGrid(looks: Look.in(category))
+                        case .bike: BikePanel()
+                        case .live: LivePanel()
+                        case .arcade: ArcadePanel(scroll: scroll)
+                        }
                     }
+                    .padding(16)
                 }
-                .padding(16)
             }
             Controls()
         }
@@ -37,7 +41,7 @@ struct ContentView: View {
         }
         .onAppear {
             category = Look.of(link.status.look).category
-            // Screenshots: launch with -tab themes|holidays|bike|live.
+            // Screenshots: launch with -tab themes|holidays|bike|live|arcade.
             if let t = UserDefaults.standard.string(forKey: "tab"),
                let c = LookCategory.allCases.first(where: { $0.title.lowercased() == t }) {
                 category = c
@@ -51,17 +55,30 @@ struct ContentView: View {
 
 private struct Header: View {
     @EnvironmentObject var link: JacketLink
+    @State private var settings = false
 
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("JACKET").font(.system(size: 28, weight: .black, design: .monospaced)).foregroundStyle(neon)
+                Text("ARCADE JACKET").font(.system(size: 24, weight: .black, design: .monospaced)).foregroundStyle(neon)
+                    .lineLimit(1).minimumScaleFactor(0.7)
                 HStack(spacing: 6) {
                     Circle().fill(dot).frame(width: 8, height: 8)
                     Text(label).font(.caption.monospaced()).foregroundStyle(.secondary)
                 }
             }
             Spacer()
+            Button {
+                settings = true
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.title2)
+                    .frame(width: 44, height: 52)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel("Settings")
+            .sheet(isPresented: $settings) { SettingsView() }
+            .onAppear { settings = UserDefaults.standard.bool(forKey: "settings") }  // screenshots: -settings 1
             Button {
                 link.send(.power, link.status.on ? 0 : 1)
             } label: {
@@ -179,6 +196,74 @@ private struct LookGrid: View {
     }
 }
 
+/// ARCADE: Consoles or Games (each A-Z), a letter bar to jump down the list, and a search across both.
+private struct ArcadePanel: View {
+    @EnvironmentObject var link: JacketLink
+    let scroll: ScrollViewProxy
+    @State private var games = false
+    @State private var search = ""
+
+    var body: some View {
+        let list = search.isEmpty ? Look.in(.arcade).filter { $0.isConsole != games }
+                                  : Look.in(.arcade).filter { $0.name.localizedCaseInsensitiveContains(search) }
+        let looks = list.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        VStack(alignment: .leading, spacing: 14) {
+            Picker("", selection: $games) {
+                Text("Consoles").tag(false)
+                Text("Games").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .disabled(!search.isEmpty)
+            HStack {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Find a console or game", text: $search)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                if !search.isEmpty {
+                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                }
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12).fill(panel))
+            if search.isEmpty { letterBar(looks) }
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                ForEach(looks) { LookCard(look: $0).id($0.id) }
+            }
+            if looks.isEmpty {
+                Text("Nothing called \"\(search)\"").foregroundStyle(.secondary).frame(maxWidth: .infinity)
+            }
+            Text("The LED strip effects Pixelcade plays on arcade cabinets, one for each console and game.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .onAppear { games = !Look.of(link.status.look).isConsole && Look.of(link.status.look).category == .arcade }
+    }
+
+    /// Tap a letter: the list scrolls to the first name starting with it (# for numbers).
+    private func letterBar(_ looks: [Look]) -> some View {
+        let first = Dictionary(looks.map { (letter($0.name), $0.id) }, uniquingKeysWith: { a, _ in a })
+        let letters = first.keys.sorted { $0 == "#" ? true : $1 == "#" ? false : $0 < $1 }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(letters, id: \.self) { l in
+                    Button {
+                        withAnimation { scroll.scrollTo(first[l], anchor: .top) }
+                    } label: {
+                        Text(l).font(.subheadline.weight(.bold).monospaced())
+                            .frame(width: 30, height: 30)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(panel))
+                            .foregroundStyle(neon)
+                    }
+                }
+            }
+        }
+    }
+
+    private func letter(_ name: String) -> String {
+        guard let c = name.uppercased().first else { return "#" }
+        return c.isLetter ? String(c) : "#"
+    }
+}
+
 /// Solid / Breathe / Sparkle / Comet: the colour, from presets or the picker.
 private struct ColorRow: View {
     @EnvironmentObject var link: JacketLink
@@ -245,7 +330,7 @@ private struct BikePanel: View {
                     }
                 }
                 if brake.denied {
-                    Text("Location is off for JACKET: Settings › JACKET › Location › Always.").font(.caption).foregroundStyle(.orange)
+                    Text("Location is off for Arcade Jacket: Settings › Arcade Jacket › Location › While Using the App.").font(.caption).foregroundStyle(.orange)
                 }
             }
             .padding(14)
@@ -255,6 +340,9 @@ private struct BikePanel: View {
             }
             Text("Turn signals sweep amber down that side's sleeve and front, and cancel themselves after 30 s. The armband has the same buttons, easier to reach while riding.")
                 .font(.caption).foregroundStyle(.secondary)
+            Label("Wear the jacket as well as proper bike lights, never instead of them. The automatic brake light is about a second behind your braking, and check your local rules on flashing lights.",
+                  systemImage: "exclamationmark.triangle")
+                .font(.caption).foregroundStyle(.orange)
         }
     }
 
@@ -290,7 +378,7 @@ private struct LivePanel: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Music", systemImage: "music.note").font(.headline)
                 if music.denied {
-                    Text("The microphone is off for JACKET: Settings › JACKET › Microphone.").font(.caption).foregroundStyle(.orange)
+                    Text("The microphone is off for Arcade Jacket: Settings › Arcade Jacket › Microphone.").font(.caption).foregroundStyle(.orange)
                 } else if music.running {
                     HStack(alignment: .bottom, spacing: 8) {
                         meter("Bass", music.bass, .green)
@@ -379,11 +467,11 @@ private struct HeartPanel: View {
             Text("""
             Works with anything that shares heart rate over Bluetooth: a Fitbit Charge 6 or Pixel Watch 2-4 \
             (turn on heart-rate sharing on the watch), Polar, Wahoo and Garmin chest straps and arm bands. \
-            Older Fitbits (Versa, Sense, Inspire) can't. Apple Watch: open JACKET on the watch and tap Start.
+            Older Fitbits (Versa, Sense, Inspire) can't. Apple Watch: open Arcade Jacket on the watch and tap Start.
             """)
             .font(.caption).foregroundStyle(.secondary)
             if heart.watchPaired {
-                Label("JACKET is on your Apple Watch", systemImage: "applewatch").font(.caption).foregroundStyle(.green)
+                Label("Arcade Jacket is on your Apple Watch", systemImage: "applewatch").font(.caption).foregroundStyle(.green)
             }
         }
         .padding(14)
@@ -398,6 +486,11 @@ private struct Controls: View {
     @EnvironmentObject var link: JacketLink
     @State private var bright: Double = 60
     @State private var speed: Double = 100
+    // While a slider is dragged (and a moment after), the jacket's status is
+    // still catching up with the values just sent: showing those would pull the
+    // slider back, and moving it would send them again.
+    @State private var dragging = false
+    @State private var releasedAt = Date.distantPast
 
     var body: some View {
         VStack(spacing: 6) {
@@ -408,17 +501,25 @@ private struct Controls: View {
         .padding(.vertical, 10)
         .background(Color.white.opacity(0.04))
         .onAppear { bright = Double(link.status.bright); speed = Double(link.status.speed) }
-        .onChange(of: link.status.bright) { _, v in bright = Double(v) }
-        .onChange(of: link.status.speed) { _, v in speed = Double(v) }
+        .onChange(of: link.status.bright) { _, v in if following { bright = Double(v) } }
+        .onChange(of: link.status.speed) { _, v in if following { speed = Double(v) } }
     }
+
+    private var following: Bool { !dragging && Date().timeIntervalSince(releasedAt) > 1.5 }
 
     private func row(_ icon: String, value: Binding<Double>, range: ClosedRange<Double>, text: String,
                      send: @escaping (Double) -> Void) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon).frame(width: 24).foregroundStyle(neon)
-            Slider(value: value, in: range, step: range.upperBound > 200 ? 10 : 5)
+            Slider(value: value, in: range, step: range.upperBound > 200 ? 10 : 5) { editing in
+                dragging = editing
+                if !editing {
+                    releasedAt = Date()
+                    send(value.wrappedValue)
+                }
+            }
             .tint(neon)
-            .onChange(of: value.wrappedValue) { _, v in send(v) }
+            .onChange(of: value.wrappedValue) { _, v in if dragging { send(v) } }
             Text(text).font(.caption.monospacedDigit()).frame(width: 44, alignment: .trailing)
         }
     }

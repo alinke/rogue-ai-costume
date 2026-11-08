@@ -1,0 +1,18 @@
+.gradle/
+build/
+/app/build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.kotlin/
+
+# Signing keys and release bundles: never commit
+key/
+*.jks
+*.keystore
+/app/release/
+
+# NDK/CMake build cache
+.cxx/

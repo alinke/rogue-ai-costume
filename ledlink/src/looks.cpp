@@ -12,6 +12,7 @@
 #include <Preferences.h>
 #include <math.h>
 
+#include "arcade.h"
 #include "gen/leds.h"
 #include "jacket_link.h"
 
@@ -58,6 +59,15 @@ static bool s_braking = false;
 struct Burst { float at, d; int8_t side; uint32_t color; };
 static Burst s_bursts[4];
 static float s_nextBurst = 0;
+
+// ARCADE looks: the firmware effect is drawn once a frame on one strip running
+// up the front and on down the sleeve (the front's LEDs, then the sleeve's),
+// and each side shows it. The part lengths come from the pixels themselves.
+static_assert(arcade::COUNT == LOOK_COUNT - ARCADE_FIRST, "looks.h and arcade.h list the same ARCADE looks");
+static_assert(arcade::CONSOLE_COUNT == ARCADE_GAMES - ARCADE_FIRST, "looks.h and arcade.h split consoles / games alike");
+static constexpr int STRIP_MAX = 512;
+static uint32_t s_strip[STRIP_MAX];
+static int s_trimN = 78, s_sleeveN = 113;
 
 // ---- Colour helpers ---------------------------------------------------------------
 static uint32_t rgb(float r, float g, float b) {
@@ -373,7 +383,20 @@ static uint32_t render(const leds::Pixel& p) {
       c = scale(zone, 0.12f + 0.88f * k);
       break;
     }
-    default: break;
+    default:
+      if (s_look >= ARCADE_FIRST) {
+        // One LED of the strip per LED of the jacket: the front from the hem,
+        // then the sleeve from the shoulder.
+        int k = (int)lroundf((p.type == LEDS_SLEEVE ? p.d - 1 : p.u) * (p.count - 1));
+        if (p.type == LEDS_SLEEVE) {
+          s_sleeveN = p.count;
+          k += s_trimN;
+        } else {
+          s_trimN = p.count;
+        }
+        c = s_strip[constrain(k, 0, STRIP_MAX - 1)];
+      }
+      break;
   }
 
   // ---- Overlays: the brake light and the turn signals win over any look ----------
@@ -536,6 +559,9 @@ void tick(uint32_t now) {
     s_bursts[oldest] = Burst{R, 0.3f + 1.4f * hash(2, (int)(R * 10)), (int8_t)(hash(3, (int)(R * 10)) < 0.5f ? -1 : 1),
                              (s_look == NEW_YEAR ? NY : US)[(int)(hash(4, (int)(R * 10)) * 4) & 3]};
   }
+
+  if (s_look >= ARCADE_FIRST)
+    arcade::draw(arcade::EFFECT[s_look - ARCADE_FIRST], (uint32_t)(T * 1000), s_strip, min(s_trimN + s_sleeveN, STRIP_MAX));
 
   // Who draws: the costume's own show (ROGUE AI, unless a turn/brake is on),
   // our looks, or nothing (switched dark).

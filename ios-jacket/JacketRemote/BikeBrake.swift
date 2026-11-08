@@ -35,7 +35,9 @@ final class BikeBrake: NSObject, ObservableObject {
     func setEnabled(_ on: Bool) {
         enabled = on
         if on {
-            manager.requestAlwaysAuthorization()
+            // While In Use is enough: started while the app is open, updates keep
+            // coming with the screen locked (the blue location pill shows).
+            manager.requestWhenInUseAuthorization()
             manager.allowsBackgroundLocationUpdates = true
             manager.showsBackgroundLocationIndicator = true
             manager.startUpdatingLocation()

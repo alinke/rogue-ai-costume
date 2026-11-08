@@ -15,6 +15,18 @@
 //   LIVE (write without response):      'M' bass mid treble level beat  (music, ~30/s)
 //                                       'H' bpm                           (heart rate, ~1/s)
 //   STATUS (read, notify):              the status bytes below
+//   LAYOUT (read, write):               the LED layout -- the app's settings page:
+//     read:  'L' 1 flags n totalLo totalHi maxLo maxHi pin maLo maHi, n parts, then
+//            the Wi-Fi address as text (empty without Wi-Fi). A part is 5 bytes:
+//            type (LedPart: 0 sleeve, 1 front, 2 eye, 3 matrix, 4 dark) side
+//            (int8: -1 left, 1 right) reversed countLo countHi.
+//            flags: LAYOUT_SAVED (not config.h's LED_CHAIN), LAYOUT_NO_MATRIX (the
+//            8x8 part is skipped now: no costume, or its NO MATRIX).
+//     write: 'L' 1 n, n parts           use this layout from now on (saved)
+//            'D'                        back to config.h's LED_CHAIN
+//            'T' kind aLo aHi bLo bHi   a test pattern (leds::testPattern: 0 off,
+//                                       1 numbered, 2 LEDs a..b, 3 everything lit);
+//                                       off again when the app disconnects
 //
 // LEDLINK -> everyone, its own advert (and STATUS):
 //   0xFFFF "RJS1" look bright speed flags ackSeq r g b turn bpm
@@ -28,6 +40,7 @@
 #define JACKET_COMMAND_UUID "524a4b31-0001-4c41-4237-000000000000"
 #define JACKET_LIVE_UUID    "524a4b31-0002-4c41-4237-000000000000"
 #define JACKET_STATUS_UUID  "524a4b31-0003-4c41-4237-000000000000"
+#define JACKET_LAYOUT_UUID  "524a4b31-0004-4c41-4237-000000000000"
 
 namespace jacket {
 
@@ -57,5 +70,9 @@ constexpr uint8_t F_BRAKE = 16;    // brake light on
 constexpr uint8_t F_APP = 32;      // an iPhone is connected
 
 constexpr int STATUS_LEN = 4 + 10;  // after 0xFFFF: tag + the ten bytes above
+
+constexpr uint8_t LAYOUT_SAVED = 1;
+constexpr uint8_t LAYOUT_NO_MATRIX = 2;
+constexpr int LAYOUT_PART_LEN = 5;
 
 }  // namespace jacket
