@@ -92,6 +92,11 @@
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
   .video { position: relative; padding-top: 56.25%; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: #000; }
   .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .qrs { display: grid; grid-template-columns: repeat(2, minmax(0, 170px)); gap: 14px; margin: 10px 0 18px; }
+  .qr { display: block; text-decoration: none; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+  .qr img { width: 100%; height: auto; display: block; background: #fff; border-radius: 8px; padding: 6px; }
+  .qr span { display: block; margin-top: 8px; font-size: .85rem; line-height: 1.35; color: var(--ink-soft); }
+  .qr span b { color: var(--ink); }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
   figure { margin: 0; }
   figcaption { color: var(--ink-soft); font-size: 0.9rem; margin-top: 8px; }
@@ -281,6 +286,11 @@
           <li>Open it and allow Bluetooth. The app looks for the controller and connects by itself, so there's no pairing step. The <b>DEMO</b> badge goes away and the jacket on screen now shows what your real jacket is doing.</li>
           <li>Tap the power button at the top to turn the lights on or off. The two sliders at the bottom set brightness and speed.</li>
         </ol>
+        <p class="soft" style="margin:18px 0 0">On a computer? Scan with your phone's camera:</p>
+        <div class="qrs">
+          <a class="qr" href="https://apps.apple.com/us/app/arcade-jacket/id6832158037"><img src="images/qr-ios.png" alt="QR code for Arcade Jacket on the App Store" width="370" height="370" loading="lazy"><span><b>App Store</b><br>iPhone &amp; Apple Watch</span></a>
+          <a class="qr" href="https://play.google.com/store/apps/details?id=org.pixelcade.arcadejacket"><img src="images/qr-android.png" alt="QR code for Arcade Jacket on Google Play" width="410" height="410" loading="lazy"><span><b>Google Play</b><br>Android</span></a>
+        </div>
         <p class="soft">The controller remembers your last look, brightness and speed. When you power it up without your phone, it carries on where you left off.</p>
         <div class="note info">
           <p>No controller yet? The app runs in demo mode. Every look, turn signal and the brake light plays on the jacket drawn on screen, so you can try everything before you buy parts.</p>
