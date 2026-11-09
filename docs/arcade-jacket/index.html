@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arcade Jacket</title>
+<meta name="description" content="Build an LED jacket with arcade effects, bike turn signals, music and heartbeat looks, controlled from the free Arcade Jacket app for iPhone and Android.">
+<meta property="og:title" content="Arcade Jacket">
+<meta property="og:description" content="A DIY LED jacket with arcade effects, bike turn signals, music and heartbeat looks, controlled from your phone.">
+<meta property="og:image" content="https://alinke.github.io/rogue-ai-costume/arcade-jacket/images/banner.png">
+<link rel="icon" href="images/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0e12;
+    --bg-alt: #15171d;
+    --card: #1b1d25;
+    --border: #2e313c;
+    --ink: #eef0f4;
+    --ink-soft: #a2a7b4;
+    --accent: #3fd8ff;
+    --accent-2: #ff3fb4;
+    --warn: #ffb347;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  a { color: var(--accent); }
+  img { max-width: 100%; height: auto; display: block; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+
+  header.hero {
+    background: radial-gradient(ellipse at 20% 0%, rgba(63, 216, 255, 0.18), transparent 60%),
+                radial-gradient(ellipse at 90% 30%, rgba(255, 63, 180, 0.16), transparent 55%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 0 40px;
+  }
+  .hero-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .brand img { width: 56px; height: 56px; border-radius: 13px; }
+  .brand span { font: 800 1rem "JetBrains Mono", monospace; letter-spacing: 0.12em; color: var(--accent); }
+  h1 {
+    font: 800 clamp(2.2rem, 6vw, 3.4rem)/1.05 "JetBrains Mono", monospace;
+    margin: 0 0 16px;
+    letter-spacing: -0.01em;
+  }
+  .lede { color: var(--ink-soft); font-size: 1.12rem; margin: 0 0 26px; max-width: 34em; }
+  .stores { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 18px; border-radius: 10px;
+    font-weight: 700; text-decoration: none; color: #061016;
+    background: var(--accent);
+  }
+  .btn.alt { background: transparent; color: var(--ink); border: 1px solid var(--border); }
+  .btn small { font-weight: 500; opacity: 0.75; }
+  .hero-phone { justify-self: center; max-width: 280px; }
+  .phone {
+    border-radius: 28px; overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(63, 216, 255, 0.12);
+    background: #000;
+  }
+
+  nav.toc { border-bottom: 1px solid var(--border); background: var(--bg-alt); position: sticky; top: 0; z-index: 5; }
+  nav.toc .wrap { display: flex; gap: 6px; overflow-x: auto; padding-top: 10px; padding-bottom: 10px; scrollbar-width: none; }
+  nav.toc a {
+    flex: none; text-decoration: none; color: var(--ink-soft);
+    font-size: 0.9rem; padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  nav.toc a:hover { color: var(--ink); border-color: var(--border); }
+
+  section { padding: 56px 0 8px; scroll-margin-top: 56px; }
+  .step {
+    font: 800 0.8rem "JetBrains Mono", monospace; letter-spacing: 0.14em;
+    color: var(--accent-2); text-transform: uppercase; margin: 0 0 6px;
+  }
+  h2 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 14px; }
+  h3 { font-size: 1.15rem; margin: 28px 0 8px; }
+  p, li { color: var(--ink); }
+  .soft { color: var(--ink-soft); }
+  ol, ul { padding-left: 1.3em; }
+  li { margin: 6px 0; }
+  code { font: 0.9em "JetBrains Mono", ui-monospace, monospace; background: var(--card); padding: 2px 6px; border-radius: 5px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+  figure { margin: 0; }
+  figcaption { color: var(--ink-soft); font-size: 0.9rem; margin-top: 8px; }
+  figure.photo img { border-radius: 12px; border: 1px solid var(--border); }
+
+  .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 18px; }
+  .part { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .part h4 { margin: 0 0 6px; font-size: 1rem; }
+  .part p { margin: 0 0 8px; color: var(--ink-soft); font-size: 0.93rem; }
+  .part a { font-size: 0.9rem; }
+
+  .gifs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 22px; }
+  .gifs figure .phone { border-radius: 20px; }
+  .gifs h4 { margin: 12px 0 4px; font-size: 1rem; }
+  .gifs p { margin: 0; color: var(--ink-soft); font-size: 0.9rem; }
+
+  .note {
+    border-left: 3px solid var(--warn); background: rgba(255, 179, 71, 0.08);
+    padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 18px 0;
+  }
+  .note.info { border-left-color: var(--accent); background: rgba(63, 216, 255, 0.07); }
+  .note p { margin: 0; }
+
+  .zones { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.93rem; }
+  .zones th, .zones td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  .zones th { color: var(--ink-soft); font-weight: 600; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 64px; padding: 28px 0 48px; color: var(--ink-soft); font-size: 0.92rem; }
+  footer a { color: var(--ink-soft); }
+
+  @media (max-width: 820px) {
+    .hero-grid, .grid2 { grid-template-columns: 1fr; }
+    .hero-phone { max-width: 240px; }
+    .gifs { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 420px) {
+    .gifs { grid-template-columns: 1fr; max-width: 280px; margin-left: auto; margin-right: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="brand"><img src="images/icon.png" alt="Arcade Jacket app icon" width="56" height="56"><span>PIXELCADE</span></div>
+      <h1>Arcade Jacket</h1>
+      <p class="lede">Sew LED strips along the front and down the sleeves of any jacket, add a small LED controller, and
+        run it all from your phone. You get 89 arcade effects, themes and holiday looks, bike turn signals with an
+        automatic brake light, and looks that follow the music or your heartbeat.</p>
+      <div class="stores">
+        <a class="btn" href="https://apps.apple.com/us/app/arcade-jacket/id6832158037">App Store <small>iPhone &amp; Apple Watch</small></a>
+        <a class="btn" href="https://play.google.com/store/apps/details?id=org.pixelcade.arcadejacket">Google Play <small>Android</small></a>
+        <a class="btn alt" href="https://github.com/alinke/rogue-ai-costume">Source code</a>
+      </div>
+      <p class="soft" style="margin-top:18px;font-size:0.92rem">The app and firmware are free. You can try the app before you build anything: with no jacket nearby it shows the looks on a jacket drawn on screen.</p>
+    </div>
+    <div class="hero-phone">
+      <div class="phone"><img src="images/arcade.gif" alt="The Arcade Jacket app's Arcade tab, with an arcade effect running on the jacket preview" width="320" height="696"></div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Steps">
+  <div class="wrap">
+    <a href="#need">1 · What you need</a>
+    <a href="#build">2 · Build the jacket</a>
+    <a href="#flash">3 · Flash the controller</a>
+    <a href="#connect">4 · Get the app</a>
+    <a href="#layout">5 · Set up your layout</a>
+    <a href="#use">6 · Use it</a>
+    <a href="#source">Source code</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <section id="need">
+    <p class="step">Step 1</p>
+    <h2>What you need</h2>
+    <p>The only electronics are an off-the-shelf LED controller, LED strips and a USB power bank. You don't need to solder anything.</p>
+    <div class="parts">
+      <div class="part">
+        <h4>Gledopto GL-MC-001WL</h4>
+        <p>A small ESP32 LED controller sold for WLED. It has Bluetooth and a proper 5&nbsp;V data output, so the strips plug straight in. This is the controller the firmware is built for.</p>
+        <a href="https://www.amazon.com/s?k=Gledopto+GL-MC-001WL">Search on Amazon</a>
+      </div>
+      <div class="part">
+        <h4>5&nbsp;V addressable LED strip</h4>
+        <p>WS2812B or WS2811, <b>5&nbsp;V</b> (not 12&nbsp;V or 24&nbsp;V). Mine is three 1&nbsp;m, 5&nbsp;mm wide FCOB strips (160 LEDs each) with a 3-pin plug on each end: one for the front, one per sleeve. Up to 1200 LEDs in total.</p>
+        <a href="https://www.amazon.com/s?k=5V+WS2812B+FCOB+LED+strip+5mm+160+LEDs">Search on Amazon</a>
+      </div>
+      <div class="part">
+        <h4>3-pin extension leads</h4>
+        <p>JST-SM 3-pin leads to join the strips. They run inside the jacket from the front to each sleeve. I used about 0.5&nbsp;m, 1&nbsp;m and 0.5&nbsp;m.</p>
+        <a href="https://www.amazon.com/s?k=JST+SM+3+pin+LED+extension+cable">Search on Amazon</a>
+      </div>
+      <div class="part">
+        <h4>USB power bank</h4>
+        <p>Any power bank that gives at least 2&nbsp;A, plus a USB-C cable. It goes in an inside pocket with the controller. The firmware limits the whole jacket to 2&nbsp;A.</p>
+      </div>
+      <div class="part">
+        <h4>A jacket</h4>
+        <p>Anything with a zipper and room inside for the leads. A dark jacket shows the light best.</p>
+      </div>
+      <div class="part">
+        <h4>Mounting</h4>
+        <p>Hot glue and 3D-printed TPU channels that the strip snaps into, or sew-on channels. Add a few safety pins for the sleeves.</p>
+        <a href="https://github.com/alinke/rogue-ai-costume/tree/main/hardware/3dprint">STL files</a>
+      </div>
+    </div>
+    <p class="soft" style="margin-top:16px">You also need a phone running the app: an iPhone with iOS 17 or later (the Apple Watch app is optional), or Android 8 or later.</p>
+  </section>
+
+  <section id="build">
+    <p class="step">Step 2</p>
+    <h2>Build the jacket</h2>
+    <div class="grid2">
+      <div>
+        <p>All the LEDs form one chain, starting at the controller. Data flows through each strip and on to the next. Here's how mine runs:</p>
+        <ol>
+          <li><b>Controller and power bank</b> sit in an inside pocket. The controller's output lead comes out through a small hole near the zipper.</li>
+          <li><b>Front strip</b>: up one zipper edge, round the collar and down the other edge.</li>
+          <li><b>Lead</b>: back inside the jacket, over the shoulder and out at the top of the first sleeve.</li>
+          <li><b>First sleeve</b>: shoulder to cuff. Tuck any strip that's left over inside the cuff.</li>
+          <li><b>Lead</b>: up inside the sleeve, across the back and out at the top of the other sleeve.</li>
+          <li><b>Second sleeve</b>: shoulder to cuff.</li>
+        </ol>
+        <p>No strip crosses the zipper, so you can open the jacket without unplugging anything. Your jacket can be laid out differently: in step 5 you tell the app where each strip runs.</p>
+        <h3>Mounting the strips</h3>
+        <p>The strips snap into short 3D-printed channels, hot-glued about every 12&nbsp;cm. Each channel has a flange full of small holes. The glue squeezes up through them and sets like rivets, so it grips the fabric much better than a flat blob would. Print them in flexible TPU so they bend with the jacket. On the sleeves, also put a safety pin through each end of a channel.</p>
+        <p>Cut a hole about 17.5&nbsp;mm across wherever a lead goes in or out, and hot-glue a printed grommet over it from outside. Inside, glue the leads down every 10&nbsp;cm or so.</p>
+      </div>
+      <div>
+        <figure class="photo">
+          <img src="images/jacket-strips.jpg" alt="The jacket with white LED strips along the zipper edges and down both sleeves" width="1200" height="900" loading="lazy">
+          <figcaption>Strips along both zipper edges and down the sleeves. The leads run inside the lining.</figcaption>
+        </figure>
+        <figure class="photo" style="margin-top:20px">
+          <img src="images/strip-channels.jpg" alt="Close-up of 3D-printed channels holding the strip, and a grommet where the lead enters the jacket" width="1000" height="750" loading="lazy">
+          <figcaption>The glue-on channels, and a grommet where the strip's lead goes into the jacket.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="flash">
+    <p class="step">Step 3</p>
+    <h2>Flash the controller</h2>
+    <p>The Gledopto comes with WLED installed. The jacket needs the free <b>LEDLINK</b> firmware instead. The controller's USB-C port only supplies power, so you install the new firmware over Wi-Fi with WLED's own update page.</p>
+    <ol>
+      <li><a href="../firmware/ledlink-gledopto.bin" download>Download the LEDLINK firmware</a> (<code>ledlink-gledopto.bin</code>) to your phone or computer.</li>
+      <li>Power the controller from the power bank. A new WLED controller makes its own Wi-Fi network, <b>WLED-AP</b> (password <code>wled1234</code>). Join it, and WLED's page opens (or go to <code>http://4.3.2.1</code>). If you've already put the controller on your home Wi-Fi, open its address in WLED's app instead.</li>
+      <li>In WLED, go to <b>Config &rarr; Security &amp; Updates &rarr; Manual OTA Update</b>.</li>
+      <li>Choose <code>ledlink-gledopto.bin</code> and tap <b>Update</b>. The controller restarts running LEDLINK and the strips light up.</li>
+    </ol>
+    <div class="note">
+      <p><b>Heads up:</b> LEDLINK doesn't turn Wi-Fi on, so once it's installed you can't reach WLED's update page any more. Make sure you're flashing the right controller.</p>
+    </div>
+  </section>
+
+  <section id="connect">
+    <p class="step">Step 4</p>
+    <h2>Get the app and connect</h2>
+    <div class="grid2">
+      <div>
+        <ol>
+          <li>Install <b>Arcade Jacket</b> from the <a href="https://apps.apple.com/us/app/arcade-jacket/id6832158037">App Store</a> or <a href="https://play.google.com/store/apps/details?id=org.pixelcade.arcadejacket">Google Play</a>.</li>
+          <li>Open it and allow Bluetooth. The app looks for the controller and connects by itself, so there's no pairing step. The <b>DEMO</b> badge goes away and the jacket on screen now shows what your real jacket is doing.</li>
+          <li>Tap the power button at the top to turn the lights on or off. The two sliders at the bottom set brightness and speed.</li>
+        </ol>
+        <p class="soft">The controller remembers your last look, brightness and speed. When you power it up without your phone, it carries on where you left off.</p>
+        <div class="note info">
+          <p>No controller yet? The app runs in demo mode. Every look, turn signal and the brake light plays on the jacket drawn on screen, so you can try everything before you buy parts.</p>
+        </div>
+      </div>
+      <figure>
+        <div class="phone" style="max-width:300px;margin:0 auto"><img src="images/themes.gif" alt="Picking a theme in the app" width="320" height="696" loading="lazy"></div>
+        <figcaption style="text-align:center">Tap a look and the jacket switches instantly.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="layout">
+    <p class="step">Step 5</p>
+    <h2>Set up your layout</h2>
+    <div class="grid2">
+      <div>
+        <p>Every jacket is different, so tell the controller where your strips run. Tap the <b>gear</b> at the top of the app to open Settings. The controller's status is at the top, and below it is a list of <b>zones</b> in wiring order, starting from the controller.</p>
+        <table class="zones">
+          <tr><th>Zone</th><th>What it's for</th></tr>
+          <tr><td><b>Front</b></td><td>The strip up the zipper and round the collar. The looks run hem to collar.</td></tr>
+          <tr><td><b>Sleeve</b></td><td>A sleeve. The looks run shoulder to cuff.</td></tr>
+          <tr><td><b>Dark</b></td><td>LEDs that stay off: strip tucked inside the jacket, the run across the back, or extra strip in a cuff.</td></tr>
+        </table>
+        <ol>
+          <li>Tap <b>Number every LED</b>. The first LED lights green, every 10th white, every 50th red and every 100th blue. Count along each strip to see where the lit parts should start and stop.</li>
+          <li>Add a zone for each stretch, and set how many LEDs it has. Give each Front or Sleeve zone a side (<b>Left</b> or <b>Right</b>) for the turn signals.</li>
+          <li>Set which end the data wire comes in: <b>Starts at the hem</b> or <b>at the collar</b> for the front, and <b>at the cuff</b> or <b>at the shoulder</b> for a sleeve. If a look runs backwards on one zone, flip this.</li>
+          <li>Use the light-bulb button next to a zone to check where it really is, or <b>Show the lit LEDs</b> to see the whole layout.</li>
+          <li>Tap <b>Save to the controller</b>. It keeps the layout from then on, even after it's switched off.</li>
+        </ol>
+        <p class="soft">Need a reminder? <b>How the LED layout works</b> in Settings explains all of this in the app. <b>Reset to the firmware's layout</b> starts over.</p>
+      </div>
+      <figure>
+        <div class="phone" style="max-width:300px;margin:0 auto"><img src="images/app-settings.png" alt="The app's Settings screen: controller status, LED test buttons and the list of zones" width="480" height="1044" loading="lazy"></div>
+        <figcaption style="text-align:center">Settings: controller status, test patterns and zones.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="use">
+    <p class="step">Step 6</p>
+    <h2>Use it</h2>
+    <p>The app has five tabs. Each one runs the controller's own effects code, so the jacket on screen matches the real one.</p>
+    <div class="gifs">
+      <figure>
+        <div class="phone"><img src="images/arcade.gif" alt="Arcade tab" width="320" height="696" loading="lazy"></div>
+        <h4>Arcade</h4>
+        <p>89 effects from Pixelcade's arcade marquees: 45 classic consoles and 44 arcade-style games. They're sorted A to Z, with letter shortcuts and a search box.</p>
+      </figure>
+      <figure>
+        <div class="phone"><img src="images/themes.gif" alt="Themes tab" width="320" height="696" loading="lazy"></div>
+        <h4>Themes &amp; Holidays</h4>
+        <p>Light Cycle, Cyberpunk, Code Rain, Fire, Aurora and more. There are also holiday looks from Christmas to Pride, and Solid, Breathe, Sparkle and Comet in any colour.</p>
+      </figure>
+      <figure>
+        <div class="phone"><img src="images/bike.gif" alt="Bike tab with the left turn signal on" width="320" height="696" loading="lazy"></div>
+        <h4>Bike</h4>
+        <p>Left, right and hazard signals that sweep down that side of the jacket, and a hold-to-brake button. The automatic brake light uses GPS to turn the jacket red when you slow down.</p>
+      </figure>
+      <figure>
+        <div class="phone"><img src="images/live.gif" alt="Live tab with Music Beat on" width="320" height="696" loading="lazy"></div>
+        <h4>Live</h4>
+        <p>Music looks that react to the sound around you through the phone's microphone (nothing is recorded). Heartbeat pulses with a Bluetooth heart-rate sensor or the Apple Watch app.</p>
+      </figure>
+    </div>
+
+    <div class="grid2" style="margin-top:40px">
+      <figure class="photo">
+        <img src="images/looks.jpg" alt="Twelve of the jacket's looks: Light Cycle, Cyberpunk, Code Rain, Fire, Christmas, July 4th, New Year, Thanksgiving, Bike with a left turn, Bike, Music and Heartbeat" width="1280" height="1156" loading="lazy">
+        <figcaption>A few of the looks.</figcaption>
+      </figure>
+      <div>
+        <h3 style="margin-top:0">Heart rate</h3>
+        <p>On iPhone, start a session in the Apple Watch app and the jacket pulses with your heart. On either phone, you can instead pick a Bluetooth heart-rate sensor on the Live tab, such as a Polar, Wahoo or Garmin chest strap, or a Fitbit Charge 6 or Pixel Watch with heart-rate sharing on.</p>
+        <img src="images/watch.png" alt="The Apple Watch app showing a heart-rate reading" width="251" height="300" loading="lazy" style="max-width:150px;margin:8px 0 0">
+        <h3>With the screen off</h3>
+        <p>The turn signals, the automatic brake light and the music looks keep working with your phone locked in a pocket. On Android, a notification shows while the app is connected.</p>
+        <div class="note">
+          <p><b>Riding a bike?</b> Wear the jacket <em>as well as</em> proper bike lights, never instead of them. The automatic brake light is based on GPS speed, so it reacts about a second after you slow down.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="source">
+    <p class="step">Open source</p>
+    <h2>Source code</h2>
+    <p>Everything is on GitHub at <a href="https://github.com/alinke/rogue-ai-costume">github.com/alinke/rogue-ai-costume</a>:</p>
+    <ul>
+      <li><a href="https://github.com/alinke/rogue-ai-costume/tree/main/ledlink"><code>ledlink/</code></a>: the controller firmware, built with PlatformIO. The looks are in <code>src/looks.cpp</code> and the arcade effects in <code>src/arcade.cpp</code>. The Bluetooth protocol, if you want to write your own remote, is in <code>src/jacket_link.h</code>.</li>
+      <li><a href="https://github.com/alinke/rogue-ai-costume/tree/main/ios-jacket"><code>ios-jacket/</code></a>: the iPhone and Apple Watch app (SwiftUI).</li>
+      <li><a href="https://github.com/alinke/rogue-ai-costume/tree/main/android-jacket"><code>android-jacket/</code></a>: the Android app (Kotlin and Jetpack Compose).</li>
+      <li><a href="https://github.com/alinke/rogue-ai-costume/tree/main/hardware/3dprint"><code>hardware/3dprint/</code></a>: the strip channels, grommets and wire guides, as STL files and the scripts that generate them.</li>
+    </ul>
+    <p class="soft">Both apps compile the firmware's own effects code to draw the jacket on screen, so a change to a look shows up in the preview too.</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Arcade Jacket is made by <a href="https://pixelcade.org">Pixelcade</a>. The arcade effects come from the Pixelcade LED marquee firmware.
+      Questions: <a href="mailto:support@pixelcade.org">support@pixelcade.org</a> &middot;
+      <a href="https://pixelcade.org/app-privacy/">Privacy policy</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
