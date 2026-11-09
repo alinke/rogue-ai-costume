@@ -82,7 +82,7 @@
     color: var(--accent-2); text-transform: uppercase; margin: 0 0 6px;
   }
   h2 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 14px; }
-  h3 { font-size: 1.15rem; margin: 28px 0 8px; }
+  h3 { font-size: 1.15rem; margin: 28px 0 8px; scroll-margin-top: 60px; }
   p, li { color: var(--ink); }
   .soft { color: var(--ink-soft); }
   ol, ul { padding-left: 1.3em; }
@@ -175,12 +175,12 @@
       <div class="part">
         <h4>Gledopto GL-MC-001WL</h4>
         <p>A small ESP32 LED controller sold for WLED. It has Bluetooth and a proper 5&nbsp;V data output, so the strips plug straight in. This is the controller the firmware is built for.</p>
-        <a href="https://www.amazon.com/s?k=Gledopto+GL-MC-001WL">Search on Amazon</a>
+        <a href="https://www.amazon.com/dp/B0D4TG8Y2Z">Buy on Amazon</a>
       </div>
       <div class="part">
         <h4>5&nbsp;V addressable LED strip</h4>
         <p>WS2812B or WS2811, <b>5&nbsp;V</b> (not 12&nbsp;V or 24&nbsp;V). Mine is three 1&nbsp;m, 5&nbsp;mm wide FCOB strips (160 LEDs each) with a 3-pin plug on each end: one for the front, one per sleeve. Up to 1200 LEDs in total.</p>
-        <a href="https://www.amazon.com/s?k=5V+WS2812B+FCOB+LED+strip+5mm+160+LEDs">Search on Amazon</a>
+        <a href="https://www.amazon.com/dp/B0CNXKSWD7">The strips I used (Amazon)</a>
       </div>
       <div class="part">
         <h4>3-pin extension leads</h4>
@@ -197,8 +197,8 @@
       </div>
       <div class="part">
         <h4>Mounting</h4>
-        <p>Hot glue and 3D-printed TPU channels that the strip snaps into, or sew-on channels. Add a few safety pins for the sleeves.</p>
-        <a href="https://github.com/alinke/rogue-ai-costume/tree/main/hardware/3dprint">STL files</a>
+        <p>Hot glue, a few safety pins for the sleeves, and the 3D-printed parts below.</p>
+        <a href="#prints">What to 3D print</a>
       </div>
     </div>
     <p class="soft" style="margin-top:16px">You also need a phone running the app: an iPhone with iOS 17 or later (the Apple Watch app is optional), or Android 8 or later.</p>
@@ -221,7 +221,18 @@
         <p>No strip crosses the zipper, so you can open the jacket without unplugging anything. Your jacket can be laid out differently: in step 5 you tell the app where each strip runs.</p>
         <h3>Mounting the strips</h3>
         <p>The strips snap into short 3D-printed channels, hot-glued about every 12&nbsp;cm. Each channel has a flange full of small holes. The glue squeezes up through them and sets like rivets, so it grips the fabric much better than a flat blob would. Print them in flexible TPU so they bend with the jacket. On the sleeves, also put a safety pin through each end of a channel.</p>
-        <p>Cut a hole about 17.5&nbsp;mm across wherever a lead goes in or out, and hot-glue a printed grommet over it from outside. Inside, glue the leads down every 10&nbsp;cm or so.</p>
+        <p>Cut a hole about 17.5&nbsp;mm across wherever a lead goes in or out, and hot-glue a printed grommet over it from outside. Inside, snap the leads into the wire guides and glue them down every 10&nbsp;cm or so, and on either side of the shoulder and armpit.</p>
+        <h3 id="prints">What to 3D print</h3>
+        <p class="soft">Print the channels and wire guides in flexible TPU, flat on the bed. Each link opens a 3D preview on GitHub with a download button.</p>
+        <table class="zones">
+          <tr><th>Part</th><th>How many</th><th>Where it goes</th></tr>
+          <tr><td><a href="https://github.com/alinke/rogue-ai-costume/blob/main/hardware/3dprint/strip_clip_glue_60mm.stl">Strip channel, 60&nbsp;mm</a></td><td>8 (2 spare)</td><td>The straight zipper edges, 3 each side</td></tr>
+          <tr><td><a href="https://github.com/alinke/rogue-ai-costume/blob/main/hardware/3dprint/strip_clip_glue_30mm.stl">Strip channel, 30&nbsp;mm</a></td><td>14 (2 spare)</td><td>Round the collar (2) and down each sleeve (5, none on the elbow)</td></tr>
+          <tr><td><a href="https://github.com/alinke/rogue-ai-costume/blob/main/hardware/3dprint/grommet.stl">Grommet</a></td><td>1 per hole</td><td>Over each hole where a lead goes in or out. Print face down</td></tr>
+          <tr><td><a href="https://github.com/alinke/rogue-ai-costume/blob/main/hardware/3dprint/wire_guide_single.stl">Wire guide, single</a></td><td>about 24</td><td>Inside the jacket, holding the 3-pin extension leads</td></tr>
+          <tr><td><a href="https://github.com/alinke/rogue-ai-costume/blob/main/hardware/3dprint/wire_guide_double.stl">Wire guide, double</a></td><td>a few</td><td>Where two cables run side by side</td></tr>
+        </table>
+        <p class="soft">If your strip slides around in a test channel, it's a different thickness from mine: <a href="https://github.com/alinke/rogue-ai-costume/blob/main/hardware/3dprint/strip_clip_glue.py"><code>strip_clip_glue.py</code></a> makes a new pair for your strip.</p>
       </div>
       <div>
         <figure class="photo">
